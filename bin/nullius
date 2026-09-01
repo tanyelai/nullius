@@ -1,0 +1,1274 @@
+#!/usr/bin/env python3
+"""nullius -- take nobody's word for it.
+
+The ledger and the gates. Python 3 standard library only: a researcher should be
+able to add this to Claude Code without installing anything first.
+"""
+
+import argparse
+import json
+import os
+import re
+import sys
+import unicodedata
+import urllib.error
+import urllib.parse
+import urllib.request
+from datetime import datetime, timezone
+from pathlib import Path
+
+STATE_DIR = ".nullius"
+API_TIMEOUT = 20
+# How far an indexed record's year may sit from the preprint's before it is a
+# different work rather than the same one.
+YEAR_SLACK = 2
+
+READ_DEPTHS = ["abstract", "skim", "method", "replicated"]
+
+# What a claim is allowed to assert, indexed by how far its source was read.
+CLAIM_STRENGTHS = ["reports", "holds", "mechanism", "generalises"]
+DEPTH_ALLOWS = {
+    "abstract": ["reports"],
+    "skim": ["reports", "holds"],
+    "method": ["reports", "holds", "mechanism"],
+    "replicated": ["reports", "holds", "mechanism", "generalises"],
+}
+
+WARRANTS = ["measured", "authors-claim", "replicated", "consensus",
+            "inferred", "mine-unpublished", "assumed"]
+
+# Ordered weakest to strongest. Independence caps how far up this a claim may go.
+STATUSES = ["folklore", "single-result", "emerging", "contested",
+            "established", "textbook"]
+STATUS_NEEDS_GROUPS = {"established": 2, "textbook": 2, "contested": 2}
+
+UNIT_KINDS = ["read", "survey", "idea", "explain", "interpret", "critique",
+              "write", "referee"]
+
+DEFAULT_CONFIG = {
+    "mode": "certain",
+    "field": "",
+    "contact": "",
+    "default_venue": "",
+    "vocabularies_suggested": 3,
+    "budget_overrun_ratio": 1.5,
+    "cite_patterns": [
+        r"\\cite[tpanyear]*\*?(?:\[[^\]]*\])*\{([^}]*)\}",
+        r"\[@([A-Za-z0-9_:.-]+)",
+        r"(?<![\w@])@([A-Za-z][A-Za-z0-9_:.-]{2,})",
+    ],
+    "draft_extensions": [".tex", ".md", ".markdown", ".txt", ".rst"],
+    "attribution_cues": ["et al", "report", "reports", "reported", "suggest",
+                         "suggests", "claim", "claims", "find", "finds", "found",
+                         "observe", "observes", "according to"],
+}
+
+
+# --------------------------------------------------------------------- paths
+
+
+def find_root(start=None):
+    d = Path(start or os.getcwd()).resolve()
+    for cand in [d, *d.parents]:
+        if (cand / STATE_DIR / "config.json").is_file():
+            return cand
+    return None
+
+
+def require_root():
+    root = find_root()
+    if root is None:
+        die("no nullius project here. Run `nullius init` in the directory your "
+            "research lives in.")
+    return root
+
+
+class Store:
+    def __init__(self, root):
+        self.root = Path(root)
+        self.dir = self.root / STATE_DIR
+
+    def p(self, *parts):
+        return self.dir.joinpath(*parts)
+
+    def read_json(self, name, default):
+        f = self.p(name)
+        if not f.is_file():
+            return default
+        try:
+            return json.loads(f.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            return default
+
+    def write_json(self, name, obj):
+        f = self.p(name)
+        f.parent.mkdir(parents=True, exist_ok=True)
+        f.write_text(json.dumps(obj, indent=2, ensure_ascii=False) + "\n",
+                     encoding="utf-8")
+
+    @property
+    def config(self):
+        cfg = dict(DEFAULT_CONFIG)
+        cfg.update(self.read_json("config.json", {}))
+        return cfg
+
+    @property
+    def refs(self):
+        return self.read_json("refs.json", {})
+
+    def save_refs(self, refs):
+        self.write_json("refs.json", refs)
+
+    def claims(self):
+        f = self.p("claims.jsonl")
+        if not f.is_file():
+            return []
+        out = []
+        for line in f.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if line:
+                try:
+                    out.append(json.loads(line))
+                except json.JSONDecodeError:
+                    pass
+        return out
+
+    def append_claim(self, claim):
+        f = self.p("claims.jsonl")
+        f.parent.mkdir(parents=True, exist_ok=True)
+        with f.open("a", encoding="utf-8") as fh:
+            fh.write(json.dumps(claim, ensure_ascii=False) + "\n")
+
+    @property
+    def unit(self):
+        return self.read_json("work/current.json", None)
+
+    def save_unit(self, unit):
+        self.write_json("work/current.json", unit)
+
+    def clear_unit(self):
+        f = self.p("work/current.json")
+        if f.is_file():
+            f.unlink()
+
+    def searches(self):
+        d = self.p("searches")
+        if not d.is_dir():
+            return []
+        out = []
+        for f in sorted(d.glob("*.json")):
+            try:
+                out.append(json.loads(f.read_text(encoding="utf-8")))
+            except json.JSONDecodeError:
+                pass
+        return out
+
+    def save_search(self, search):
+        self.write_json(f"searches/{search['id']}.json", search)
+
+    def note_path(self, citekey):
+        return self.p("papers", f"{citekey}.md")
+
+    def note_depth(self, citekey):
+        f = self.note_path(citekey)
+        if not f.is_file():
+            return None
+        m = re.search(r"^read_depth:\s*([a-z]+)\s*$",
+                      f.read_text(encoding="utf-8"), re.M)
+        return m.group(1) if m else None
+
+
+# ------------------------------------------------------------------- output
+
+
+def die(msg, code=1):
+    sys.stderr.write(f"nullius: {msg}\n")
+    sys.exit(code)
+
+
+def say(msg):
+    sys.stdout.write(msg + "\n")
+
+
+def now():
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def today():
+    return datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+
+# ---------------------------------------------------------------- indexes
+
+
+def http_json(url):
+    req = urllib.request.Request(url, headers={
+        "User-Agent": "nullius (+https://github.com/tanyelai/nullius)",
+        "Accept": "application/json",
+    })
+    try:
+        with urllib.request.urlopen(req, timeout=API_TIMEOUT) as r:
+            return json.loads(r.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        if e.code == 404:
+            return None
+        raise RuntimeError(f"{url} returned HTTP {e.code}") from e
+    except urllib.error.URLError as e:
+        raise RuntimeError(f"cannot reach {urllib.parse.urlsplit(url).netloc}: "
+                           f"{e.reason}") from e
+
+
+def openalex(path, contact, **params):
+    if contact:
+        params["mailto"] = contact
+    q = urllib.parse.urlencode({k: v for k, v in params.items() if v not in (None, "")})
+    return http_json(f"https://api.openalex.org/{path}" + (f"?{q}" if q else ""))
+
+
+ARXIV_RE = re.compile(r"(?:arxiv[:/ ]|10\.48550/arxiv\.)?(\d{4}\.\d{4,5})(v\d+)?$", re.I)
+DOI_RE = re.compile(r"(10\.\d{4,9}/[^\s\"'<>]+)", re.I)
+
+
+def normalise_identifier(raw):
+    """Return ('doi'|'arxiv'|'title', value)."""
+    s = raw.strip().rstrip(".,;").replace("abs/", "")
+    m = ARXIV_RE.search(s)
+    if m:
+        return "arxiv", m.group(1)
+    m = DOI_RE.search(s)
+    if m:
+        return "doi", m.group(1).rstrip(".").lower()
+    return "title", s
+
+
+def arxiv_lookup(arxiv_id):
+    """arXiv's own API. OpenAlex does not index every arXiv DOI -- 1706.03762 is
+    absent -- so the id is turned into a title here and matched by title there."""
+    url = ("https://export.arxiv.org/api/query?"
+           + urllib.parse.urlencode({"id_list": arxiv_id, "max_results": 1}))
+    req = urllib.request.Request(url, headers={"User-Agent": "nullius"})
+    try:
+        with urllib.request.urlopen(req, timeout=API_TIMEOUT) as r:
+            xml = r.read().decode("utf-8", "replace")
+    except (urllib.error.URLError, urllib.error.HTTPError) as e:
+        raise RuntimeError(f"cannot reach export.arxiv.org: {e}") from e
+    if "<entry>" not in xml:
+        return None
+    entry = xml.split("<entry>", 1)[1]
+
+    def tag(name):
+        m = re.search(rf"<{name}[^>]*>(.*?)</{name}>", entry, re.S)
+        return re.sub(r"\s+", " ", m.group(1)).strip() if m else None
+
+    names = [re.sub(r"\s+", " ", n).strip()
+             for n in re.findall(r"<author>\s*<name>(.*?)</name>", entry, re.S)]
+    return {
+        "title": tag("title") or "",
+        "year": int((tag("published") or "0000")[:4] or 0) or None,
+        "doi": tag("arxiv:doi"),
+        "authors": names,
+        "abs_url": f"https://arxiv.org/abs/{arxiv_id}",
+    }
+
+
+class _Resolved(Exception):
+    def __init__(self, work):
+        super().__init__("resolved")
+        self.work = work
+
+
+def record_from_arxiv(meta, arxiv_id):
+    """A preprint OpenAlex has no record of. Author identity is matched by name
+    here rather than by identifier, which is weaker, and the record says so."""
+    return {
+        "openalex": None, "arxiv": arxiv_id, "doi": meta.get("doi"),
+        "title": meta["title"], "year": meta.get("year"), "type": "preprint",
+        "venue": "arXiv", "peer_reviewed": False, "retracted": False,
+        "authors": [{"id": f"name:{slugify(n, 60)}", "name": n}
+                    for n in meta["authors"]],
+        "institutions": [], "cited_by": None, "oa_url": meta["abs_url"],
+        "referenced_works": [], "resolved_at": now(), "index": "arxiv",
+        "author_ids": "name",
+    }
+
+
+def record_from_openalex(w):
+    authors, institutions = [], []
+    for a in w.get("authorships") or []:
+        au = a.get("author") or {}
+        if au.get("id"):
+            authors.append({"id": au["id"], "name": au.get("display_name", "")})
+        for inst in a.get("institutions") or []:
+            if inst.get("id"):
+                institutions.append(inst["id"])
+    loc = (w.get("primary_location") or {}).get("source") or {}
+    return {
+        "openalex": w.get("id"),
+        "doi": (w.get("doi") or "").replace("https://doi.org/", "") or None,
+        "title": w.get("display_name") or w.get("title") or "",
+        "year": w.get("publication_year"),
+        "type": w.get("type"),
+        "venue": loc.get("display_name"),
+        "peer_reviewed": (w.get("type") not in ("preprint", None)
+                          and not (loc.get("type") == "repository")),
+        "retracted": bool(w.get("is_retracted")),
+        "authors": authors,
+        "institutions": sorted(set(institutions)),
+        "cited_by": w.get("cited_by_count"),
+        "oa_url": (w.get("open_access") or {}).get("oa_url"),
+        "referenced_works": w.get("referenced_works") or [],
+        "resolved_at": now(),
+        "index": "openalex",
+    }
+
+
+def norm_title(t):
+    return re.sub(r"[^a-z0-9]+", " ", (t or "").lower()).strip()
+
+
+def slugify(text, keep=40):
+    t = unicodedata.normalize("NFKD", text or "").encode("ascii", "ignore").decode()
+    t = re.sub(r"[^a-zA-Z0-9]+", "-", t).strip("-").lower()
+    return t[:keep] or "untitled"
+
+
+def make_citekey(rec, existing):
+    surname = "anon"
+    if rec.get("authors"):
+        parts = rec["authors"][0]["name"].split()
+        if parts:
+            surname = slugify(parts[-1], 20).replace("-", "")
+    base = f"{surname}{rec.get('year') or 'nd'}"
+    key, n = base, 0
+    while key in existing:
+        n += 1
+        key = f"{base}{chr(ord('a') + n - 1)}"
+    return key
+
+
+# ----------------------------------------------------------------- helpers
+
+
+def strip_markup(text):
+    text = re.sub(r"```.*?```", " ", text, flags=re.S)
+    text = re.sub(r"\\begin\{[^}]*\}|\\end\{[^}]*\}", " ", text)
+    text = re.sub(r"\\[a-zA-Z@]+\*?(\[[^\]]*\])*(\{[^{}]*\})*", " ", text)
+    text = re.sub(r"[%#*_`$]", " ", text)
+    return text
+
+
+def count_words(text):
+    return len(re.findall(r"[A-Za-z0-9][A-Za-z0-9'\u2019-]*", strip_markup(text)))
+
+
+def cited_keys(text, cfg):
+    keys = set()
+    for pat in cfg["cite_patterns"]:
+        for m in re.finditer(pat, text):
+            for k in m.group(1).split(","):
+                k = k.strip()
+                if k:
+                    keys.add(k)
+    return keys
+
+
+def is_draft(path, cfg):
+    return Path(path).suffix.lower() in cfg["draft_extensions"]
+
+
+def author_groups(refs, citekeys):
+    """How many mutually independent author groups these references represent."""
+    sets = []
+    for k in citekeys:
+        rec = refs.get(k)
+        if not rec:
+            continue
+        ids = {a["id"] for a in rec.get("authors", [])}
+        placed = False
+        for s in sets:
+            if s & ids:
+                s |= ids
+                placed = True
+                break
+        if not placed and ids:
+            sets.append(set(ids))
+    return len(sets) if sets else (1 if citekeys else 0)
+
+
+def tracked_drafts(store, unit):
+    cfg = store.config
+    out = []
+    for rel in (unit or {}).get("artifacts", []):
+        f = store.root / rel
+        if f.is_file() and is_draft(f, cfg):
+            out.append(f)
+    return out
+
+
+# ------------------------------------------------------------------ checks
+# A finding is (severity, text). severity is "fact" (blocks in certain mode) or
+# "chosen" (a threshold that was picked, so it is reported and marked as such).
+
+
+def check_draft_text(store, text, label):
+    cfg, refs = store.config, store.refs
+    facts = []
+    for key in sorted(cited_keys(text, cfg)):
+        rec = refs.get(key)
+        if rec is None:
+            facts.append(f"{label}: `{key}` is cited but not resolved. "
+                         f"Run `nullius cite <doi|arxiv|title>` first -- an "
+                         f"identifier that never resolved cannot reach a draft.")
+        elif rec.get("retracted"):
+            facts.append(f"{label}: `{key}` is cited and the index records it as "
+                         f"RETRACTED ({rec.get('title', '')[:60]}).")
+    return facts
+
+
+def check_attribution(store, text, label):
+    """Reported, never blocking: a weak claim rendered as a bare assertion."""
+    cfg = store.config
+    out = []
+    sentences = re.split(r"(?<=[.!?])\s+", strip_markup(text))
+    for claim in store.claims():
+        if claim.get("status") not in ("single-result", "folklore") and \
+           claim.get("warrant") != "authors-claim":
+            continue
+        probe = " ".join(claim["text"].split()[:6]).lower()
+        if len(probe) < 12:
+            continue
+        for s in sentences:
+            low = s.lower()
+            if probe in low:
+                cued = any(c in low for c in cfg["attribution_cues"]) or \
+                    any(src in s for src in claim.get("sources", []))
+                if not cued:
+                    out.append(f"{label}: claim {claim['id']} is "
+                               f"`{claim.get('status')}` / "
+                               f"`{claim.get('warrant')}` but reads as a bare "
+                               f"assertion here. Attribute and situate it.")
+                break
+    return out
+
+
+def unit_findings(store):
+    """Everything the Stop gate asks. Returns (facts, chosen)."""
+    cfg = store.config
+    unit = store.unit
+    facts, chosen = [], []
+    if not unit:
+        return facts, chosen
+
+    if not unit.get("accept"):
+        facts.append("no acceptance question. `nullius accept \"<what would "
+                     "close this>\"` -- a unit with no stated close is a unit "
+                     "that cannot be finished, only abandoned.")
+    elif not unit.get("accept_closed"):
+        facts.append(f"the acceptance question is still open:\n      "
+                     f"\"{unit['accept']}\"\n    Close it with `nullius close "
+                     f"\"<the answer, with its locator>\"`.")
+
+    for f in tracked_drafts(store, unit):
+        text = f.read_text(encoding="utf-8", errors="replace")
+        rel = os.path.relpath(f, store.root)
+        facts += check_draft_text(store, text, rel)
+        chosen += check_attribution(store, text, rel)
+
+    if unit.get("kind") == "survey":
+        unscreened = sum(1 for s in store.searches()
+                         for w in s.get("results", [])
+                         if w.get("screened") is None)
+        if unscreened:
+            facts.append(f"this is a survey unit and {unscreened} retrieved "
+                         f"works were never screened. `nullius coverage` lists "
+                         f"them; screen or exclude each with a reason.")
+        vocabs = len({s.get("vocabulary") for s in store.searches()
+                      if s.get("vocabulary")})
+        want = cfg["vocabularies_suggested"]
+        if vocabs < want:
+            chosen.append(f"{vocabs} query vocabular"
+                          f"{'y' if vocabs == 1 else 'ies'} logged against a "
+                          f"suggested {want}. Your framing is not the field's "
+                          f"framing, and that is how a literature goes missing.")
+
+    budget = (unit.get("budget") or {}).get("words")
+    if budget:
+        words = sum(count_words(f.read_text(encoding="utf-8", errors="replace"))
+                    for f in tracked_drafts(store, unit))
+        if words > budget and not unit.get("trade"):
+            facts.append(f"{words} words against a declared budget of {budget}. "
+                         f"Over budget an addition is a trade, not an addition: "
+                         f"record what it costs with `nullius trade \"<what "
+                         f"gets cut>\"`, or subtract.")
+
+    singles = [c for c in store.claims() if len(c.get("sources", [])) == 1]
+    if singles:
+        chosen.append(f"{len(singles)} claim(s) rest on a single source. That is "
+                      f"a fact about the evidence, not a defect -- but it "
+                      f"travels with the claim.")
+    return facts, chosen
+
+
+# ---------------------------------------------------------------- commands
+
+
+def cmd_init(args):
+    root = Path(args.path or os.getcwd()).resolve()
+    store = Store(root)
+    if store.p("config.json").is_file() and not args.force:
+        die(f"already initialised at {store.dir}. Pass --force to rewrite config.")
+    cfg = dict(DEFAULT_CONFIG)
+    cfg["field"] = args.field or ""
+    cfg["contact"] = args.email or ""
+    store.write_json("config.json", cfg)
+    for d in ("papers", "threads", "searches", "venues", "work", "cache"):
+        store.p(d).mkdir(parents=True, exist_ok=True)
+    tpl = Path(__file__).resolve().parent.parent / "templates"
+    for name, dest in (("program.md", "program.md"), ("field.md", "field.md"),
+                       ("venue.md", "venues/EXAMPLE.md")):
+        src, out = tpl / name, store.p(dest)
+        if src.is_file() and not out.is_file():
+            out.parent.mkdir(parents=True, exist_ok=True)
+            out.write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
+    for name, head in (("falsified.md", "# Falsified\n\nIdeas that died, and what "
+                        "killed them. Injected before a write on the thread that "
+                        "would repeat them.\n"),
+                       ("decisions.md", "# Decisions\n\nMethodological choices, "
+                        "with the alternative that was rejected.\n"),
+                       ("terms.md", "# Terms\n\nWords this literature uses two "
+                        "ways, and each paper's operationalisation.\n")):
+        f = store.p(name)
+        if not f.is_file():
+            f.write_text(head, encoding="utf-8")
+    shim = store.p("bin", "nullius")
+    shim.parent.mkdir(parents=True, exist_ok=True)
+    shim.write_text('#!/usr/bin/env bash\nexec python3 "%s" "$@"\n'
+                    % Path(__file__).resolve(), encoding="utf-8")
+    shim.chmod(0o755)
+    gi = store.p(".gitignore")
+    if not gi.is_file():
+        gi.write_text("work/\ncache/\nbin/\n", encoding="utf-8")
+    say(f"nullius: initialised {store.dir}")
+    say(f"  run it from here as ./{STATE_DIR}/bin/nullius")
+    if not cfg["contact"]:
+        say("  set a contact email so the indexes rate-limit you politely:\n"
+            "    nullius config contact you@example.org")
+    say("  next: describe your field in .nullius/field.md, and your target "
+        "venue in .nullius/venues/.")
+
+
+def cmd_config(args):
+    store = Store(require_root())
+    cfg = store.read_json("config.json", {})
+    if args.value is None:
+        merged = store.config
+        if args.key:
+            say(json.dumps(merged.get(args.key), ensure_ascii=False))
+        else:
+            say(json.dumps(merged, indent=2, ensure_ascii=False))
+        return
+    val = args.value
+    if val.isdigit():
+        val = int(val)
+    cfg[args.key] = val
+    store.write_json("config.json", cfg)
+    say(f"nullius: {args.key} = {val}")
+
+
+def cmd_start(args):
+    store = Store(require_root())
+    if store.unit and not args.force:
+        u = store.unit
+        die(f"a unit is already open: {u['slug']} ({u['kind']}). Finish it with "
+            f"`nullius done`, or pass --force to replace it.")
+    if args.kind not in UNIT_KINDS:
+        die(f"kind must be one of: {', '.join(UNIT_KINDS)}")
+    budget = {}
+    if args.words:
+        budget["words"] = args.words
+    unit = {
+        "slug": args.slug, "kind": args.kind, "question": args.question,
+        "venue": args.venue or store.config.get("default_venue") or "",
+        "budget": budget, "accept": None, "accept_closed": False,
+        "artifacts": list(args.artifact or []), "trade": None,
+        "started": now(),
+    }
+    store.save_unit(unit)
+    say(f"nullius: unit '{args.slug}' open ({args.kind})")
+    say(f"  now declare what would close it, before the work:\n"
+        f"    nullius accept \"<a question that is open right now>\"")
+
+
+def cmd_accept(args):
+    store = Store(require_root())
+    unit = store.unit or die("no open unit. `nullius start` first.")
+    if unit.get("accept") and not args.force:
+        die(f"this unit already accepts on:\n  \"{unit['accept']}\"\n"
+            f"Changing it mid-flight is moving the goalposts. Pass --force if "
+            f"the question itself turned out to be wrong.")
+    unit["accept"] = args.question
+    unit["accept_closed"] = False
+    store.save_unit(unit)
+    say(f"nullius: accepted. This unit is finishable when that question is "
+        f"answered with a locator.")
+
+
+def cmd_close(args):
+    store = Store(require_root())
+    unit = store.unit or die("no open unit.")
+    if not unit.get("accept"):
+        die("nothing to close -- no acceptance question was declared.")
+    locator = r"(\w+:[\w./#-]+)|\b(table|fig(ure)?|section|sec|eq|p{1,2}|page)\.?\s*\d"
+    if not re.search(locator, args.answer, re.I):
+        die("that answer carries no locator. An acceptance answer has to be "
+            "re-checkable by the next reader: a file:line, a table, a section, "
+            "a page. Otherwise it is an assertion about your own work.")
+    unit["accept_closed"] = True
+    unit["accept_answer"] = args.answer
+    store.save_unit(unit)
+    say("nullius: acceptance closed.")
+
+
+def cmd_trade(args):
+    store = Store(require_root())
+    unit = store.unit or die("no open unit.")
+    unit["trade"] = args.what
+    store.save_unit(unit)
+    say("nullius: trade recorded. The addition is now priced.")
+
+
+def cmd_artifact(args):
+    store = Store(require_root())
+    unit = store.unit or die("no open unit.")
+    rel = os.path.relpath(Path(args.path).resolve(), store.root)
+    if rel not in unit["artifacts"]:
+        unit["artifacts"].append(rel)
+    store.save_unit(unit)
+    say(f"nullius: tracking {rel}")
+
+
+def cmd_cite(args):
+    store = Store(require_root())
+    cfg = store.config
+    kind, value = normalise_identifier(args.identifier)
+    arxiv_meta = None
+    try:
+        if kind == "arxiv":
+            arxiv_meta = arxiv_lookup(value)
+            if not arxiv_meta:
+                die(f"arXiv has no record of '{value}'.")
+            if arxiv_meta.get("doi"):
+                kind, value = "doi", arxiv_meta["doi"].lower()
+            else:
+                kind, value = "title", arxiv_meta["title"]
+        if kind == "doi":
+            w = openalex(f"works/doi:{urllib.parse.quote(value, safe='')}",
+                         cfg["contact"])
+        else:
+            res = openalex("works", cfg["contact"],
+                           **{"filter": f"title.search:{value}", "per-page": 5})
+            hits = (res or {}).get("results") or []
+            if arxiv_meta:
+                want = norm_title(arxiv_meta["title"])
+                year = arxiv_meta.get("year")
+                same = [h for h in hits
+                        if norm_title(h.get("display_name")) == want
+                        and (not year or not h.get("publication_year")
+                             or abs(h["publication_year"] - year) <= YEAR_SLACK)]
+                same.sort(key=lambda h: h.get("cited_by_count") or 0, reverse=True)
+                raise _Resolved(same[0] if same else None)
+            if len(hits) > 1 and not args.first:
+                say("nullius: that title matches more than one work. Cite the "
+                    "one you mean by its DOI:")
+                for h in hits:
+                    say(f"  {(h.get('doi') or '').replace('https://doi.org/', '') or '(no doi)':<34} "
+                        f"{h.get('publication_year')}  {h.get('display_name', '')[:60]}")
+                sys.exit(1)
+            w = hits[0] if hits else None
+    except _Resolved as r:
+        w = r.work
+    except RuntimeError as e:
+        die(str(e))
+    if not w and arxiv_meta:
+        rec = record_from_arxiv(arxiv_meta, normalise_identifier(args.identifier)[1])
+        rec["matched_by"] = "arxiv-only"
+    elif not w:
+        die(f"'{args.identifier}' did not resolve against OpenAlex. A reference "
+            f"that cannot be resolved cannot be cited -- check the identifier, "
+            f"or the work is not indexed.")
+    else:
+        rec = record_from_openalex(w)
+        rec["matched_by"] = "doi" if kind == "doi" else "title+year"
+        if arxiv_meta:
+            rec["arxiv"] = normalise_identifier(args.identifier)[1]
+            if not rec["authors"] and arxiv_meta["authors"]:
+                rec["authors"] = [{"id": f"name:{slugify(n, 60)}", "name": n}
+                                  for n in arxiv_meta["authors"]]
+                rec["author_ids"] = "name"
+    refs = store.refs
+    existing = next((k for k, v in refs.items()
+                     if (rec.get("openalex") and v.get("openalex") == rec["openalex"])
+                     or (rec.get("arxiv") and v.get("arxiv") == rec["arxiv"])), None)
+    key = args.key or existing or make_citekey(rec, refs)
+    refs[key] = rec
+    store.save_refs(refs)
+    flag = "  RETRACTED" if rec["retracted"] else ""
+    say(f"nullius: {key}{flag}")
+    say(f"  {rec['title'][:78]}")
+    say(f"  {rec.get('venue') or '(no venue)'} · {rec.get('year')} · "
+        f"{rec.get('type')} · {len(rec['authors'])} authors")
+    if rec.get("matched_by") == "title+year":
+        say("  matched by title and year, not by identifier. Check it is the work "
+            "you meant -- indexes carry duplicate records under one title.")
+    if rec["retracted"]:
+        say("  the index records this work as retracted. Citing it is a fact "
+            "the gate will refuse.")
+    if rec.get("author_ids") == "name":
+        say("  authors carry no index identifier, so independence against this "
+            "record is matched by name -- weaker, and it can be defeated by a "
+            "name variant.")
+    if not rec.get("peer_reviewed"):
+        say("  preprint, not peer reviewed. That travels with the claim.")
+    if not rec.get("oa_url"):
+        say("  no open-access text found, so quotes from it cannot be verified "
+            "verbatim. Claims are capped at the read depth you record.")
+
+
+def cmd_note(args):
+    store = Store(require_root())
+    refs = store.refs
+    if args.citekey not in refs:
+        die(f"'{args.citekey}' is not resolved. `nullius cite` it first.")
+    if args.depth not in READ_DEPTHS:
+        die(f"depth must be one of: {', '.join(READ_DEPTHS)}")
+    rec = refs[args.citekey]
+    f = store.note_path(args.citekey)
+    f.parent.mkdir(parents=True, exist_ok=True)
+    if f.is_file():
+        text = f.read_text(encoding="utf-8")
+        text = re.sub(r"^read_depth:.*$", f"read_depth: {args.depth}", text,
+                      count=1, flags=re.M)
+        f.write_text(text, encoding="utf-8")
+        say(f"nullius: {args.citekey} read_depth -> {args.depth}")
+        return
+    tpl = Path(__file__).resolve().parent.parent / "templates" / "paper-note.md"
+    body = tpl.read_text(encoding="utf-8") if tpl.is_file() else \
+        "read_depth: {depth}\n\n# {title}\n"
+    f.write_text(body.format(
+        citekey=args.citekey, depth=args.depth, title=rec["title"],
+        year=rec.get("year"), venue=rec.get("venue") or "",
+        doi=rec.get("doi") or "", retracted=str(rec.get("retracted")).lower(),
+        peer_reviewed=str(rec.get("peer_reviewed")).lower(), date=today(),
+    ), encoding="utf-8")
+    say(f"nullius: {os.path.relpath(f, store.root)} ({args.depth})")
+    say("  the three mandatory fields are the point: the gap between claimed and "
+        "evidenced, what it does not show, and what you still do not understand.")
+
+
+def cmd_claim(args):
+    store = Store(require_root())
+    refs = store.refs
+    if args.warrant not in WARRANTS:
+        die(f"warrant must be one of: {', '.join(WARRANTS)}")
+    if args.status not in STATUSES:
+        die(f"status must be one of: {', '.join(STATUSES)}")
+    if args.strength not in CLAIM_STRENGTHS:
+        die(f"strength must be one of: {', '.join(CLAIM_STRENGTHS)}")
+    if args.warrant == "assumed":
+        die("there is no terminal `assumed` state. An assumption is an open "
+            "question wearing another word, and the point is that you cannot "
+            "finish inside one. Record it as a thread question instead.")
+
+    sources = args.source or []
+    if args.warrant != "mine-unpublished" and not sources:
+        die("a claim needs at least one source. If it is your own unpublished "
+            "data, say so: --warrant mine-unpublished.")
+    for s in sources:
+        if s not in refs:
+            die(f"source '{s}' is not resolved. `nullius cite` it first.")
+        if refs[s].get("retracted"):
+            die(f"source '{s}' is recorded as retracted.")
+
+    # read depth caps what the claim may assert
+    for s in sources:
+        depth = store.note_depth(s)
+        if depth is None:
+            die(f"no paper note for '{s}', so nothing records how far you read "
+                f"it. `nullius note {s} --depth <{'|'.join(READ_DEPTHS)}>`.")
+        if args.strength not in DEPTH_ALLOWS[depth]:
+            die(f"'{s}' was read to depth `{depth}`, which supports "
+                f"{', '.join(DEPTH_ALLOWS[depth])} -- not `{args.strength}`. "
+                f"Read further, or make the weaker claim.")
+
+    # independence caps how settled the claim may be called
+    need = STATUS_NEEDS_GROUPS.get(args.status)
+    if need:
+        groups = author_groups(refs, sources)
+        if groups < need:
+            die(f"`{args.status}` needs {need} independent author groups; these "
+                f"{len(sources)} source(s) form {groups}. Sharing an author is "
+                f"not independent replication -- use `emerging` or "
+                f"`single-result`, or add a group.")
+
+    claims = store.claims()
+    claim = {
+        "id": f"c{len(claims) + 1:03d}", "text": args.text,
+        "warrant": args.warrant, "status": args.status,
+        "strength": args.strength, "sources": sources,
+        "locator": args.locator or "", "created": now(),
+    }
+    store.append_claim(claim)
+    say(f"nullius: {claim['id']} recorded ({args.warrant} / {args.status} / "
+        f"{args.strength})")
+    if args.status in ("single-result", "folklore") or args.warrant == "authors-claim":
+        say("  this may not be written as a bare assertion. Attribute and "
+            "situate it in the prose.")
+
+
+def cmd_falsify(args):
+    store = Store(require_root())
+    f = store.p("falsified.md")
+    prev = f.read_text(encoding="utf-8") if f.is_file() else "# Falsified\n"
+    f.write_text(prev.rstrip() + f"\n\n## {args.idea}\n\n- **killed by:** "
+                 f"{args.why}\n- **when:** {today()}\n", encoding="utf-8")
+    say("nullius: recorded. This is now injected before a write on that thread.")
+
+
+def cmd_lit(args):
+    store = Store(require_root())
+    cfg = store.config
+    try:
+        res = openalex("works", cfg["contact"], search=args.query,
+                       **{"per-page": args.limit})
+    except RuntimeError as e:
+        die(str(e))
+    hits = (res or {}).get("results") or []
+    total = ((res or {}).get("meta") or {}).get("count", len(hits))
+    search = {
+        "id": f"{today()}-{slugify(args.query, 32)}",
+        "query": args.query,
+        "vocabulary": args.vocabulary or slugify(args.query, 32),
+        "when": now(), "found": total,
+        "results": [{
+            "openalex": h.get("id"),
+            "doi": (h.get("doi") or "").replace("https://doi.org/", "") or None,
+            "title": h.get("display_name", ""),
+            "year": h.get("publication_year"),
+            "cited_by": h.get("cited_by_count"),
+            "screened": None, "reason": None,
+        } for h in hits],
+    }
+    store.save_search(search)
+    say(f"nullius: {total} works match; {len(hits)} retrieved into "
+        f"searches/{search['id']}.json")
+    for i, r in enumerate(search["results"]):
+        say(f"  [{i}] {r['year']}  {(r['title'] or '')[:66]}")
+        say(f"      {r['doi'] or '(no doi)'}  cited by {r['cited_by']}")
+    say(f"  screen each: nullius screen {search['id']} <index> "
+        f"<include|exclude> \"<reason>\"")
+    if total > len(hits):
+        say(f"  {total - len(hits)} more exist than were retrieved. A survey "
+            f"unit cannot close while any retrieved work is unscreened.")
+
+
+def cmd_screen(args):
+    store = Store(require_root())
+    f = store.p("searches", f"{args.search}.json")
+    if not f.is_file():
+        die(f"no search '{args.search}'.")
+    search = json.loads(f.read_text(encoding="utf-8"))
+    if not 0 <= args.index < len(search["results"]):
+        die(f"index out of range (0..{len(search['results']) - 1}).")
+    if args.decision not in ("include", "exclude"):
+        die("decision must be include or exclude.")
+    search["results"][args.index]["screened"] = args.decision
+    search["results"][args.index]["reason"] = args.reason
+    store.save_search(search)
+    left = sum(1 for r in search["results"] if r["screened"] is None)
+    say(f"nullius: [{args.index}] {args.decision}. {left} unscreened in this "
+        f"search.")
+
+
+def cmd_coverage(args):
+    store = Store(require_root())
+    cfg = store.config
+    searches = store.searches()
+    if not searches:
+        say("nullius: no searches logged yet. `nullius lit \"<query>\"`.")
+        return
+    found = sum(s.get("found", 0) for s in searches)
+    results = [r for s in searches for r in s.get("results", [])]
+    screened = sum(1 for r in results if r["screened"] is not None)
+    included = sum(1 for r in results if r["screened"] == "include")
+    vocabs = {s.get("vocabulary") for s in searches if s.get("vocabulary")}
+    years = [r["year"] for r in results if r.get("year")]
+    refs = store.refs
+    groups = author_groups(refs, list(refs.keys()))
+    want = cfg["vocabularies_suggested"]
+
+    say(f"found        {found:<6} screened {screened:<5} included   {included}")
+    say(f"retrieved    {len(results):<6} unscreened {len(results) - screened}")
+    say(f"vocabularies {len(vocabs):<6} of {want} suggested"
+        + ("" if len(vocabs) >= want else
+           "  -- try the field's terms, not yours"))
+    say(f"groups       {groups:<6} across {len(refs)} resolved reference(s)"
+        + ("" if groups > 1 or len(refs) < 2 else
+           "  -- shared authors, not independent"))
+    if years:
+        say(f"years        {min(years)}-{max(years)}")
+    unscreened = [(s["id"], i, r) for s in searches
+                  for i, r in enumerate(s.get("results", []))
+                  if r["screened"] is None]
+    if unscreened:
+        say("")
+        say("unscreened:")
+        for sid, i, r in unscreened[:20]:
+            say(f"  {sid} [{i}]  {r['year']}  {(r['title'] or '')[:58]}")
+        if len(unscreened) > 20:
+            say(f"  ... and {len(unscreened) - 20} more")
+
+
+def cmd_check(args):
+    store = Store(require_root())
+    path = Path(args.path).resolve()
+    if not path.is_file():
+        die(f"{args.path} is not a file.")
+    text = path.read_text(encoding="utf-8", errors="replace")
+    rel = os.path.relpath(path, store.root)
+    facts = check_draft_text(store, text, rel)
+    chosen = check_attribution(store, text, rel)
+    words = count_words(text)
+    say(f"{rel}: {words} words, "
+        f"{len(cited_keys(text, store.config))} citation key(s)")
+    for f in facts:
+        say(f"  FACT   {f}")
+    for c in chosen:
+        say(f"  chosen {c}")
+    if not facts and not chosen:
+        say("  clean.")
+    sys.exit(2 if facts else 0)
+
+
+def cmd_status(args):
+    store = Store(require_root())
+    unit = store.unit
+    refs, claims = store.refs, store.claims()
+    say(f"project   {store.root}")
+    say(f"field     {store.config.get('field') or '(unset -- .nullius/field.md)'}")
+    say(f"ledger    {len(refs)} reference(s), {len(claims)} claim(s)")
+    if not unit:
+        say("unit      none open. Nothing about the current work is being "
+            "checked.")
+        return
+    say(f"unit      {unit['slug']} ({unit['kind']})"
+        + (f" -> {unit['venue']}" if unit.get("venue") else ""))
+    say(f"question  {unit['question']}")
+    say(f"accept    {unit.get('accept') or '(not declared)'}"
+        + ("  [closed]" if unit.get("accept_closed") else ""))
+    if unit.get("budget", {}).get("words"):
+        words = sum(count_words(f.read_text(encoding='utf-8', errors='replace'))
+                    for f in tracked_drafts(store, unit))
+        say(f"budget    {words} / {unit['budget']['words']} words")
+    facts, chosen = unit_findings(store)
+    say("")
+    if facts:
+        say("the stop gate refuses on these facts:")
+        for f in facts:
+            say(f"  - {f}")
+    if chosen:
+        say("reported, and marked as chosen rather than measured:")
+        for c in chosen:
+            say(f"  - {c}")
+    if not facts and not chosen:
+        say("finishable.")
+
+
+def cmd_done(args):
+    store = Store(require_root())
+    unit = store.unit or die("no open unit.")
+    facts, _ = unit_findings(store)
+    if facts and not args.force:
+        say("nullius: not finishable yet --")
+        for f in facts:
+            say(f"  - {f}")
+        sys.exit(1)
+    log = store.p("work", "log.jsonl")
+    log.parent.mkdir(parents=True, exist_ok=True)
+    unit["finished"] = now()
+    with log.open("a", encoding="utf-8") as fh:
+        fh.write(json.dumps(unit, ensure_ascii=False) + "\n")
+    store.clear_unit()
+    say(f"nullius: '{unit['slug']}' closed.")
+
+
+def cmd_doctor(args):
+    store_root = find_root()
+    ok = True
+    say(f"python    {sys.version.split()[0]}")
+    if sys.version_info < (3, 8):
+        say("  FAIL nullius needs Python 3.8 or newer.")
+        ok = False
+    if store_root is None:
+        say("project   none found from here. `nullius init`.")
+        return sys.exit(1)
+    store = Store(store_root)
+    cfg = store.config
+    say(f"project   {store_root}")
+    say(f"mode      {cfg['mode']}")
+    say(f"contact   {cfg['contact'] or '(unset -- the indexes will rate-limit harder)'}")
+    for d in ("papers", "searches", "venues", "threads"):
+        n = len(list(store.p(d).glob("*"))) if store.p(d).is_dir() else 0
+        say(f"{d:<9} {n}")
+    refs = store.refs
+    retracted = [k for k, v in refs.items() if v.get("retracted")]
+    if retracted:
+        say(f"  retracted references present: {', '.join(retracted)}")
+        ok = False
+    orphan = [c["id"] for c in store.claims()
+              for s in c.get("sources", []) if s not in refs]
+    if orphan:
+        say(f"  claims citing unresolved sources: {', '.join(sorted(set(orphan)))}")
+        ok = False
+    for k in refs:
+        if store.note_depth(k) is None:
+            say(f"  no paper note for {k}, so claims from it are capped at nothing")
+    try:
+        openalex("works", cfg["contact"], search="test", **{"per-page": 1})
+        say("openalex  reachable")
+    except RuntimeError as e:
+        say(f"openalex  UNREACHABLE ({e}). Local gates still work; `cite` and "
+            f"`lit` will not.")
+    sys.exit(0 if ok else 1)
+
+
+# -------------------------------------------------------------------- hooks
+# Hooks read local state only. A hook that makes a network call hangs the session,
+# so resolution happens in `cite`, deliberately, and the gates check what it wrote.
+
+
+def hook_payload():
+    try:
+        return json.loads(sys.stdin.read() or "{}")
+    except json.JSONDecodeError:
+        return {}
+
+
+def hook_session_start(payload):
+    root = find_root(payload.get("cwd"))
+    if root is None:
+        return 0
+    store = Store(root)
+    plugin = Path(__file__).resolve().parent.parent
+    parts = []
+    inv = plugin / "invariants"
+    if inv.is_dir():
+        for f in sorted(inv.glob("*.md")):
+            parts.append(f.read_text(encoding="utf-8").rstrip())
+    unit = store.unit
+    lines = []
+    if unit:
+        lines.append(f"Open unit: {unit['slug']} ({unit['kind']}) -- "
+                     f"{unit['question']}")
+        lines.append(f"  accept: {unit.get('accept') or 'NOT DECLARED'}"
+                     + ("  [closed]" if unit.get("accept_closed") else ""))
+        facts, chosen = unit_findings(store)
+        for f in facts:
+            lines.append(f"  fact:   {f}")
+        for c in chosen:
+            lines.append(f"  chosen: {c}")
+    else:
+        lines.append("No unit is open, so nothing about the current work is "
+                     "being checked. For anything past reading one paper: "
+                     "`nullius start <slug> <kind> \"<question>\"`.")
+    refs = store.refs
+    lines.append(f"Ledger: {len(refs)} reference(s), {len(store.claims())} claim(s).")
+    fals = store.p("falsified.md")
+    if fals.is_file():
+        killed = re.findall(r"^## (.+)$", fals.read_text(encoding="utf-8"), re.M)
+        if killed:
+            lines.append("Already falsified, do not re-propose: "
+                         + "; ".join(killed[:8]))
+    parts.append("## nullius: this project right now\n\n" + "\n".join(lines))
+    sys.stdout.write("\n\n".join(parts) + "\n")
+    return 0
+
+
+def hook_pre_write(payload):
+    root = find_root(payload.get("cwd"))
+    if root is None:
+        return 0
+    store = Store(root)
+    cfg = store.config
+    ti = payload.get("tool_input") or {}
+    target = ti.get("file_path") or ""
+    if not target or not is_draft(target, cfg):
+        return 0
+    text = ti.get("content") or ti.get("new_string") or ""
+    if not text:
+        return 0
+    rel = os.path.relpath(Path(target).resolve(), store.root) \
+        if Path(target).is_absolute() else target
+    facts = check_draft_text(store, text, rel)
+    if facts and cfg["mode"] in ("certain", "block"):
+        sys.stderr.write("nullius refuses this write:\n  - "
+                         + "\n  - ".join(facts) + "\n")
+        return 2
+    notes = []
+    for key in sorted(cited_keys(text, cfg)):
+        depth = store.note_depth(key)
+        if depth:
+            notes.append(f"{key}: read to `{depth}`")
+    if notes:
+        emit_context("nullius: read depth of what this cites -- "
+                     + "; ".join(notes) + ". A claim may not exceed it.")
+    return 0
+
+
+def emit_context(text):
+    sys.stdout.write(json.dumps({"hookSpecificOutput": {
+        "hookEventName": "PreToolUse", "additionalContext": text}}) + "\n")
+
+
+def hook_stop(payload):
+    root = find_root(payload.get("cwd"))
+    if root is None:
+        return 0
+    store = Store(root)
+    if store.unit is None:
+        return 0
+    facts, chosen = unit_findings(store)
+    mode = store.config["mode"]
+    if facts and mode in ("certain", "block"):
+        sys.stderr.write(
+            f"nullius: unit '{store.unit['slug']}' is not finishable yet.\n  - "
+            + "\n  - ".join(facts)
+            + (("\n  and, on thresholds that were chosen rather than measured:"
+                "\n  - " + "\n  - ".join(chosen)) if chosen else "")
+            + "\n")
+        return 2
+    if chosen and mode == "block":
+        sys.stderr.write("nullius: only chosen thresholds remain:\n  - "
+                         + "\n  - ".join(chosen) + "\n")
+        return 2
+    if chosen:
+        # A threshold picked rather than measured does not get to end a turn. It goes
+        # to the person, who can judge it, through the one channel Stop has for them.
+        sys.stdout.write(json.dumps({"systemMessage": (
+            f"nullius: '{store.unit['slug']}' is finishable on the facts. These rest "
+            f"on thresholds that were chosen rather than measured, so they are "
+            f"reported rather than enforced:\n  - " + "\n  - ".join(chosen))}) + "\n")
+    return 0
+
+
+def cmd_hook(args):
+    payload = hook_payload()
+    fn = {"session-start": hook_session_start, "pre-write": hook_pre_write,
+          "stop": hook_stop}.get(args.event)
+    if fn is None:
+        return 0
+    try:
+        sys.exit(fn(payload))
+    except SystemExit:
+        raise
+    except Exception as e:  # a broken gate must never wedge a session
+        sys.stderr.write(f"nullius: gate error ({type(e).__name__}: {e})\n")
+        sys.exit(0)
+
+
+# --------------------------------------------------------------------- main
+
+
+def build_parser():
+    p = argparse.ArgumentParser(prog="nullius",
+                                description="take nobody's word for it")
+    sub = p.add_subparsers(dest="cmd", required=True)
+
+    s = sub.add_parser("init", help="scaffold .nullius/ here")
+    s.add_argument("path", nargs="?")
+    s.add_argument("--field"); s.add_argument("--email")
+    s.add_argument("--force", action="store_true")
+    s.set_defaults(fn=cmd_init)
+
+    s = sub.add_parser("config", help="read or set a config key")
+    s.add_argument("key", nargs="?"); s.add_argument("value", nargs="?")
+    s.set_defaults(fn=cmd_config)
+
+    s = sub.add_parser("start", help="open a work unit")
+    s.add_argument("slug"); s.add_argument("kind", choices=UNIT_KINDS)
+    s.add_argument("question")
+    s.add_argument("--venue"); s.add_argument("--words", type=int)
+    s.add_argument("--artifact", action="append")
+    s.add_argument("--force", action="store_true")
+    s.set_defaults(fn=cmd_start)
+
+    s = sub.add_parser("accept", help="declare what would close this unit")
+    s.add_argument("question"); s.add_argument("--force", action="store_true")
+    s.set_defaults(fn=cmd_accept)
+
+    s = sub.add_parser("close", help="answer the acceptance question")
+    s.add_argument("answer"); s.set_defaults(fn=cmd_close)
+
+    s = sub.add_parser("trade", help="price an addition made over budget")
+    s.add_argument("what"); s.set_defaults(fn=cmd_trade)
+
+    s = sub.add_parser("artifact", help="track a draft against this unit")
+    s.add_argument("path"); s.set_defaults(fn=cmd_artifact)
+
+    s = sub.add_parser("cite", help="resolve an identifier, or refuse")
+    s.add_argument("identifier"); s.add_argument("--key")
+    s.add_argument("--first", action="store_true")
+    s.set_defaults(fn=cmd_cite)
+
+    s = sub.add_parser("note", help="open a paper note at a read depth")
+    s.add_argument("citekey")
+    s.add_argument("--depth", required=True, choices=READ_DEPTHS)
+    s.set_defaults(fn=cmd_note)
+
+    s = sub.add_parser("claim", help="record a claim with its warrant and status")
+    s.add_argument("text")
+    s.add_argument("--warrant", required=True, choices=WARRANTS)
+    s.add_argument("--status", required=True, choices=STATUSES)
+    s.add_argument("--strength", default="reports", choices=CLAIM_STRENGTHS)
+    s.add_argument("--source", action="append"); s.add_argument("--locator")
+    s.set_defaults(fn=cmd_claim)
+
+    s = sub.add_parser("falsify", help="record an idea that died, and why")
+    s.add_argument("idea"); s.add_argument("why"); s.set_defaults(fn=cmd_falsify)
+
+    s = sub.add_parser("lit", help="search OpenAlex and log the protocol")
+    s.add_argument("query"); s.add_argument("--vocabulary")
+    s.add_argument("--limit", type=int, default=10)
+    s.set_defaults(fn=cmd_lit)
+
+    s = sub.add_parser("screen", help="include or exclude a retrieved work")
+    s.add_argument("search"); s.add_argument("index", type=int)
+    s.add_argument("decision", choices=["include", "exclude"])
+    s.add_argument("reason"); s.set_defaults(fn=cmd_screen)
+
+    s = sub.add_parser("coverage", help="the counts, and what is unscreened")
+    s.set_defaults(fn=cmd_coverage)
+
+    s = sub.add_parser("check", help="run the write guards over a draft")
+    s.add_argument("path"); s.set_defaults(fn=cmd_check)
+
+    s = sub.add_parser("status", help="why the stop gate is refusing")
+    s.set_defaults(fn=cmd_status)
+
+    s = sub.add_parser("done", help="close the unit")
+    s.add_argument("--force", action="store_true"); s.set_defaults(fn=cmd_done)
+
+    s = sub.add_parser("doctor", help="is this project still set up correctly")
+    s.set_defaults(fn=cmd_doctor)
+
+    s = sub.add_parser("_hook", help=argparse.SUPPRESS)
+    s.add_argument("event"); s.set_defaults(fn=cmd_hook)
+    return p
+
+
+def main():
+    args = build_parser().parse_args()
+    args.fn(args)
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,11 @@
+{
+  "name": "tanyelai",
+  "owner": { "name": "tanyelai", "url": "https://github.com/tanyelai" },
+  "plugins": [
+    {
+      "name": "nullius",
+      "source": "./",
+      "description": "Outcome gates for research work: an unresolved citation cannot reach a draft, a claim cannot exceed its source's read depth, a status cannot exceed what author independence earns, and a critique that has run out of grounded findings must return a verdict rather than a longer list."
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "description": "nullius gates. Local state only -- a hook that makes a network call hangs a session, so resolution happens in `nullius cite` and the gates check what it wrote.",
+  "hooks": {
+    "SessionStart": [
+      { "hooks": [ { "type": "command", "shell": "bash",
+        "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/bin/nullius\" _hook session-start" } ] }
+    ],
+    "PostCompact": [
+      { "hooks": [ { "type": "command", "shell": "bash",
+        "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/bin/nullius\" _hook session-start" } ] }
+    ],
+    "PreToolUse": [
+      { "matcher": "Write|Edit", "hooks": [ { "type": "command", "shell": "bash",
+        "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/bin/nullius\" _hook pre-write" } ] }
+    ],
+    "Stop": [
+      { "hooks": [ { "type": "command", "shell": "bash",
+        "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/bin/nullius\" _hook stop" } ] }
+    ]
+  }
+}
