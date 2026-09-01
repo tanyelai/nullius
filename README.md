@@ -8,10 +8,14 @@ unread paper, the unsearched literature and the unbounded critique into states a
 **cannot finish in**.
 
 > [!NOTE]
-> **Status: design settled, build starting. Nothing is installable yet.**
-> The argument is in **[`why/why-nullius.pdf`](why/why-nullius.pdf)** — eight pages on what
-> goes wrong, why better instructions do not fix it, and what a harness has to constrain
-> instead. Read that first if you want to know whether this is for you.
+> **Status: installable, and incomplete.** The ledger, the gates and citation
+> resolution work and are covered by [`tests/smoke.sh`](tests/smoke.sh). Snowballing,
+> the venue completeness walk and the review agents' calibration engine are not built
+> yet — see [Roadmap](#roadmap).
+>
+> The argument is in **[WHY.md](WHY.md)**: what goes wrong, why better instructions do
+> not fix it, and what a harness has to constrain instead. Read that first if you want
+> to know whether this is for you.
 
 ---
 
@@ -88,7 +92,7 @@ than idealised.
 | `field.md` | your subfield's norms — what a normal sample size is here, what a standard baseline is, which claims need what kind of evidence |
 | `venues/<venue>.md` | required sections, page limit, what reviewers there actually ask for. Bootstrapped once from the real call or author guidelines |
 | `program.md` | what you are actually working on, so a thread that does not trace to it gets flagged as the distraction it is |
-| `threads/`, `papers/`, `claims.md`, `falsified.md` | the durable record — the half that survives a dead context window, and a dead semester |
+| `threads/`, `papers/`, `claims.jsonl`, `falsified.md` | the durable record — the half that survives a dead context window, and a dead semester |
 
 A structural finding must cite a line in `venues/<venue>.md`, so the tool cannot invent a
 requirement. And `falsified.md` costs a minute to write and is the only thing standing between
@@ -96,14 +100,13 @@ you and re-proposing, in June, the idea you buried in March.
 
 ## Install
 
-Not yet — there is nothing to install. When there is, it will be two keys in
-`.claude/settings.json` in whatever repo or directory your research lives in:
+Two keys in `.claude/settings.json`, in whatever directory your research lives in:
 
 ```jsonc
 {
   "extraKnownMarketplaces": {
     "tanyelai": {
-      "source": { "source": "github", "repo": "tanyelai/nullius", "ref": "stable" },
+      "source": { "source": "github", "repo": "tanyelai/nullius", "ref": "main" },
       "autoUpdate": true
     }
   },
@@ -111,21 +114,49 @@ Not yet — there is nothing to install. When there is, it will be two keys in
 }
 ```
 
-No install step, no dependency to manage: Claude Code fetches the plugin on open. The
-literature spine talks to public APIs (OpenAlex, Crossref, Semantic Scholar, arXiv,
-Unpaywall, Europe PMC) and needs no key, though most of them ask for an email so they can
-rate-limit politely.
+Claude Code fetches the plugin on open. There is nothing to install and nothing to
+manage: the CLI is Python 3 standard library only, and the indexes it talks to (OpenAlex,
+arXiv) need no key, though they ask for an email so they can rate-limit politely.
+
+Then, once, in your research directory:
+
+```bash
+nullius init --field "your subfield" --email you@example.org
+```
+
+## First five minutes
+
+```bash
+./.nullius/bin/nullius start intro-rewrite write "sharpen the framing" \
+    --venue MICCAI --words 800 --artifact paper/intro.tex
+./.nullius/bin/nullius accept "does the intro state what the method cannot do"
+
+./.nullius/bin/nullius cite 10.1016/j.media.2017.07.005   # resolves, or refuses
+./.nullius/bin/nullius note litjens2017 --depth abstract
+./.nullius/bin/nullius claim "deep learning dominates the field" \
+    --warrant authors-claim --status single-result --strength reports \
+    --source litjens2017
+```
+
+That last command is the shape of the whole tool. Ask for `--strength mechanism` on a
+source you only read to `abstract` and it refuses; ask for `--status established` on two
+papers that share an author and it refuses, because independence is set arithmetic on
+author lists rather than a judgement. Write `\\cite{somethingUnresolved}` into the draft
+and the write itself is refused.
+
+When you try to finish, `nullius status` says why the gate is holding — and which of its
+reasons are facts and which are thresholds somebody chose.
 
 ## Roadmap
 
 | | | |
 | --- | --- | --- |
-| **P0** | the prose spine — invariants, project templates, the vocabulary | changes behaviour with zero code |
-| **P1** | ledger and CLI — `start`, `accept`, `claim`, `falsify`, `status`, `doctor` | the budget starts biting |
-| **P2** | the blocking gates — citation resolved, quote verbatim, read-depth cap, the completeness walk | hallucinated citations stop being possible |
-| **P3** | the literature spine — the indexes, `lit`, `snowball`, `screen`, `trail`, `coverage` | the largest piece of real capability |
-| **P4** | agents and the calibration engine — gap kinds, the trade requirement, the extension detector | the part most likely to be wrong on first contact |
-| **P5** | public release — smoke tests, worked examples, a `stable` branch | when it has earned it |
+| **P0** | invariants, templates, the vocabulary | **done** |
+| **P1** | ledger and CLI — `start`, `accept`, `claim`, `note`, `falsify`, `status`, `doctor` | **done** |
+| **P2** | the blocking gates — citation resolved, not retracted, read-depth cap, independence cap, untraded overrun | **done**, 46 assertions both directions |
+| **P3** | the rest of the literature spine — snowballing, Unpaywall full text, the verbatim quote check, Europe PMC | search and resolution done; the rest open |
+| **P4** | the venue completeness walk, the gap kinds, the extension detector | open |
+| **P5** | a `stable` release branch, worked examples, public | open |
 
 ## What this is not
 
