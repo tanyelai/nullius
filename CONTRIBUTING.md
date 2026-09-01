@@ -6,7 +6,7 @@ hold itself to the same rule, so there is one hard requirement and the rest is o
 ## A change to a gate needs a test that fails without it
 
 `tests/smoke.sh` runs against a throwaway project and needs no network. Every guard is
-tested in **both** directions — the case it must refuse and the case it must allow —
+tested in **both** directions, the case it must refuse and the case it must allow,
 because a gate that only ever passes is not a gate, and a gate that always fires gets
 switched off within a week.
 
@@ -23,7 +23,7 @@ gate into a nuisance.
 A **fact** is a lookup or a count with no judgement in it: an identifier resolves or it does
 not, two author sets are disjoint or they are not. Facts refuse the stop.
 
-A **chosen threshold** is a number somebody picked — three vocabularies, one citation, a
+A **chosen threshold** is a number somebody picked: three vocabularies, one citation, a
 budget. Those are reported to the person through `systemMessage` and leave the turn alone.
 
 A new gate has to say which it is, and the burden is on the stricter answer. If you cannot
@@ -52,7 +52,7 @@ the plugin cannot give, that is usually a missing *template*, not a missing rule
 
 If something in [WHY.md](WHY.md) or [REFERENCES.md](REFERENCES.md) is wrong, open an issue.
 Name the locator. The tool would refuse to let the claim stand without one, and the
-documents are held to the same bar — including the parts that flatter the design.
+documents are held to the same bar, including the parts that flatter the design.
 
 ## Commits
 

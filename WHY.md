@@ -1,6 +1,6 @@
 # Why nullius exists
 
-> **nullius in verba** — “take nobody's word for it.”
+> **nullius in verba.** “Take nobody's word for it.”
 > The Royal Society's motto since 1660.
 
 This is the argument, not the manual. It says what an AI assistant does wrong in research
@@ -35,31 +35,96 @@ stopped providing evidence and started providing pressure.
 
 ## 2 · What goes wrong by default
 
-None of this is the model being lazy. Each is a place where nothing in the loop *could*
-fail, so the default filled the gap.
+Not three failures. What follows is what has actually turned up, grouped by the stage of
+work it belongs to, and it is not exhaustive either: it is the part that has been seen often
+enough to design against. None of it is the model being lazy. Each is a place where nothing
+in the loop *could* fail, so the default filled the gap.
 
-**It skims the literature and does not know it.** Four papers, one query, one afternoon,
-written up as *“a review of the literature on X”*. The prose form hides it perfectly: one
-query and forty look identical on the page. Worse, the search runs in *your* vocabulary
-rather than the field's, so an entire literature can sit one synonym away and never appear.
+### Opening an idea
 
-**It trusts a paper the way the paper describes itself.** An abstract is a marketing
-document. What a study *shows* is in its tables, and the gap between the two is where most of
-the interesting reading happens. By default that gap is collapsed: the claimed contribution
-and the evidenced contribution arrive as one sentence.
+| the failure | what it looks like from inside |
+|---|---|
+| **novelty by silence** | "I could not find anything like this" reads as a green light. It almost always means the terms were wrong |
+| **unfalsifiable framing** | the idea is stated so that no result could contradict it, which feels like strength |
+| **nobody priced it** | a good idea that needs 400 participants or three GPU-years, discovered in month nine |
+| **ambition inflation** | a tractable question quietly becomes "a general framework for", and the scope change is never a decision anyone made |
 
-**It cannot tell settled from proposed.** This is the expensive one. *“Attention improves
-long-range modelling”* and *“method Y improves long-range modelling”* come out in the same
-declarative mood at the same confidence. One carries a decade of independent replication; the
-other carries one paper and one benchmark. Build three chapters on the second believing it
-was the first, and you find out late.
+### Circling an idea you already have
+
+| the failure | what it looks like from inside |
+|---|---|
+| **circling** | each pass restates the idea more beautifully. It feels like progress. Nothing new entered |
+| **confirmation drift** | everything logged this month supports the idea, because looking for support is easier than looking for refutation |
+| **the unwritten premise** | careful analysis on a wrong premise adds confidence to it, and several passes agreeing reads as validation |
+| **the dead version returns** | an idea killed in March is re-proposed in June, by you |
+
+### Literature
+
+| the failure | what it looks like from inside |
+|---|---|
+| **it skims and does not know it** | four papers, one query, one afternoon, written up as "a review of the literature on X". Prose hides a thin search perfectly |
+| **your words, not the field's** | an entire literature sits one synonym away and never appears |
+| **echo mistaken for corroboration** | five sources, one lab, citing each other |
+| **a retracted or superseded paper** | it cites cleanly and nothing says otherwise |
+| **preprint read as peer reviewed** | both are just a PDF |
+| **the survey read instead of the paper** | a survey's one-line characterisation becomes your evidence for what that paper showed |
+| **all frontier, no foundation** | everything from the last eighteen months, or only the famous old paper and none of the corrections since |
+
+### Deciding what is actually known
+
+| the failure | what it looks like from inside |
+|---|---|
+| **settled and proposed, flattened** | a textbook result and one paper's benchmark win arrive in the same declarative mood at the same confidence |
+| **folklore** | everyone says it. Follow the citations and the trail never reaches data |
+| **construct drift** | two papers use one word for two different things, and they end up in the same table |
+| **significant read as large** | *p* < .05 becomes "it works" |
+| **no base rate** | "85%" with no chance level and no trivial baseline |
+
+### Interpreting results, theirs and yours
+
+| the failure | what it looks like from inside |
+|---|---|
+| **deciding what you predicted after looking** | the result arrives and the hypothesis rearranges to fit |
+| **your own pilot, over-read** | n=8 gets described as "demonstrates", and the assistant agrees with you |
+| **the failed run vanishes** | six weeks later you run it again |
+| **the convenient subgroup** | an effect found in a slice, reported as an effect |
+
+### Understanding
+
+| the failure | what it looks like from inside |
+|---|---|
+| **fluent, and half understood** | a clean explanation of a paper nobody actually followed |
+| **analogy standing in for mechanism** | the metaphor lands and the mechanism was never checked |
+
+### Writing and critique
+
+| the failure | what it looks like from inside |
+|---|---|
+| **runaway critique** | the fourth pass still finds "what is missing", forever |
+| **12 pages to 24, still incomplete** | growth reads as progress because nothing said how long it was allowed to be |
+| **novelty overclaim, in your own text** | "we are the first to", which is a factual claim with a searchable answer |
+| **hedging collapse** | "may suggest" in the review becomes "shows" in the discussion, with no new evidence in between |
+| **prose faults mixed with science faults** | one list where "unclear sentence" sits beside "the control is wrong", and nothing can be triaged |
+
+Four of these are the expensive ones, and the rest of this document is mostly about them.
+
+**It skims the literature and does not know it.** The prose form hides it: one query and forty
+look identical on the page.
+
+**It trusts a paper the way the paper describes itself.** An abstract is a marketing document.
+What a study *shows* is in its tables, and the gap between the two is where most of the
+interesting reading happens. By default that gap is collapsed.
+
+**It cannot tell settled from proposed.** One claim carries a decade of independent
+replication and the other carries one paper and one benchmark, and they arrive in the same
+sentence shape. Build three chapters on the second believing it was the first, and you find
+out late.
 
 **Its critique has no floor.** Asked what is missing, it answers. Asked again, it answers
-again — *more* reads as *more rigorous*, so a finished draft becomes an infinite project, and
-a page limit that was never declared cannot object. One real proposal went from 12 pages to
-24 across three runs, and the fourth still returned a list.
+again, because *more* reads as *more rigorous*. A page limit that was never declared cannot
+object.
 
-> **The asymmetry that makes this hard.** Suppress *“what is missing”* and a genuinely
+> **The asymmetry that makes this hard.** Suppress *"what is missing"* and a genuinely
 > absent control section goes unmentioned. Leave it unbounded and the draft doubles and is
 > still called incomplete. A single rule cannot serve both, which is why the two have to stop
 > being one axis.
@@ -93,12 +158,12 @@ Software gets this for free. *It builds*, *the suite is green*, *the check went 
 are facts, observed rather than reported, and facts can block. Research has no equivalent, so
 the entire design question is: which questions here are **equally objective**?
 
-Fewer than you would like. Four are genuine facts — a lookup with a yes or no answer, no
+Fewer than you would like. Four are genuine facts, a lookup with a yes or no answer, no
 judgement anywhere in it:
 
 | fact | how it is decided | when it cannot fire |
 | --- | --- | --- |
-| this reference exists | the DOI or arXiv id resolves against Crossref or OpenAlex | — |
+| this reference exists | the DOI or arXiv id resolves against Crossref or OpenAlex | n/a |
 | it was not retracted | retraction metadata on the resolved record | the index has no record |
 | this quote is verbatim | string match against cached full text | no legal copy of the text could be retrieved |
 | these sources are independent | author and institution id sets are disjoint | an id is missing from the record |
@@ -121,15 +186,15 @@ Two of these are the cheapest real epistemics available and nobody builds them. 
 independence is set arithmetic on author lists.** **Folklore is a citation trail that never
 lands on evidence.** Both fall out of metadata already fetched to render a bibliography.
 
-The honest floor is small, and it is enough — because *shallow* is invisible in prose and
+The honest floor is small, and it is enough, because *shallow* is invisible in prose and
 undeniable in a row of numbers:
 
 ```
 $ nullius coverage
 found        231    screened 0     included   4
-vocabularies 1      of 3 suggested — try the field's terms, not yours
+vocabularies 1      of 3 suggested, try the field's terms, not yours
 groups       1      4 works, 2 shared authors, not independent
-years        2024–2026   most-cited ancestor of the seed set unread
+years        2024-2026   most-cited ancestor of the seed set unread
 ```
 
 *“I reviewed the literature”* survives any amount of scrutiny. That block does not.
@@ -170,7 +235,7 @@ can be perfectly warranted and barely established, and that cell is the dangerou
 | `single-result` | one paper, one setting | attributed and situated, never bare |
 | `folklore` | repeated; the trail never reaches data | marked unsourced, or dropped |
 
-Two things stop status from being self-declared. It is **capped by source independence** —
+Two things stop status from being self-declared. It is **capped by source independence**,
 the exact parallel to the read-depth cap, and computable from author identifiers the record
 already carries. And its rendering is greppable, so the discipline lives in a difference a
 script can see rather than in an adjective the model is asked to feel.
@@ -193,14 +258,14 @@ claims wearing one word, and they differ in whether they can point at something 
 
 So: **a finding must cite a required-section id, a claim id with an empty warrant, or two
 conflicting locations. A finding that cites none of the three is enhancement, and
-inadmissible.** No severity intuition required — a finding either has a referent or it does
+inadmissible.** No severity intuition required: a finding either has a referent or it does
 not.
 
 The same rule keeps the tool honest in the other direction. The completeness sweep is
 **walked, not sampled**: every required section gets present, thin or absent, every run.
 *“It never told me the timeline was missing”* cannot happen, because the checklist is
-enumerated rather than intuited. And “required” comes from a real document — the grant call,
-the author guidelines, the venue's checklist, the field's reporting standard — so the tool
+enumerated rather than intuited. And “required” comes from a real document: the grant call,
+the author guidelines, the venue's checklist, the field's reporting standard, so the tool
 cannot invent a requirement it cannot cite.
 
 ### The budget is a price, not a ceiling
@@ -210,15 +275,15 @@ over it. Four situations, one honest answer each.
 
 | | inside the budget | over the budget |
 | --- | --- | --- |
-| **a real gap exists** | **Say it. Additions admissible.** The gap is real and there is room. The ordinary case, and nothing here suppresses it. | **Say it — and name what it costs.** Both are true at once, so the fix is a *trade*. “The sampling frame is unstated; the two paragraphs on X are the cheapest 150 words.” |
-| **no real gap** | **`submit`.** Zero structural, evidential and coherence gaps, inside the format. A verdict — and the tool is forbidden from producing further findings. | **Only cuts.** Nothing is missing and it is too long. Now, and only now, the question becomes what earns its place. |
+| **a real gap exists** | **Say it. Additions admissible.** The gap is real and there is room. The ordinary case, and nothing here suppresses it. | **Say it, and name what it costs.** Both are true at once, so the fix is a *trade*. “The sampling frame is unstated; the two paragraphs on X are the cheapest 150 words.” |
+| **no real gap** | **`submit`.** Zero structural, evidential and coherence gaps, inside the format. A verdict, and the tool is forbidden from producing further findings. | **Only cuts.** Nothing is missing and it is too long. Now, and only now, the question becomes what earns its place. |
 
 The upper-right cell is the one that fourth run needed and did not have. And the funding
 requirement is a severity filter the tool **cannot fake**: nobody trades two working
 paragraphs for a nice-to-have, so soft findings collapse under their own price without anyone
 having to judge them soft.
 
-> **The reframe.** The budget does not forbid additions. It **prices** them — and a priced
+> **The reframe.** The budget does not forbid additions. It **prices** them, and a priced
 > list has to be ranked, while a free list can only be enumerated. An unbounded set of
 > improvements becomes a ranked set of trades, and a ranked set has a top and therefore a
 > bottom.
@@ -244,7 +309,7 @@ into a nuisance.
 
 The left column needs no calibration to be right. The right column would need a hundred or
 two labelled examples and an agreement measure before it could honestly refuse anything, and
-that work has not been done — so it does not refuse. Saying which is which is not a caveat.
+that work has not been done, so it does not refuse. Saying which is which is not a caveat.
 It is the difference between a gate you trust and one you learn to route around.
 
 ## 9 · Where it touches a session
@@ -274,7 +339,7 @@ sequenceDiagram
     M->>G: Stop
     G->>L: read every condition
     alt a fact is unmet
-        G-->>M: exit 2 — the reason, work continues
+        G-->>M: exit 2, the reason, work continues
     else only chosen thresholds are unmet
         G-->>M: reported and marked as chosen, the turn may end
     end
@@ -287,15 +352,15 @@ Gate code never enters the context. Only the text a gate emits costs tokens.
 A harness that hard-coded one field's norms would be useless in every other field and quietly
 wrong in its own. So the tool ships knowing nothing, and the norms are configuration:
 
-- **`field.md`** — your subfield's norms. What a normal sample size is here, what a standard
+- **`field.md`**: your subfield's norms. What a normal sample size is here, what a standard
   baseline is, which claims need what kind of evidence. This is what makes a critique
   *calibrated* rather than idealised.
-- **`venues/<venue>.md`** — required sections, page limit, what reviewers there actually ask
+- **`venues/<venue>.md`**: required sections, page limit, what reviewers there actually ask
   for. Bootstrapped once from the real call or author guidelines. A structural finding must
   cite a line in this file, so the tool cannot invent a requirement.
-- **`program.md`** — what you are actually working on, so a thread that does not trace to it
+- **`program.md`**: what you are actually working on, so a thread that does not trace to it
   can be flagged as the distraction it is.
-- **`threads/`, `papers/`, `claims.jsonl`, `falsified.md`** — the durable record. A thread
+- **`threads/`, `papers/`, `claims.jsonl`, `falsified.md`**: the durable record. A thread
   holds the question, the current best answer *with its warrant and its status*, what would
   change it, what has been ruled out, and the next falsifiable step. This is the
   half that survives a dead context window, and a dead semester.
@@ -309,14 +374,14 @@ wrong in its own. So the tool ships knowing nothing, and the norms are configura
 - **Not a literature database, and not loyal to one.** It queries OpenAlex, Crossref,
   arXiv, Europe PMC and Unpaywall through their official APIs, and no single one is
   privileged: a work is resolved by whichever route has it, and a source none of them
-  carries — a documentation page, a book chapter, a lecture note — is still citable, at
+  carries, such as a documentation page, a book chapter or a lecture note, is still citable, at
   what it is worth. Coverage is theirs and it is uneven by field. The contribution is
   refusing to let you *not* look.
 - **Not a substitute for reading.** The read-depth cap exists precisely because the tool
   cannot read for you. It can only refuse to let an abstract masquerade as a method section.
 - **Not a calibrated judge.** The severity classes rank; they do not measure. Where a number
   was chosen rather than measured, the tool says so and does not block on it.
-- **Not a way around a paywall.** Official APIs and legally open copies only — which in
+- **Not a way around a paywall.** Official APIs and legally open copies only, which in
   practice reaches most things, because most paywalled work in these fields has a preprint
   and Unpaywall knows where it is. Where nothing legal has it, the note stays at `abstract`
   depth and the claim is capped accordingly. That is a state, not a failure.
@@ -325,16 +390,24 @@ wrong in its own. So the tool ships knowing nothing, and the norms are configura
 
 ## 12 · Where this is
 
-This did not come from a theory of research. It came from a few thousand hours inside Claude
-Code as a founding AI engineer — a **software engineering** intuition, earned watching
-instructions lose under load until the pattern stopped looking like accidents.
+Two tracks, run at the same time. A few thousand hours inside Claude Code as a founding AI
+engineer, and an active research line alongside it.
 
-The reason it is here is that the same three failures are plainly recognisable in research
-work, which I do alongside the engineering. But the transfer is a hypothesis rather than a
-result, and that label belongs on it: the mechanism is proven in a domain that has a
-compiler, and research does not have one. Everything above is the attempt to answer, honestly,
-what plays that part instead — and the places where the answer is thinner than it first looked
-are marked rather than smoothed over.
+The harness idea was sharpened on the engineering side first, for a plain reason: there the
+feedback is fast and unforgiving. A rule that fails to hold shows up as a red build in
+seconds, so the pattern *instructions lose under load* becomes visible quickly and then
+repeatedly, until it stops looking like a series of accidents.
+
+Research has the same failures and hides them for much longer. A shallow search does not fail
+loudly. It fails in a reviewer's comment six months later, or in a reinvention nobody ever
+catches. Working in both is what made the shape recognisable, and the failures listed in this
+document are ones hit first-hand in reading, drafting and analysis rather than inferred from
+engineering by analogy.
+
+What the two do not share is a compiler, and that is the one real gap. Software gets *it
+builds* for free; research has no equivalent, which is why the question this whole document
+answers is what plays that part instead. The answer is smaller than one would like, and where
+it is thin the text says so rather than rounding up.
 
 The build order follows the confidence. The prose spine and the ledger first, because they
 change behaviour immediately and cost nothing to revise. The blocking gates second, because

@@ -2,7 +2,7 @@
 
 Copy this per target and fill it from the **real** document: the call for papers, the author
 guidelines, the reviewer form, the field's reporting standard. Nothing is pre-filled here on
-purpose — a checklist invented by the tool is exactly the idealised critique this is meant
+purpose: a checklist invented by the tool is exactly the idealised critique this is meant
 to prevent, and a structural finding has to cite a line in this file to be admissible.
 
 ## Format

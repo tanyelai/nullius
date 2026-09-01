@@ -99,5 +99,5 @@ rather than as a short list.
 
 The claim that this design works. It has not been evaluated against a control, the severity
 classes are uncalibrated, and no inter-rater agreement has been measured. Where a number in
-this repository was chosen rather than measured, the tool reports it as chosen — and the
+this repository was chosen rather than measured, the tool reports it as chosen, and the
 same rule applies to the repository's own claims about itself.
