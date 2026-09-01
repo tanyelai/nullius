@@ -13,6 +13,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import unicodedata
 import urllib.error
 import urllib.parse
@@ -339,21 +340,39 @@ def today():
 # ---------------------------------------------------------------- indexes
 
 
-def http_json(url):
+class RateLimited(RuntimeError):
+    """Temporary and retryable. Presenting it as an unreachable index makes a
+    researcher conclude the work is not there when the index simply said 'later'."""
+
+
+def http_json(url, attempts=3):
     req = urllib.request.Request(url, headers={
         "User-Agent": "nullius (+https://github.com/tanyelai/nullius)",
         "Accept": "application/json",
     })
-    try:
-        with urllib.request.urlopen(req, timeout=API_TIMEOUT) as r:
-            return json.loads(r.read().decode("utf-8"))
-    except urllib.error.HTTPError as e:
-        if e.code == 404:
-            return None
-        raise RuntimeError(f"{url} returned HTTP {e.code}") from e
-    except urllib.error.URLError as e:
-        raise RuntimeError(f"cannot reach {urllib.parse.urlsplit(url).netloc}: "
-                           f"{e.reason}") from e
+    for attempt in range(attempts):
+        try:
+            with urllib.request.urlopen(req, timeout=API_TIMEOUT) as r:
+                return json.loads(r.read().decode("utf-8"))
+        except urllib.error.HTTPError as e:
+            if e.code == 404:
+                return None
+            if e.code in (429, 503) and attempt < attempts - 1:
+                wait = float(e.headers.get("Retry-After") or 0) or 2 ** (attempt + 1)
+                time.sleep(min(wait, 30))
+                continue
+            if e.code in (429, 503):
+                raise RateLimited(
+                    f"{urllib.parse.urlsplit(url).netloc} is rate limiting this "
+                    f"session (HTTP {e.code}) after {attempts} attempts. That is "
+                    f"the index saying later, not saying no: wait a few minutes "
+                    f"and run the same command again. Setting a contact email "
+                    f"puts you in the polite pool, which is a different quota.")
+            raise RuntimeError(f"{url} returned HTTP {e.code}") from e
+        except urllib.error.URLError as e:
+            raise RuntimeError(f"cannot reach "
+                               f"{urllib.parse.urlsplit(url).netloc}: {e.reason}") from e
+    return None
 
 
 def http_text(url):
@@ -2644,19 +2663,31 @@ def cmd_snowball(args):
         seeds.append((openalex_short(rec["openalex"]), rec["title"],
                       rec.get("doi"), rec.get("year")))
     else:
-        for sr in store.searches():
-            for r in sr.get("results", []):
-                if r.get("screened") != "include" or not r.get("openalex"):
-                    continue
-                wid = openalex_short(r["openalex"])
-                if wid in state or any(wid == x[0] for x in seeds):
-                    continue
-                seeds.append((wid, r.get("title", ""), r.get("doi"),
-                              r.get("year")))
+        # Two ways a work becomes a seed: you screened it in, or you resolved it on
+        # purpose. Someone who ran `cite` six times and wants to walk from all six
+        # had no way to say so.
+        pool = []
+        if not args.refs:
+            for sr in store.searches():
+                for r in sr.get("results", []):
+                    if r.get("screened") == "include" and r.get("openalex"):
+                        pool.append((openalex_short(r["openalex"]),
+                                     r.get("title", ""), r.get("doi"),
+                                     r.get("year")))
+        if args.refs or not pool:
+            for k, rec in refs.items():
+                if rec.get("openalex"):
+                    pool.append((openalex_short(rec["openalex"]), rec["title"],
+                                 rec.get("doi"), rec.get("year")))
+        for cand in pool:
+            if cand[0] in state or any(cand[0] == x[0] for x in seeds):
+                continue
+            seeds.append(cand)
         seeds = seeds[:args.seeds or cfg["snowball_seeds"]]
     if not seeds:
-        say("nullius: nothing to walk from. Screen something in first -- the seed "
-            "set is what you decided was close, not what a query returned.")
+        say("nullius: nothing to walk from. Screen something in, or resolve some "
+            "references and pass --refs. The seed set is what you decided was "
+            "close, not what a query returned.")
         return
 
     limit = args.limit or cfg["snowball_limit"]
@@ -2674,12 +2705,14 @@ def cmd_snowball(args):
     for hop in range(1, depth + 1):
         say(f"hop {hop}: {len(frontier)} seed(s)")
         hop_rows, seen_before, new_here = [], 0, 0
+        refused = 0
         for wid, title, doi, _sy in frontier:
             rows, counts = walk_one(cfg, wid, directions, limit, title, doi,
                                     not args.no_context)
             for r in rows:
                 if r.get("_error"):
                     say(f"  {r['_error']}")
+                    refused += 1
                     continue
                 key = openalex_short(r["openalex"])
                 if key in reached:
@@ -2719,7 +2752,12 @@ def cmd_snowball(args):
                     if openalex_short(r["openalex"]) not in state][
                         :args.seeds or cfg["snowball_seeds"]]
         if not frontier:
-            say("  nothing new to walk from; the graph closed here")
+            if refused:
+                say(f"  {refused} call(s) were refused by the index, so this hop "
+                    f"is incomplete. Nothing here means the index said later, not "
+                    f"that the graph closed.")
+            else:
+                say("  nothing new to walk from; the graph closed here")
             break
 
     store.write_json("snowball.json", state)
@@ -3320,6 +3358,9 @@ def build_parser():
     s.add_argument("--forward", action="store_true", help="what cites the seed")
     s.add_argument("--both", action="store_true")
     s.add_argument("--limit", type=int); s.add_argument("--seeds", type=int)
+    s.add_argument("--refs", action="store_true",
+                   help="seed from every resolved reference rather than from what "
+                        "was screened in")
     s.add_argument("--depth", type=int,
                    help="how many hops; each hop follows the works most seeds agree on")
     s.add_argument("--no-context", action="store_true", dest="no_context",

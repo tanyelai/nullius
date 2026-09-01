@@ -3,6 +3,25 @@
 Versions follow [semantic versioning](https://semver.org). Until `1.0.0` the ledger format
 and the CLI surface may change; when they do, the change is listed here with what it breaks.
 
+## 0.2.0
+
+Everything on the roadmap is built. What changed in this release beyond the features listed
+under 0.1.0 is recorded in the entries below; what is worth reading first is new.
+
+**[ALGORITHMS.md](ALGORITHMS.md)** collects every mechanism with the measurement that killed
+the naive version of it: the query that matched 101,007 works against the one that matched 31,
+the citation walk that offered a 1962 statistics paper as the canon of a much younger
+field, the guard that
+called a document clean while it named sixteen unverified papers and then again while it
+attributed five studies by name. It closes with where each mechanism is weakest, because a
+list of mechanisms with no weaknesses is a sales document.
+
+**`examples/`** carries three worked fields. The `field.md` files are real; the venue files are
+skeletons on purpose, since a checklist invented for a real conference would break the rule
+that the tool may not require what it cannot cite a line for.
+
+The marketplace now points at `stable`. Work happens on `main`.
+
 ## 0.1.0
 
 ### Snowballing, and what closes a frontier
@@ -100,8 +119,8 @@ how a gate becomes noise and then gets switched off.
 
 ### Found by doing the research, not by inspecting a document
 
-Ran a genuine session: an open question in LLM interpretability, three vocabularies,
-screening, and an idea unit taken to close. Five defects, and the first is the worst
+Ran a genuine session end to end: an open question, three vocabularies, screening, and
+an idea unit taken to close. Five defects, and the first is the worst
 thing in this repository so far.
 
 - **the per-kind acceptance rules were prose that could not fail.** The vocabulary
@@ -112,10 +131,10 @@ thing in this repository so far.
   and the vocabulary marks which kinds are gated and which only shape what `accept`
   should say.
 - **relevance and impact were the same knob, and impact won.** The search asked OpenAlex
-  to sort its whole matching corpus by citation count, so the most-cited works sharing
-  any term came back: a 1982 paper on international regimes, at the top of a search
-  about moral reasoning in language models. Relevance gates now; citations per year
-  order what got through.
+  to sort its whole matching corpus by citation count, so what came back was the
+  most-cited work
+  sharing any term with the query. Relevance gates now; citations per year order what
+  got through.
 - **full-text search dilutes.** The same intent matched 101,007 works through OpenAlex's
   `search` and 31 through title and abstract, and only the second set was about the
   subject. Title and abstract is the route now, with the loose one kept as a fallback
@@ -134,11 +153,11 @@ and two records of one work under different DOIs no longer both survive de-dupli
 
 ### Found by running it against a real proposal
 
-A 26-page study plan, 14,000 words, naming sixteen arXiv papers. Three defects, one
-of them in the tool's single most important job:
+A real plan of some length, naming sixteen arXiv papers. Three defects, one of them in
+the tool's single most important job:
 
 - **a bare identifier is a citation, and the guard did not know it.** The document
-  carries not one `\cite`; every reference is written as `arXiv:2310.15337` in running
+  carries not one `\cite`; every reference is written as a bare `arXiv:` id in running
   prose. `nullius check` reported it **clean**. Bare arXiv ids, DOIs and doi.org links
   are now resolved and gated exactly like a citekey, which matters more than the keyed
   form: no bibliography file ever sees a bare identifier, so nothing else would have
@@ -146,8 +165,7 @@ of them in the tool's single most important job:
   bug.
 - **punctuation in a title was still breaking resolution.** The escaping blacklisted a
   handful of operator characters, so the next one nobody thought of still returned HTTP
-  400: a question mark, in *"Are Language Models Consequentialist or Deontological Moral
-  Reasoners?"*. It whitelists now, and falls back to the plain search endpoint when the
+  400: a question mark, at the end of a title. It whitelists now, and falls back to the plain search endpoint when the
   structured filter refuses, because one route is not a route.
 - **tracking a draft and counting it were one list.** Adding the positioning file so the
   walk could find its Related Work section pushed the paper over the venue's word limit,

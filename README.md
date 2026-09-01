@@ -8,7 +8,7 @@ unread paper, the unsearched literature and the unbounded critique into states a
 **cannot finish in**.
 
 > [!NOTE]
-> **Status: installable, and incomplete.** The ledger, the gates and citation
+> **Status: installable.** The ledger, the gates and citation
 > resolution work and are covered by [`tests/smoke.sh`](tests/smoke.sh). Snowballing,
 > the venue completeness walk and the review agents' calibration engine are not built
 > yet. See [Roadmap](#roadmap).
@@ -47,7 +47,7 @@ Create `.claude/settings.json` in your research folder with exactly this:
 {
   "extraKnownMarketplaces": {
     "tanyelai": {
-      "source": { "source": "github", "repo": "tanyelai/nullius", "ref": "main" },
+      "source": { "source": "github", "repo": "tanyelai/nullius", "ref": "stable" },
       "autoUpdate": true
     }
   },
@@ -186,7 +186,7 @@ and it is the only thing a claim that the frontier is closed can rest on.
 query returned: backward into what a seed cites, forward into what cites it.
 
 ```
-nullius: walking from ELEPHANT: Measuring and understanding social sycophancy
+nullius: walking from <the work you screened in>
   back: 61 in the graph, 5 retrieved  (capped)
   forward: 98 in the graph, 5 retrieved  (capped)
 ```
@@ -200,9 +200,9 @@ The payload is not the list. It is the multiplicity:
 hop 1: 1 seed(s)     16 new, 0 already reached
 hop 2: 4 seed(s)     60 new, 4 already reached, 6% of this hop was known
 
-reached from more than one seed, which no query would have told you:
-  2 seeds  2009    276  The Design of Competitive Online Algorithms via a Pr
-  2 seeds  2013    273  Online Matching and Ad Allocation
+reached from more than one of 7 seeds, which no query would have told you:
+  3/7 (43%)  2020   276  <the paper the field descends from>
+  2/7 (29%)  1998   273  <its standard textbook>
 ```
 
 A work several of your seeds point at is what the field agrees is behind them: the canon, or
@@ -391,7 +391,7 @@ the rule and can disagree with it in one place.
 | **P2** | the blocking gates: citation resolved, not retracted, read-depth cap, independence cap, untraded overrun | **done**, and pinned by tests |
 | **P3** | the literature spine | **done**: multi-index search and ranking, Crossref, arXiv, Europe PMC, Unpaywall, preprint hunting, the verbatim quote check, and snowballing in both directions |
 | **P4** | the calibration engine | **done**: the venue walk, the gap kinds, the permanent discharge of a `defensible` finding, the draft's own scope boundary, and the extension detector |
-| **P5** | a `stable` release branch, worked examples for two or three fields, public | open |
+| **P5** | a `stable` release branch, worked examples, the mechanisms written down | **done** |
 
 ## What this is not
 
@@ -431,8 +431,22 @@ in**. That is the method, and everything here is one application of it.
 
 ## Design notes
 
-[WHY.md](WHY.md) is the argument: what goes wrong, why instructions do not fix it, and
-what a harness has to constrain instead.
+[WHY.md](WHY.md) is the argument: what goes wrong, why instructions do not fix it, and what a
+harness has to constrain instead.
+
+**[ALGORITHMS.md](ALGORITHMS.md) is the interesting half.** Every mechanism in this tool
+replaced something that looked reasonable and did not work, and that file carries each one with
+the measurement that killed the naive version: the query that matched 15,277 works against the one
+that matched 811, the citation walk that offered a 1962 statistics paper as the canon of a
+field two decades younger, the guard that called a document clean while every reference in it
+was unverified.
+It is written to be argued with. If a mechanism there is wrong, the measurement is the thing to
+attack.
+
+[examples/](examples/) has three worked fields: clinical machine learning, language model
+evaluation, and quantitative social science. The `field.md` files are real and you
+should argue with them; the venue files are skeletons, because a checklist invented for a real
+conference would break the tool's own rule that it may not require what it cannot cite.
 
 [REFERENCES.md](REFERENCES.md) is where the design's own claims are sourced. Every mechanism
 here answers a failure somebody has already characterised, and every identifier in that file

@@ -1,6 +1,6 @@
 {
   "name": "nullius",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "nullius in verba. A harness for research work: facts block, chosen thresholds are reported and marked as chosen.",
   "author": { "name": "tanyelai", "url": "https://github.com/tanyelai" },
   "homepage": "https://github.com/tanyelai/nullius",
