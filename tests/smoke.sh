@@ -154,13 +154,61 @@ pathlib.Path(".nullius/searches/2026-01-01-q.json").write_text(json.dumps({
          "reason": "on topic"}]}, indent=2))
 PY
 expect_hook stop 2 "a survey unit cannot close on an unscreened work" "$CWD_JSON"
-expect_exit 0 "screen it" python3 "$NULLIUS" screen 2026-01-01-q 0 exclude "off topic"
+expect_exit 0 "screen it" python3 "$NULLIUS" screen 2026-01-01-q exclude "off topic" --index 0
 expect_hook stop 0 "a chosen threshold reports but never ends the turn" "$CWD_JSON"
 expect_grep "systemMessage" "and it reaches the person, not the model" \
   bash -c "printf %s \"$CWD_JSON\" | python3 \"$NULLIUS\" _hook stop"
 expect_grep "chosen" "the vocabulary count is marked as chosen, not a fact" \
   python3 "$NULLIUS" status
 expect_grep "unscreened" "coverage names what is unscreened" python3 "$NULLIUS" coverage
+
+# ------------------------------------------------- sources with no index ----
+expect_exit 1 "a non-indexed source needs a title" \
+  python3 "$NULLIUS" cite "https://example.org/post" --kind blog
+expect_exit 0 "a blog is citable" \
+  python3 "$NULLIUS" cite "https://example.org/post" --kind blog --title "A post" --year 2026
+expect_exit 0 "a book chapter is citable" \
+  python3 "$NULLIUS" cite "isbn:000" --kind chapter --title "A chapter" --year 2020 --author "Ada Lovelace"
+expect_grep "example2026" "the citekey comes from the domain when there is no author" \
+  python3 "$NULLIUS" cite "https://example.org/post" --kind blog --title "A post"
+
+expect_exit 0 "note the blog"    python3 "$NULLIUS" note example2026 --depth method
+expect_exit 0 "note the chapter" python3 "$NULLIUS" note lovelace2020 --depth method
+expect_exit 1 "a blog cannot make a claim established" \
+  python3 "$NULLIUS" claim "widely settled" --warrant consensus --status established \
+    --strength holds --source example2026 --source gamma2021
+expect_exit 0 "a book chapter can carry textbook status" \
+  python3 "$NULLIUS" claim "the standard account" --warrant consensus --status textbook \
+    --strength holds --source lovelace2020 --source gamma2021
+
+# ------------------------------------------------------- bulk screening -----
+python3 - <<'PYIN'
+import json, pathlib
+pathlib.Path(".nullius/searches/2026-02-02-r.json").write_text(json.dumps({
+    "id": "2026-02-02-r", "query": "r", "vocabulary": "second", "when": "now",
+    "found": 3, "results": [
+        {"title": "cited", "year": 2020, "cited_by": 40, "screened": None, "reason": None},
+        {"title": "uncited a", "year": 2026, "cited_by": 0, "screened": None, "reason": None},
+        {"title": "uncited b", "year": 2026, "cited_by": 0, "screened": None, "reason": None}]},
+    indent=2))
+PYIN
+expect_grep "excluded 2 by rule" "one rule screens the uncited tail" \
+  python3 "$NULLIUS" screen 2026-02-02-r exclude "no citations yet" --below-citations 1
+expect_grep "cited_by<1" "and the rule itself is recorded, not just its effect" \
+  cat .nullius/searches/2026-02-02-r.json
+expect_exit 1 "screen needs an index or a rule" \
+  python3 "$NULLIUS" screen 2026-02-02-r include "x"
+
+# ------------------------------------------------------ verbatim quoting ----
+expect_exit 1 "quote refuses when no text was retrievable" \
+  python3 "$NULLIUS" quote alpha2021 "anything"
+mkdir -p .nullius/cache/text
+printf 'the method improves recall by twelve percent on the held-out split\n' \
+  > .nullius/cache/text/alpha2021.txt
+expect_exit 0 "quote passes on the real string" \
+  python3 "$NULLIUS" quote alpha2021 "improves recall by twelve percent"
+expect_exit 2 "quote refuses a near miss" \
+  python3 "$NULLIUS" quote alpha2021 "improves recall by twenty percent"
 
 echo
 echo "  $pass passed, $fail failed"

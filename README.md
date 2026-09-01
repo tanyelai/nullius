@@ -19,6 +19,80 @@ unread paper, the unsearched literature and the unbounded critique into states a
 
 ---
 
+## Install
+
+Three lines, none of them in a terminal. Open Claude Code in the folder your research lives
+in and type:
+
+```
+/plugin marketplace add tanyelai/nullius
+/plugin install nullius@tanyelai
+```
+
+Restart Claude Code, then say, in plain words:
+
+> set up nullius in this folder
+
+That is the whole installation. Claude runs `nullius init`, which creates a `.nullius/`
+folder for your notes, references and claims, and tells you what to fill in. Nothing else
+is installed, no account is created, and nothing leaves your machine except the searches
+you ask for.
+
+<details>
+<summary>If the slash commands are not available, or you prefer doing it by hand</summary>
+
+Create `.claude/settings.json` in your research folder with exactly this:
+
+```json
+{
+  "extraKnownMarketplaces": {
+    "tanyelai": {
+      "source": { "source": "github", "repo": "tanyelai/nullius", "ref": "main" },
+      "autoUpdate": true
+    }
+  },
+  "enabledPlugins": { "nullius@tanyelai": true }
+}
+```
+
+Restart Claude Code and ask it to set up nullius in the folder, as above.
+</details>
+
+**Requirements:** Claude Code, and Python 3.8 or newer — which macOS and every Linux
+already have. There is nothing to `pip install`. If you want the tool to be able to read
+PDFs it finds, install [poppler](https://poppler.freedesktop.org/) as well; without it you
+get links to the papers instead of their text, and everything else works the same.
+
+**Give it an email.** The public indexes ask for one so they can rate-limit politely rather
+than harshly. It is sent to OpenAlex and Unpaywall with your searches and nowhere else:
+
+```bash
+./.nullius/bin/nullius config contact you@university.edu
+```
+
+## First five minutes
+
+```bash
+./.nullius/bin/nullius start intro-rewrite write "sharpen the framing" \
+    --venue MICCAI --words 800 --artifact paper/intro.tex
+./.nullius/bin/nullius accept "does the intro state what the method cannot do"
+
+./.nullius/bin/nullius cite 10.1016/j.media.2017.07.005   # resolves, or refuses
+./.nullius/bin/nullius note litjens2017 --depth abstract
+./.nullius/bin/nullius claim "deep learning dominates the field" \
+    --warrant authors-claim --status single-result --strength reports \
+    --source litjens2017
+```
+
+That last command is the shape of the whole tool. Ask for `--strength mechanism` on a
+source you only read to `abstract` and it refuses; ask for `--status established` on two
+papers that share an author and it refuses, because independence is set arithmetic on
+author lists rather than a judgement. Write `\\cite{somethingUnresolved}` into the draft
+and the write itself is refused.
+
+When you try to finish, `nullius status` says why the gate is holding — and which of its
+reasons are facts and which are thresholds somebody chose.
+
 ## The problem
 
 An AI assistant is a good research collaborator right up to the point where nothing can
@@ -98,54 +172,46 @@ A structural finding must cite a line in `venues/<venue>.md`, so the tool cannot
 requirement. And `falsified.md` costs a minute to write and is the only thing standing between
 you and re-proposing, in June, the idea you buried in March.
 
-## Install
+## Getting the paper
 
-Two keys in `.claude/settings.json`, in whatever directory your research lives in:
+The route does not matter; reaching it does. `nullius fulltext <citekey>` walks the legal
+ones in the order most likely to yield machine-readable text, and tells you what it found:
 
-```jsonc
-{
-  "extraKnownMarketplaces": {
-    "tanyelai": {
-      "source": { "source": "github", "repo": "tanyelai/nullius", "ref": "main" },
-      "autoUpdate": true
-    }
-  },
-  "enabledPlugins": { "nullius@tanyelai": true }
-}
-```
+1. **a preprint copy** — most paywalled work in these fields has one, and Unpaywall's
+   repository locations are where it usually turns up. A DOI-only citation gets its arXiv id
+   filled in here.
+2. **Europe PMC** full text, for anything with a PMC id — strong coverage in biomedical.
+3. **Unpaywall** OA locations, filtered: an index's "best OA location" is sometimes the
+   graphical abstract, and an image is not a copy of the paper.
+4. **`pdftotext`**, if the machine happens to have poppler. Nothing requires it; without it
+   you get the URLs instead.
+5. the publisher, your institution's proxy, the author's own copy, interlibrary loan.
 
-Claude Code fetches the plugin on open. There is nothing to install and nothing to
-manage: the CLI is Python 3 standard library only, and the indexes it talks to (OpenAlex,
-arXiv) need no key, though they ask for an email so they can rate-limit politely.
+Once text is cached, `nullius quote <citekey> "<text>"` checks a quotation against it. Until
+then the note stays at `abstract` depth, which caps what may be claimed from it — that is
+the honest state rather than a failure.
 
-Then, once, in your research directory:
+**Not Sci-Hub.** It is a copyright infringement service in most jurisdictions and has lost
+the cases; wiring it into a research-integrity tool would be an odd place to start. The
+routes above find a legal copy of most things, and where they do not, an email to the
+author works more often than people expect.
+
+## Ranking, and its confound
+
+`nullius lit` ranks by **citations per year**, not raw citations. Raw counts put a 2015 paper
+above a 2026 one that matters more, and a literature search is about what to read next.
+
+Work too recent to have accrued citations is shown in its own band rather than buried — it
+has not failed to be cited, it has not had the chance. Everything else with no citations
+sorts last, and one recorded rule clears it:
 
 ```bash
-nullius init --field "your subfield" --email you@example.org
+nullius screen <search-id> exclude "no citations yet, deprioritised" --below-citations 1
 ```
 
-## First five minutes
-
-```bash
-./.nullius/bin/nullius start intro-rewrite write "sharpen the framing" \
-    --venue MICCAI --words 800 --artifact paper/intro.tex
-./.nullius/bin/nullius accept "does the intro state what the method cannot do"
-
-./.nullius/bin/nullius cite 10.1016/j.media.2017.07.005   # resolves, or refuses
-./.nullius/bin/nullius note litjens2017 --depth abstract
-./.nullius/bin/nullius claim "deep learning dominates the field" \
-    --warrant authors-claim --status single-result --strength reports \
-    --source litjens2017
-```
-
-That last command is the shape of the whole tool. Ask for `--strength mechanism` on a
-source you only read to `abstract` and it refuses; ask for `--status established` on two
-papers that share an author and it refuses, because independence is set arithmetic on
-author lists rather than a judgement. Write `\\cite{somethingUnresolved}` into the draft
-and the write itself is refused.
-
-When you try to finish, `nullius status` says why the gate is holding — and which of its
-reasons are facts and which are thresholds somebody chose.
+That is an exclusion criterion applied uniformly and written into the search log, which is
+both less work than forty judgements and more reproducible than them: the next reader sees
+the rule and can disagree with it in one place.
 
 ## Roadmap
 
@@ -154,9 +220,9 @@ reasons are facts and which are thresholds somebody chose.
 | **P0** | invariants, templates, the vocabulary | **done** |
 | **P1** | ledger and CLI — `start`, `accept`, `claim`, `note`, `falsify`, `status`, `doctor` | **done** |
 | **P2** | the blocking gates — citation resolved, not retracted, read-depth cap, independence cap, untraded overrun | **done**, 46 assertions both directions |
-| **P3** | the rest of the literature spine — snowballing, Unpaywall full text, the verbatim quote check, Europe PMC | search and resolution done; the rest open |
-| **P4** | the venue completeness walk, the gap kinds, the extension detector | open |
-| **P5** | a `stable` release branch, worked examples, public | open |
+| **P3** | the literature spine — multi-index search and ranking, Crossref, arXiv, Europe PMC, Unpaywall, preprint hunting, the verbatim quote check | **done**; snowballing and citation-context are open |
+| **P4** | the venue completeness walk, the gap kinds, the extension detector | open — the calibration engine is the part most likely to be wrong on first contact |
+| **P5** | a `stable` release branch, worked examples for two or three fields, public | open |
 
 ## What this is not
 
@@ -170,20 +236,43 @@ reasons are facts and which are thresholds somebody chose.
 - **Not an author.** It has no opinion about what you should study, and the parts that look
   like opinions are your own `field.md` read back to you.
 
-## Prior art
+## Where this came from
 
-The design is a port. Its predecessor is a harness the author built for software work, in
-daily use, where the compiler does the blocking — six hooks on shell events, one ledger on
-disk, and agents that get a clean context window. It replaced a 43,494-word instruction
-collection with something that could actually fail. Everything here is the attempt to answer
-one question honestly: *what plays the compiler's part when the work is research.*
+Not from a theory of research. From roughly a thousand hours inside Claude Code as a
+founding AI engineer, watching the same three failures repeat until they stopped looking
+like accidents.
+
+Literature searched shallowly and written up confidently, because prose hides a thin search
+perfectly. A paper's own summary of itself repeated back as established fact. And a critique
+that could never be finished, because *what is missing* always has one more answer — a
+proposal that went 12 pages, then 24, and still came back with a list.
+
+Each time the fix looked like a better instruction, and each time the instruction lost under
+load. It had to: a rule describing *how* to work has nothing to check it against, so it
+competes for attention with everything else and loses exactly when the task gets
+interesting.
+
+What did work was making a failure into a state the session **cannot finish in**. That is
+the whole method, and everything in this repository is one application of it.
+
+## Design notes
+
+[WHY.md](WHY.md) is the argument — what goes wrong, why instructions do not fix it, and
+what a harness has to constrain instead.
+
+[REFERENCES.md](REFERENCES.md) is where the design's own claims are sourced. Every mechanism
+here answers a failure somebody has already characterised, and every identifier in that file
+was resolved with `nullius cite` rather than written from memory — the same bar the tool
+holds a draft to.
 
 ## Contributing
 
-Not open yet — the design is still cheap to change and the build has not started. If a claim
-in [`why/why-nullius.pdf`](why/why-nullius.pdf) is wrong, that is a finding and an issue is
-the right place for it. The tool this describes would refuse to let it stand without a
-locator, and the document should be held to the same bar.
+See [CONTRIBUTING.md](CONTRIBUTING.md). The short version: a change to a gate needs a test
+in `tests/smoke.sh` that fails without it, in **both** directions — a gate that only ever
+passes is not a gate. If a claim in WHY.md or REFERENCES.md is wrong, that is a finding and
+an issue is the right place for it.
+
+Versions are in [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 

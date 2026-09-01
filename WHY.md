@@ -100,7 +100,7 @@ judgement anywhere in it:
 | --- | --- | --- |
 | this reference exists | the DOI or arXiv id resolves against Crossref or OpenAlex | — |
 | it was not retracted | retraction metadata on the resolved record | the index has no record |
-| this quote is verbatim | string match against cached full text | **no open-access text was retrievable** |
+| this quote is verbatim | string match against cached full text | no legal copy of the text could be retrieved |
 | these sources are independent | author and institution id sets are disjoint | an id is missing from the record |
 
 Three more are **counts**. A count is a fact; the threshold you compare it to is a choice,
@@ -304,24 +304,33 @@ wrong in its own. So the tool ships knowing nothing, and the norms are configura
 
 ## 11 · What this is not
 
-- **Not a literature database.** It queries real indexes — OpenAlex, Crossref, Semantic
-  Scholar, arXiv, Unpaywall, Europe PMC — through their official APIs. Coverage is theirs,
-  and it is uneven by field. The contribution is refusing to let you *not* look, not
-  pretending the index is complete.
+- **Not a literature database, and not loyal to one.** It queries OpenAlex, Crossref,
+  arXiv, Europe PMC and Unpaywall through their official APIs, and no single one is
+  privileged: a work is resolved by whichever route has it, and a source none of them
+  carries — a documentation page, a book chapter, a lecture note — is still citable, at
+  what it is worth. Coverage is theirs and it is uneven by field. The contribution is
+  refusing to let you *not* look.
 - **Not a substitute for reading.** The read-depth cap exists precisely because the tool
   cannot read for you. It can only refuse to let an abstract masquerade as a method section.
 - **Not a calibrated judge.** The severity classes rank; they do not measure. Where a number
   was chosen rather than measured, the tool says so and does not block on it.
-- **Not a way around a paywall.** Official APIs and legally open full text only.
+- **Not a way around a paywall.** Official APIs and legally open copies only — which in
+  practice reaches most things, because most paywalled work in these fields has a preprint
+  and Unpaywall knows where it is. Where nothing legal has it, the note stays at `abstract`
+  depth and the claim is capped accordingly. That is a state, not a failure.
 - **Not an author.** It has no opinion about what you should study, and the parts that look
   like opinions are your own `field.md` read back to you.
 
 ## 12 · Where this is
 
-The predecessor of this design is a working harness for software work, in daily use, where
-the compiler does the blocking. Everything here is the attempt to answer one question
-honestly — *what plays that part when the work is research* — and then to build only what
-that answer supports.
+This did not come from a theory of research. It came from roughly a thousand hours inside
+Claude Code as a founding AI engineer, watching the same three failures repeat until they
+stopped looking like accidents — and from the discovery, made the slow way, that each of
+them survives every instruction written to prevent it.
+
+The question the whole design answers is one question: *what plays the compiler's part when
+the work is research.* Everything built here is what that answer supports, and nothing
+more.
 
 The build order follows the confidence. The prose spine and the ledger first, because they
 change behaviour immediately and cost nothing to revise. The blocking gates second, because

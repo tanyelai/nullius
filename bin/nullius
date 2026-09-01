@@ -9,7 +9,10 @@ import argparse
 import json
 import os
 import re
+import shutil
+import subprocess
 import sys
+import tempfile
 import unicodedata
 import urllib.error
 import urllib.parse
@@ -45,12 +48,58 @@ STATUS_NEEDS_GROUPS = {"established": 2, "textbook": 2, "contested": 2}
 UNIT_KINDS = ["read", "survey", "idea", "explain", "interpret", "critique",
               "write", "referee"]
 
+# Not everything worth citing has a DOI. A documentation page, a lecture note, a
+# blog post and a book chapter are all legitimate sources; what differs is how
+# settled a claim they can carry on their own.
+SOURCE_KINDS = ["web", "blog", "docs", "book", "chapter", "thesis", "report",
+                "dataset", "software", "talk", "personal-communication"]
+STATUS_CEILING = {
+    "book": "textbook", "chapter": "textbook", "report": "emerging",
+    "thesis": "emerging", "docs": "established", "dataset": "established",
+    "software": "established", "web": "emerging", "blog": "emerging",
+    "talk": "emerging", "personal-communication": "single-result",
+}
+
+VOCABULARY = """## nullius: the commands
+
+Run them as `./.nullius/bin/nullius <cmd>` from the project root.
+
+    start <slug> <kind> "<question>" [--venue V] [--words N] [--artifact PATH]
+        kind: read survey idea explain interpret critique write referee
+    accept "<a question open right now>"   close "<the answer, with a locator>"
+    trade "<what gets cut>"                artifact <path>      status   done
+
+    cite <doi|arxiv|title>                 resolves, or refuses. never invent one
+    cite <url> --kind <docs|blog|book|chapter|thesis|report|dataset|software|talk|web>
+         --title "..."                     a source no index carries
+    fulltext <citekey>                     a legal copy; caches text when there is one
+    quote <citekey> "<text>"               verbatim against that cache, or refuses
+    note <citekey> --depth <abstract|skim|method|replicated>
+    claim "<text>" --warrant W --status S --strength X --source KEY [--locator L]
+        warrant:  measured authors-claim replicated consensus inferred mine-unpublished
+        status:   folklore single-result emerging contested established textbook
+        strength: reports holds mechanism generalises   -- capped by read depth
+    falsify "<idea>" "<why it died>"
+
+    lit "<query>" --vocabulary <name> [--index openalex|arxiv|europepmc]
+    screen <search-id> <include|exclude> "<reason>" --index N
+    screen <search-id> exclude "<reason>" --below-citations 1     in bulk, by rule
+    coverage        check <path>        doctor
+
+Three vocabularies minimum on a survey: yours, the field's own terms taken from the first
+hits, and one adjacent field that studies the same thing under another name. Silence is a
+failed search, not novelty. `lit` ranks by citations per year, and work too new to have
+earned any is shown separately -- judge that band on the abstract."""
+
 DEFAULT_CONFIG = {
     "mode": "certain",
     "field": "",
     "contact": "",
     "default_venue": "",
     "vocabularies_suggested": 3,
+    "indexes": ["openalex", "crossref", "arxiv", "europepmc"],
+    "recent_years": 3,
+    "rank_floor_citations": 1,
     "budget_overrun_ratio": 1.5,
     "cite_patterns": [
         r"\\cite[tpanyear]*\*?(?:\[[^\]]*\])*\{([^}]*)\}",
@@ -218,11 +267,154 @@ def http_json(url):
                            f"{e.reason}") from e
 
 
+def http_text(url):
+    req = urllib.request.Request(url, headers={"User-Agent": "nullius"})
+    try:
+        with urllib.request.urlopen(req, timeout=API_TIMEOUT) as r:
+            return r.read().decode("utf-8", "replace")
+    except urllib.error.HTTPError as e:
+        if e.code in (403, 404):
+            return None
+        raise RuntimeError(f"{url} returned HTTP {e.code}") from e
+    except urllib.error.URLError as e:
+        raise RuntimeError(f"cannot reach "
+                           f"{urllib.parse.urlsplit(url).netloc}: {e.reason}") from e
+
+
+def strip_html(markup):
+    markup = re.sub(r"<(script|style|head)[^>]*>.*?</\1>", " ", markup,
+                    flags=re.S | re.I)
+    markup = re.sub(r"<[^>]+>", " ", markup)
+    markup = (markup.replace("&amp;", "&").replace("&lt;", "<")
+              .replace("&gt;", ">").replace("&quot;", '"').replace("&#x2019;", "'")
+              .replace("&nbsp;", " "))
+    return re.sub(r"[ \t]+", " ", re.sub(r"\n{3,}", "\n\n", markup)).strip()
+
+
 def openalex(path, contact, **params):
     if contact:
         params["mailto"] = contact
     q = urllib.parse.urlencode({k: v for k, v in params.items() if v not in (None, "")})
     return http_json(f"https://api.openalex.org/{path}" + (f"?{q}" if q else ""))
+
+
+def crossref_lookup(doi, contact):
+    """The DOI registration agency. More authoritative than an aggregator for
+    metadata, and it carries the retraction and correction notices."""
+    url = ("https://api.crossref.org/works/"
+           + urllib.parse.quote(doi, safe="")
+           + (f"?mailto={urllib.parse.quote(contact)}" if contact else ""))
+    d = http_json(url)
+    if not d or "message" not in d:
+        return None
+    m = d["message"]
+    authors = []
+    for a in m.get("author") or []:
+        name = " ".join(x for x in [a.get("given"), a.get("family")] if x)
+        if name:
+            authors.append({"id": f"name:{slugify(name, 60)}", "name": name})
+    updates = m.get("update-to") or []
+    retracted = any((u.get("type") or "").lower() == "retraction" for u in updates)
+    year = None
+    for key in ("published", "published-print", "published-online", "issued"):
+        parts = ((m.get(key) or {}).get("date-parts") or [[None]])[0]
+        if parts and parts[0]:
+            year = parts[0]
+            break
+    return {
+        "openalex": None, "doi": (m.get("DOI") or "").lower(),
+        "title": (m.get("title") or [""])[0],
+        "year": year, "type": m.get("type"),
+        "venue": (m.get("container-title") or [None])[0],
+        "peer_reviewed": m.get("type") in ("journal-article", "proceedings-article",
+                                           "book-chapter"),
+        "retracted": retracted, "authors": authors, "institutions": [],
+        "cited_by": m.get("is-referenced-by-count"),
+        "oa_url": None, "referenced_works": [], "resolved_at": now(),
+        "index": "crossref", "author_ids": "name",
+    }
+
+
+def europepmc_search(query, limit):
+    d = http_json("https://www.ebi.ac.uk/europepmc/webservices/rest/search?"
+                  + urllib.parse.urlencode({
+                      "query": query, "format": "json", "pageSize": limit,
+                      "resultType": "core"}))
+    out = []
+    for r in ((d or {}).get("resultList") or {}).get("result", []):
+        out.append({
+            "index": "europepmc", "title": r.get("title", ""),
+            "year": int(r.get("pubYear") or 0) or None,
+            "doi": (r.get("doi") or "").lower() or None,
+            "cited_by": r.get("citedByCount"),
+            "venue": r.get("journalTitle"),
+            "oa": r.get("isOpenAccess") == "Y",
+            "pmcid": r.get("pmcid"),
+        })
+    return out
+
+
+def arxiv_search(query, limit, raw=False):
+    url = ("https://export.arxiv.org/api/query?"
+           + urllib.parse.urlencode({
+               "search_query": query if raw else f"all:{query}",
+               "max_results": limit, "sortBy": "relevance"}))
+    req = urllib.request.Request(url, headers={"User-Agent": "nullius"})
+    try:
+        with urllib.request.urlopen(req, timeout=API_TIMEOUT) as r:
+            xml = r.read().decode("utf-8", "replace")
+    except (urllib.error.URLError, urllib.error.HTTPError):
+        return []
+    out = []
+    for entry in xml.split("<entry>")[1:]:
+        def tag(name):
+            m = re.search(rf"<{name}[^>]*>(.*?)</{name}>", entry, re.S)
+            return re.sub(r"\s+", " ", m.group(1)).strip() if m else None
+        aid = (tag("id") or "").rsplit("/", 1)[-1].split("v")[0]
+        out.append({
+            "index": "arxiv", "title": tag("title") or "",
+            "year": int((tag("published") or "0000")[:4] or 0) or None,
+            "doi": (tag("arxiv:doi") or "").lower() or None,
+            "cited_by": None, "venue": "arXiv", "oa": True, "arxiv": aid,
+        })
+    return out
+
+
+NOT_A_DOCUMENT = re.compile(r"\.(jpg|jpeg|png|gif|svg|webp|mp4|zip)(\?|$)", re.I)
+
+
+def document_url(u):
+    """An index's `best OA location` is sometimes a graphical abstract. An image is
+    not a copy of the paper, and offering one as a route to the text is a lie."""
+    return u if u and not NOT_A_DOCUMENT.search(u) else None
+
+
+def unpaywall_locations(doi, contact):
+    if not contact:
+        return []
+    d = http_json(f"https://api.unpaywall.org/v2/{urllib.parse.quote(doi, safe='')}"
+                  f"?email={urllib.parse.quote(contact)}")
+    out = []
+    for loc in ([(d or {}).get("best_oa_location")]
+                + ((d or {}).get("oa_locations") or [])):
+        if not loc:
+            continue
+        for field in ("url_for_pdf", "url_for_landing_page", "url"):
+            u = document_url(loc.get(field))
+            if u and u not in [x[1] for x in out]:
+                out.append((f"OA copy ({loc.get('host_type') or 'unknown'})", u))
+    return out
+
+
+def arxiv_copy_of(title):
+    """Most paywalled work in these fields has a preprint. Finding it is the
+    difference between reading the paper and citing its abstract."""
+    want = norm_title(title)
+    for hit in (arxiv_search(f'ti:"{title[:120]}"', 5, raw=True)
+                or arxiv_search(title, 5)):
+        if norm_title(hit.get("title")) == want and hit.get("arxiv"):
+            return hit["arxiv"]
+    return None
 
 
 ARXIV_RE = re.compile(r"(?:arxiv[:/ ]|10\.48550/arxiv\.)?(\d{4}\.\d{4,5})(v\d+)?$", re.I)
@@ -322,6 +514,12 @@ def record_from_openalex(w):
     }
 
 
+def filter_safe(t):
+    """OpenAlex reads `:` `,` `|` and `+` as filter operators, so a title carrying
+    any of them returns HTTP 400 rather than the work. Most CS titles carry a colon."""
+    return re.sub(r"\s+", " ", re.sub(r"[:,|+()\[\]]", " ", t or "")).strip()
+
+
 def norm_title(t):
     return re.sub(r"[^a-z0-9]+", " ", (t or "").lower()).strip()
 
@@ -333,11 +531,20 @@ def slugify(text, keep=40):
 
 
 def make_citekey(rec, existing):
-    surname = "anon"
+    surname = ""
     if rec.get("authors"):
         parts = rec["authors"][0]["name"].split()
         if parts:
             surname = slugify(parts[-1], 20).replace("-", "")
+    if not surname and rec.get("url"):
+        host = urllib.parse.urlsplit(rec["url"]).netloc
+        surname = slugify(re.sub(r"^www\.|\.(com|org|net|io|ai|edu|dev)$", "",
+                                 host).split(".")[0], 20).replace("-", "")
+    if not surname:
+        stop = {"the", "a", "an", "on", "of", "in", "for", "and", "to"}
+        words = [w for w in slugify(rec.get("title", ""), 80).split("-")
+                 if w and w not in stop]
+        surname = words[0] if words else "untitled"
     base = f"{surname}{rec.get('year') or 'nd'}"
     key, n = base, 0
     while key in existing:
@@ -647,91 +854,316 @@ def cmd_artifact(args):
     say(f"nullius: tracking {rel}")
 
 
+def merge_records(primary, secondary):
+    """Crossref is authoritative on metadata and retraction; OpenAlex is the only
+    free route to author identifiers, which is what makes independence computable.
+    Neither is privileged as a whole -- each contributes what it actually knows."""
+    if primary and not secondary:
+        return primary
+    if secondary and not primary:
+        return secondary
+    out = dict(secondary)
+    for k, v in primary.items():
+        if v not in (None, "", [], False):
+            out[k] = v
+    if secondary.get("authors") and secondary.get("author_ids") != "name":
+        out["authors"] = secondary["authors"]
+        out.pop("author_ids", None)
+    elif primary.get("authors"):
+        out["authors"] = primary["authors"]
+    out["retracted"] = bool(primary.get("retracted") or secondary.get("retracted"))
+    out["index"] = "+".join(sorted({primary.get("index", ""),
+                                    secondary.get("index", "")} - {""}))
+    return out
+
+
+def resolve_reference(cfg, identifier, first=False):
+    """Reach the work by whatever route has it. Returns (record, note) where note
+    is a line worth telling the user, or raises SystemExit through die()."""
+    idx = cfg["indexes"]
+    kind, value = normalise_identifier(identifier)
+    arxiv_meta = None
+
+    if kind == "arxiv":
+        arxiv_meta = arxiv_lookup(value)
+        if not arxiv_meta:
+            die(f"arXiv has no record of '{value}'.")
+        if arxiv_meta.get("doi"):
+            kind, value = "doi", arxiv_meta["doi"].lower()
+        else:
+            kind, value = "title", arxiv_meta["title"]
+
+    cross = oa = None
+    if kind == "doi":
+        if "crossref" in idx:
+            cross = crossref_lookup(value, cfg["contact"])
+        if "openalex" in idx:
+            w = openalex(f"works/doi:{urllib.parse.quote(value, safe='')}",
+                         cfg["contact"])
+            oa = record_from_openalex(w) if w else None
+        rec = merge_records(cross, oa)
+        if rec:
+            rec["matched_by"] = "doi"
+    else:
+        hits = []
+        if "openalex" in idx:
+            res = openalex("works", cfg["contact"],
+                           **{"filter": f"title.search:{filter_safe(value)}",
+                              "per-page": 5})
+            hits = (res or {}).get("results") or []
+        if arxiv_meta:
+            want, year = norm_title(arxiv_meta["title"]), arxiv_meta.get("year")
+            same = [h for h in hits
+                    if norm_title(h.get("display_name")) == want
+                    and (not year or not h.get("publication_year")
+                         or abs(h["publication_year"] - year) <= YEAR_SLACK)]
+            same.sort(key=lambda h: h.get("cited_by_count") or 0, reverse=True)
+            rec = record_from_openalex(same[0]) if same else None
+            if rec:
+                rec["matched_by"] = "title+year"
+        else:
+            if len(hits) > 1 and not first:
+                say("nullius: that title matches more than one work. Cite the one "
+                    "you mean by its DOI:")
+                for h in hits:
+                    say(f"  {(h.get('doi') or '').replace('https://doi.org/', '') or '(no doi)':<34} "
+                        f"{h.get('publication_year')}  {h.get('display_name', '')[:56]}")
+                sys.exit(1)
+            rec = record_from_openalex(hits[0]) if hits else None
+            if rec:
+                rec["matched_by"] = "title"
+
+    note = None
+    if not rec and arxiv_meta:
+        rec = record_from_arxiv(arxiv_meta, normalise_identifier(identifier)[1])
+        rec["matched_by"] = "arxiv-only"
+        note = ("no index carries this beyond arXiv, so it is recorded as the "
+                "preprint it is.")
+    elif rec and arxiv_meta:
+        rec["arxiv"] = normalise_identifier(identifier)[1]
+        if not rec["authors"] and arxiv_meta["authors"]:
+            rec["authors"] = [{"id": f"name:{slugify(n, 60)}", "name": n}
+                              for n in arxiv_meta["authors"]]
+            rec["author_ids"] = "name"
+    if not rec:
+        die(f"'{identifier}' did not resolve against {', '.join(idx)}. A "
+            f"reference that cannot be resolved cannot be cited. If it is a "
+            f"page, a book or a chapter rather than an indexed work, record it "
+            f"as one:\n  nullius cite <url> --kind <"
+            + "|".join(SOURCE_KINDS) + "> --title \"...\"")
+    return rec, note
+
+
 def cmd_cite(args):
     store = Store(require_root())
     cfg = store.config
-    kind, value = normalise_identifier(args.identifier)
-    arxiv_meta = None
-    try:
-        if kind == "arxiv":
-            arxiv_meta = arxiv_lookup(value)
-            if not arxiv_meta:
-                die(f"arXiv has no record of '{value}'.")
-            if arxiv_meta.get("doi"):
-                kind, value = "doi", arxiv_meta["doi"].lower()
-            else:
-                kind, value = "title", arxiv_meta["title"]
-        if kind == "doi":
-            w = openalex(f"works/doi:{urllib.parse.quote(value, safe='')}",
-                         cfg["contact"])
-        else:
-            res = openalex("works", cfg["contact"],
-                           **{"filter": f"title.search:{value}", "per-page": 5})
-            hits = (res or {}).get("results") or []
-            if arxiv_meta:
-                want = norm_title(arxiv_meta["title"])
-                year = arxiv_meta.get("year")
-                same = [h for h in hits
-                        if norm_title(h.get("display_name")) == want
-                        and (not year or not h.get("publication_year")
-                             or abs(h["publication_year"] - year) <= YEAR_SLACK)]
-                same.sort(key=lambda h: h.get("cited_by_count") or 0, reverse=True)
-                raise _Resolved(same[0] if same else None)
-            if len(hits) > 1 and not args.first:
-                say("nullius: that title matches more than one work. Cite the "
-                    "one you mean by its DOI:")
-                for h in hits:
-                    say(f"  {(h.get('doi') or '').replace('https://doi.org/', '') or '(no doi)':<34} "
-                        f"{h.get('publication_year')}  {h.get('display_name', '')[:60]}")
-                sys.exit(1)
-            w = hits[0] if hits else None
-    except _Resolved as r:
-        w = r.work
-    except RuntimeError as e:
-        die(str(e))
-    if not w and arxiv_meta:
-        rec = record_from_arxiv(arxiv_meta, normalise_identifier(args.identifier)[1])
-        rec["matched_by"] = "arxiv-only"
-    elif not w:
-        die(f"'{args.identifier}' did not resolve against OpenAlex. A reference "
-            f"that cannot be resolved cannot be cited -- check the identifier, "
-            f"or the work is not indexed.")
+    note = None
+
+    if args.kind:
+        if not args.title:
+            die("a source the indexes do not carry needs --title. Its identity "
+                "is the thing you are asserting, so it has to be written down.")
+        rec = {
+            "openalex": None, "doi": None, "url": args.identifier,
+            "title": args.title, "year": args.year, "type": args.kind,
+            "venue": args.venue or args.kind, "peer_reviewed": False,
+            "retracted": False,
+            "authors": [{"id": f"name:{slugify(a, 60)}", "name": a}
+                        for a in (args.author or [])],
+            "institutions": [], "cited_by": None, "oa_url": args.identifier,
+            "referenced_works": [], "resolved_at": now(), "index": "manual",
+            "author_ids": "name", "matched_by": "declared",
+            "accessed": today(),
+        }
+        ceiling = STATUS_CEILING.get(args.kind)
+        rec["status_ceiling"] = ceiling
+        note = (f"a `{args.kind}` source. Nothing verified it for you, so it "
+                f"carries what you saw on {today()} and no more"
+                + (f", and it cannot support a status above `{ceiling}`."
+                   if ceiling else "."))
     else:
-        rec = record_from_openalex(w)
-        rec["matched_by"] = "doi" if kind == "doi" else "title+year"
-        if arxiv_meta:
-            rec["arxiv"] = normalise_identifier(args.identifier)[1]
-            if not rec["authors"] and arxiv_meta["authors"]:
-                rec["authors"] = [{"id": f"name:{slugify(n, 60)}", "name": n}
-                                  for n in arxiv_meta["authors"]]
-                rec["author_ids"] = "name"
+        try:
+            rec, note = resolve_reference(cfg, args.identifier, args.first)
+        except RuntimeError as e:
+            die(str(e))
+
     refs = store.refs
     existing = next((k for k, v in refs.items()
                      if (rec.get("openalex") and v.get("openalex") == rec["openalex"])
-                     or (rec.get("arxiv") and v.get("arxiv") == rec["arxiv"])), None)
+                     or (rec.get("doi") and v.get("doi") == rec["doi"])
+                     or (rec.get("arxiv") and v.get("arxiv") == rec["arxiv"])
+                     or (rec.get("url") and v.get("url") == rec["url"])), None)
     key = args.key or existing or make_citekey(rec, refs)
     refs[key] = rec
     store.save_refs(refs)
-    flag = "  RETRACTED" if rec["retracted"] else ""
-    say(f"nullius: {key}{flag}")
+
+    say(f"nullius: {key}" + ("  RETRACTED" if rec["retracted"] else ""))
     say(f"  {rec['title'][:78]}")
     say(f"  {rec.get('venue') or '(no venue)'} · {rec.get('year')} · "
-        f"{rec.get('type')} · {len(rec['authors'])} authors")
-    if rec.get("matched_by") == "title+year":
-        say("  matched by title and year, not by identifier. Check it is the work "
-            "you meant -- indexes carry duplicate records under one title.")
+        f"{rec.get('type')} · {len(rec['authors'])} authors"
+        + (f" · cited by {rec['cited_by']}" if rec.get("cited_by") else "")
+        + f" · via {rec['index']}")
     if rec["retracted"]:
         say("  the index records this work as retracted. Citing it is a fact "
             "the gate will refuse.")
+    if rec.get("matched_by") in ("title", "title+year"):
+        say("  matched by title, not by identifier. Check it is the work you "
+            "meant -- indexes carry duplicate records under one title.")
     if rec.get("author_ids") == "name":
         say("  authors carry no index identifier, so independence against this "
-            "record is matched by name -- weaker, and it can be defeated by a "
-            "name variant.")
-    if not rec.get("peer_reviewed"):
-        say("  preprint, not peer reviewed. That travels with the claim.")
-    if not rec.get("oa_url"):
-        say("  no open-access text found, so quotes from it cannot be verified "
-            "verbatim. Claims are capped at the read depth you record.")
+            "record is matched by name -- weaker, and defeated by a variant.")
+    if rec.get("index") != "manual" and not rec.get("peer_reviewed"):
+        say("  not peer reviewed. That travels with the claim.")
+    if note:
+        say(f"  {note}")
+
+
+def pdf_to_text(url):
+    """Opportunistic: poppler's pdftotext if the machine has it. Nothing here
+    requires it, and a machine without it simply gets the URLs instead."""
+    exe = shutil.which("pdftotext")
+    if not exe:
+        return None
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "nullius"})
+        with urllib.request.urlopen(req, timeout=API_TIMEOUT) as r:
+            blob = r.read()
+    except Exception:
+        return None
+    if not blob.startswith(b"%PDF"):
+        return None
+    with tempfile.TemporaryDirectory() as d:
+        f = Path(d) / "in.pdf"
+        f.write_bytes(blob)
+        try:
+            out = subprocess.run([exe, "-q", str(f), "-"], capture_output=True,
+                                 timeout=90)
+        except Exception:
+            return None
+    text = out.stdout.decode("utf-8", "replace").strip()
+    return text or None
+
+
+ARXIV_URL_RE = re.compile(r"arxiv\.org/(?:abs|pdf)/(\d{4}\.\d{4,5})", re.I)
+
+
+def cmd_fulltext(args):
+    """Legal routes only, in the order most likely to have machine-readable text."""
+    store = Store(require_root())
+    cfg = store.config
+    refs = store.refs
+    rec = refs.get(args.citekey) or die(f"'{args.citekey}' is not resolved.")
+    doi, urls = rec.get("doi"), []
+
+    if doi:
+        try:
+            urls += unpaywall_locations(doi, cfg["contact"])
+        except RuntimeError:
+            pass
+    if document_url(rec.get("oa_url")):
+        urls.append(("index OA link", rec["oa_url"]))
+
+    arxiv_id = rec.get("arxiv")
+    if not arxiv_id:
+        for _, u in urls:
+            m = ARXIV_URL_RE.search(u)
+            if m:
+                arxiv_id = m.group(1)
+                break
+    if not arxiv_id and rec.get("title") and not doi:
+        try:
+            arxiv_id = arxiv_copy_of(rec["title"])
+        except RuntimeError:
+            arxiv_id = None
+    if arxiv_id and arxiv_id != rec.get("arxiv"):
+        rec["arxiv"] = arxiv_id
+        refs[args.citekey] = rec
+        store.save_refs(refs)
+        say(f"nullius: a preprint copy exists -- arXiv:{arxiv_id}")
+    if arxiv_id:
+        urls = [("arXiv PDF", f"https://arxiv.org/pdf/{arxiv_id}"),
+                ("arXiv abstract", f"https://arxiv.org/abs/{arxiv_id}")] + urls
+
+    text, via = None, None
+    if arxiv_id:
+        try:
+            html = http_text(f"https://arxiv.org/html/{arxiv_id}")
+            if html and "<html" in html.lower():
+                text, via = strip_html(html), f"arXiv HTML ({arxiv_id})"
+        except RuntimeError:
+            pass
+    if not text and doi and "europepmc" in cfg["indexes"]:
+        try:
+            d = http_json("https://www.ebi.ac.uk/europepmc/webservices/rest/search?"
+                          + urllib.parse.urlencode({"query": f"DOI:{doi}",
+                                                    "format": "json",
+                                                    "resultType": "core"}))
+            res = ((d or {}).get("resultList") or {}).get("result") or []
+            pmcid = next((r.get("pmcid") for r in res if r.get("pmcid")), None)
+            if pmcid:
+                urls.append(("Europe PMC",
+                             f"https://europepmc.org/article/PMC/{pmcid}"))
+                xml = http_text("https://www.ebi.ac.uk/europepmc/webservices/"
+                                f"rest/{pmcid}/fullTextXML")
+                if xml and "<" in xml:
+                    text, via = strip_html(xml), f"Europe PMC ({pmcid})"
+        except RuntimeError:
+            pass
+    if not text:
+        for label, u in urls:
+            got = pdf_to_text(u)
+            if got and len(got.split()) > 500:
+                text, via = got, f"pdftotext via {label}"
+                break
+    if doi:
+        urls.append(("publisher", f"https://doi.org/{doi}"))
+
+    if text:
+        f = store.p("cache", "text", f"{args.citekey}.txt")
+        f.parent.mkdir(parents=True, exist_ok=True)
+        f.write_text(text, encoding="utf-8")
+        say(f"nullius: {len(text.split())} words cached from {via}")
+        say(f"  quotes can now be checked: nullius quote {args.citekey} \"<text>\"")
+        say(f"  and the note can honestly go past `abstract` depth.")
+        return
+
+    say(f"nullius: no machine-readable full text for {args.citekey}.")
+    seen_u = set()
+    for label, u in urls:
+        if u not in seen_u:
+            seen_u.add(u)
+            say(f"  {label:<24} {u}")
+    if not shutil.which("pdftotext"):
+        say("  install poppler (`brew install poppler`) and a PDF above becomes "
+            "readable text; nothing here requires it.")
+    say("  Other legal routes: your institution's proxy, the author's own copy "
+        "or an email asking for one, and interlibrary loan.")
+    say("  Until the text is here the note stays at `abstract` depth, which "
+        "caps what may be claimed from it. That is the honest state, not a "
+        "failure.")
+
+
+def cmd_quote(args):
+    store = Store(require_root())
+    f = store.p("cache", "text", f"{args.citekey}.txt")
+    if not f.is_file():
+        die(f"no cached text for {args.citekey}. `nullius fulltext "
+            f"{args.citekey}` -- and if it cannot be retrieved, the quote "
+            f"cannot be checked and should not be presented as verbatim.")
+    hay = re.sub(r"\s+", " ", f.read_text(encoding="utf-8")).lower()
+    needle = re.sub(r"\s+", " ", args.text).strip().lower()
+    if needle in hay:
+        say(f"nullius: verbatim in {args.citekey}.")
+        return
+    say(f"nullius: NOT verbatim in the cached text of {args.citekey}.")
+    words = needle.split()
+    if len(words) > 4:
+        head = " ".join(words[:4])
+        i = hay.find(head)
+        if i >= 0:
+            say(f"  the opening matches; it diverges after. Cached nearby:")
+            say(f"    ...{hay[i:i + len(needle) + 40]}...")
+    sys.exit(2)
 
 
 def cmd_note(args):
@@ -800,6 +1232,14 @@ def cmd_claim(args):
                 f"{', '.join(DEPTH_ALLOWS[depth])} -- not `{args.strength}`. "
                 f"Read further, or make the weaker claim.")
 
+    # a source kind the indexes do not carry caps how settled it can make a claim
+    for src in sources:
+        ceiling = refs[src].get("status_ceiling")
+        if ceiling and STATUSES.index(args.status) > STATUSES.index(ceiling):
+            die(f"'{src}' is a `{refs[src].get('type')}` source, which supports "
+                f"`{ceiling}` at most, not `{args.status}`. It can still carry "
+                f"the claim -- at what it is worth.")
+
     # independence caps how settled the claim may be called
     need = STATUS_NEEDS_GROUPS.get(args.status)
     if need:
@@ -834,41 +1274,124 @@ def cmd_falsify(args):
     say("nullius: recorded. This is now injected before a write on that thread.")
 
 
+def impact(rec):
+    """Citations per year since publication. Raw counts rank a 2015 paper above a
+    2026 one that matters more, which is the wrong ordering for a live search."""
+    c = rec.get("cited_by")
+    if c is None:
+        return None
+    age = max(1, datetime.now(timezone.utc).year - (rec.get("year") or 0) + 1)
+    return c / age
+
+
 def cmd_lit(args):
     store = Store(require_root())
     cfg = store.config
-    try:
-        res = openalex("works", cfg["contact"], search=args.query,
-                       **{"per-page": args.limit})
-    except RuntimeError as e:
-        die(str(e))
-    hits = (res or {}).get("results") or []
-    total = ((res or {}).get("meta") or {}).get("count", len(hits))
+    wanted = args.index or cfg["indexes"]
+    hits, reached, failed = [], [], []
+
+    if "openalex" in wanted:
+        try:
+            res = openalex("works", cfg["contact"], search=args.query,
+                           **{"per-page": args.limit, "sort": "cited_by_count:desc"})
+            for h in (res or {}).get("results") or []:
+                hits.append({
+                    "index": "openalex", "title": h.get("display_name", ""),
+                    "year": h.get("publication_year"),
+                    "doi": (h.get("doi") or "").replace("https://doi.org/", "") or None,
+                    "cited_by": h.get("cited_by_count"),
+                    "venue": ((h.get("primary_location") or {}).get("source")
+                              or {}).get("display_name"),
+                    "oa": bool((h.get("open_access") or {}).get("is_oa")),
+                })
+            reached.append(f"openalex({(res or {}).get('meta', {}).get('count', 0)})")
+        except RuntimeError as e:
+            failed.append(f"openalex ({e})")
+    if "arxiv" in wanted:
+        try:
+            got = arxiv_search(args.query, args.limit)
+            hits += got
+            reached.append(f"arxiv({len(got)})")
+        except RuntimeError as e:
+            failed.append(f"arxiv ({e})")
+    if "europepmc" in wanted:
+        try:
+            got = europepmc_search(args.query, args.limit)
+            hits += got
+            reached.append(f"europepmc({len(got)})")
+        except RuntimeError as e:
+            failed.append(f"europepmc ({e})")
+
+    seen, merged = {}, []
+    for h in hits:
+        k = h.get("doi") or norm_title(h.get("title"))
+        if k in seen:
+            prev = merged[seen[k]]
+            if prev.get("cited_by") is None and h.get("cited_by") is not None:
+                prev["cited_by"] = h["cited_by"]
+            prev["index"] = "+".join(sorted({prev["index"], h["index"]}))
+            if h.get("arxiv"):
+                prev["arxiv"] = h["arxiv"]
+            continue
+        seen[k] = len(merged)
+        merged.append(dict(h, screened=None, reason=None))
+
+    # arXiv and Europe PMC do not always carry a citation count, and a row with no
+    # count cannot be ranked. One batched lookup fills them rather than N calls.
+    blind = [r for r in merged if r.get("cited_by") is None and r.get("doi")]
+    if blind and "openalex" in cfg["indexes"]:
+        for chunk in [blind[i:i + 25] for i in range(0, len(blind), 25)]:
+            try:
+                res = openalex("works", cfg["contact"], **{
+                    "filter": "doi:" + "|".join(r["doi"] for r in chunk),
+                    "per-page": len(chunk)})
+            except RuntimeError:
+                break
+            by_doi = {(w.get("doi") or "").replace("https://doi.org/", "").lower():
+                      w for w in (res or {}).get("results") or []}
+            for r in chunk:
+                w = by_doi.get(r["doi"].lower())
+                if w:
+                    r["cited_by"] = w.get("cited_by_count")
+                    r["index"] = "+".join(sorted({r["index"], "openalex"}))
+
+    this_year = datetime.now(timezone.utc).year
+    cutoff = this_year - cfg["recent_years"]
+    ranked = sorted(merged, key=lambda r: (impact(r) is not None, impact(r) or 0),
+                    reverse=True)
+    recent = [r for r in ranked
+              if (r.get("year") or 0) > cutoff and (r.get("cited_by") or 0)
+              < cfg["rank_floor_citations"]]
+    body = [r for r in ranked if r not in recent]
+    ordered = body + recent
+
     search = {
-        "id": f"{today()}-{slugify(args.query, 32)}",
-        "query": args.query,
+        "id": f"{today()}-{slugify(args.query, 32)}", "query": args.query,
         "vocabulary": args.vocabulary or slugify(args.query, 32),
-        "when": now(), "found": total,
-        "results": [{
-            "openalex": h.get("id"),
-            "doi": (h.get("doi") or "").replace("https://doi.org/", "") or None,
-            "title": h.get("display_name", ""),
-            "year": h.get("publication_year"),
-            "cited_by": h.get("cited_by_count"),
-            "screened": None, "reason": None,
-        } for h in hits],
+        "indexes": reached, "unreachable": failed,
+        "when": now(), "found": len(ordered), "results": ordered,
     }
     store.save_search(search)
-    say(f"nullius: {total} works match; {len(hits)} retrieved into "
-        f"searches/{search['id']}.json")
-    for i, r in enumerate(search["results"]):
-        say(f"  [{i}] {r['year']}  {(r['title'] or '')[:66]}")
-        say(f"      {r['doi'] or '(no doi)'}  cited by {r['cited_by']}")
-    say(f"  screen each: nullius screen {search['id']} <index> "
-        f"<include|exclude> \"<reason>\"")
-    if total > len(hits):
-        say(f"  {total - len(hits)} more exist than were retrieved. A survey "
-            f"unit cannot close while any retrieved work is unscreened.")
+
+    say(f"nullius: {len(ordered)} distinct works from {', '.join(reached) or 'nothing'}"
+        + (f"; unreachable: {', '.join(failed)}" if failed else ""))
+    say(f"  ranked by citations per year -- raw counts would put a 2015 paper "
+        f"above a 2026 one that matters more")
+    for i, r in enumerate(ordered):
+        if recent and r is recent[0]:
+            say(f"  -- too new to rank on citations ({cutoff + 1}-{this_year}); "
+                f"judge these on the abstract --")
+        imp = impact(r)
+        cite = "  n/a" if r.get("cited_by") is None else f"{r['cited_by']:>5}"
+        per = "     " if imp is None else f"{imp:>5.0f}"
+        say(f"  [{i}] {r.get('year') or '????'} {cite} {per}/yr  "
+            f"{(r.get('title') or '')[:56]}")
+        say(f"      {r.get('doi') or r.get('arxiv') or '(no id)'}  "
+            f"{(r.get('venue') or '')[:44]}  via {r['index']}")
+    say(f"  screen one: nullius screen {search['id']} "
+        f"<include|exclude> \"<reason>\" --index N")
+    say(f"  or in bulk:  nullius screen {search['id']} exclude "
+        f"\"no citations yet, deprioritised\" --below-citations 1")
 
 
 def cmd_screen(args):
@@ -877,16 +1400,44 @@ def cmd_screen(args):
     if not f.is_file():
         die(f"no search '{args.search}'.")
     search = json.loads(f.read_text(encoding="utf-8"))
-    if not 0 <= args.index < len(search["results"]):
-        die(f"index out of range (0..{len(search['results']) - 1}).")
-    if args.decision not in ("include", "exclude"):
-        die("decision must be include or exclude.")
-    search["results"][args.index]["screened"] = args.decision
-    search["results"][args.index]["reason"] = args.reason
+    rows = search["results"]
+
+    if args.below_citations is not None or args.all_remaining:
+        # One recorded rule beats forty individual judgements, and it is the more
+        # reproducible of the two: the next reader can see what was applied.
+        touched = 0
+        for r in rows:
+            if r["screened"] is not None:
+                continue
+            if args.all_remaining or (r.get("cited_by") or 0) < args.below_citations:
+                r["screened"] = args.decision
+                r["reason"] = args.reason
+                r["by_rule"] = ("all-remaining" if args.all_remaining
+                                else f"cited_by<{args.below_citations}")
+                touched += 1
+        search.setdefault("rules", []).append({
+            "rule": ("all-remaining" if args.all_remaining
+                     else f"cited_by<{args.below_citations}"),
+            "decision": args.decision, "reason": args.reason,
+            "applied_to": touched, "when": now()})
+        store.save_search(search)
+        left = sum(1 for r in rows if r["screened"] is None)
+        say(f"nullius: {args.decision}d {touched} by rule. {left} unscreened.")
+        if args.decision == "exclude" and args.below_citations:
+            say("  recorded as a rule, so it is one exclusion criterion rather "
+                "than forty judgements -- and a reader can disagree with it "
+                "in one place.")
+        return
+
+    if args.index is None:
+        die("give an index, or a bulk rule: --below-citations N, --all-remaining.")
+    if not 0 <= args.index < len(rows):
+        die(f"index out of range (0..{len(rows) - 1}).")
+    rows[args.index]["screened"] = args.decision
+    rows[args.index]["reason"] = args.reason
     store.save_search(search)
-    left = sum(1 for r in search["results"] if r["screened"] is None)
-    say(f"nullius: [{args.index}] {args.decision}. {left} unscreened in this "
-        f"search.")
+    left = sum(1 for r in rows if r["screened"] is None)
+    say(f"nullius: [{args.index}] {args.decision}. {left} unscreened in this search.")
 
 
 def cmd_coverage(args):
@@ -1089,6 +1640,7 @@ def hook_session_start(payload):
             lines.append("Already falsified, do not re-propose: "
                          + "; ".join(killed[:8]))
     parts.append("## nullius: this project right now\n\n" + "\n".join(lines))
+    parts.append(VOCABULARY)
     sys.stdout.write("\n\n".join(parts) + "\n")
     return 0
 
@@ -1214,10 +1766,23 @@ def build_parser():
     s = sub.add_parser("artifact", help="track a draft against this unit")
     s.add_argument("path"); s.set_defaults(fn=cmd_artifact)
 
-    s = sub.add_parser("cite", help="resolve an identifier, or refuse")
-    s.add_argument("identifier"); s.add_argument("--key")
-    s.add_argument("--first", action="store_true")
+    s = sub.add_parser("cite", help="resolve an identifier, or record a source "
+                                     "no index carries")
+    s.add_argument("identifier", help="DOI, arXiv id, title, or a URL with --kind")
+    s.add_argument("--key"); s.add_argument("--first", action="store_true")
+    s.add_argument("--kind", choices=SOURCE_KINDS,
+                   help="for a page, book, chapter, thesis, dataset or talk")
+    s.add_argument("--title"); s.add_argument("--venue")
+    s.add_argument("--year", type=int)
+    s.add_argument("--author", action="append")
     s.set_defaults(fn=cmd_cite)
+
+    s = sub.add_parser("fulltext", help="find a legal full text, and cache it")
+    s.add_argument("citekey"); s.set_defaults(fn=cmd_fulltext)
+
+    s = sub.add_parser("quote", help="check a quote verbatim against cached text")
+    s.add_argument("citekey"); s.add_argument("text")
+    s.set_defaults(fn=cmd_quote)
 
     s = sub.add_parser("note", help="open a paper note at a read depth")
     s.add_argument("citekey")
@@ -1235,15 +1800,23 @@ def build_parser():
     s = sub.add_parser("falsify", help="record an idea that died, and why")
     s.add_argument("idea"); s.add_argument("why"); s.set_defaults(fn=cmd_falsify)
 
-    s = sub.add_parser("lit", help="search OpenAlex and log the protocol")
+    s = sub.add_parser("lit", help="search the indexes and log the protocol")
     s.add_argument("query"); s.add_argument("--vocabulary")
     s.add_argument("--limit", type=int, default=10)
+    s.add_argument("--index", action="append",
+                   choices=["openalex", "arxiv", "europepmc"],
+                   help="default: whatever .nullius/config.json lists")
     s.set_defaults(fn=cmd_lit)
 
-    s = sub.add_parser("screen", help="include or exclude a retrieved work")
-    s.add_argument("search"); s.add_argument("index", type=int)
+    s = sub.add_parser("screen", help="include or exclude retrieved works")
+    s.add_argument("search")
     s.add_argument("decision", choices=["include", "exclude"])
-    s.add_argument("reason"); s.set_defaults(fn=cmd_screen)
+    s.add_argument("reason")
+    s.add_argument("--index", type=int)
+    s.add_argument("--below-citations", type=int, dest="below_citations",
+                   help="apply to everything unscreened under this many citations")
+    s.add_argument("--all-remaining", action="store_true", dest="all_remaining")
+    s.set_defaults(fn=cmd_screen)
 
     s = sub.add_parser("coverage", help="the counts, and what is unscreened")
     s.set_defaults(fn=cmd_coverage)
