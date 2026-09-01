@@ -412,6 +412,12 @@ wrong in its own. So the tool ships knowing nothing, and the norms are configura
   depth and the claim is capped accordingly. That is a state, not a failure.
 - **Not an author.** It has no opinion about what you should study, and the parts that look
   like opinions are your own `field.md` read back to you.
+- **Not an autonomous research agent, and deliberately not.** That is a different programme
+  with its own literature and its own critiques: AI Scientists Fail Without Strong
+  Implementation Capability, and How Far Are AI Scientists from Changing the World?
+  ([arXiv:2507.23276](https://arxiv.org/abs/2507.23276)). This assumes a person doing the
+  research and constrains what their session must satisfy. Every gate here presupposes someone
+  who can be refused.
 
 ## 12 · Where this is
 

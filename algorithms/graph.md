@@ -64,7 +64,15 @@ saturation ← seen / (new + seen)
 ```
 
 Zero percent on hop one and six on hop two says the literature is not covered. It is a count
-rather than an impression, and it is the only honest answer to *have I read enough*.
+rather than an impression.
+
+**Weak, and there is a literature saying so.** Technology Assisted Review has studied when to
+stop screening for two decades, and its methods target **recall** rather than saturation:
+Confidence-Based Stopping Methods for Systematic Reviews ([arXiv:2606.15380](https://arxiv.org/abs/2606.15380))
+and Stopping Methods based on Point Processes ([arXiv:2311.08597](https://arxiv.org/abs/2311.08597))
+estimate how much of the relevant set has been seen, which is the question saturation only
+gestures at. What is here is a crude proxy and should be read as one. Implementing a real
+estimator is the clearest open improvement in this file.
 
 A `survey` unit cannot close while a work you screened in has never been walked. That turns
 *the frontier is closed* from a sentence into a count. A work the index does not carry cannot

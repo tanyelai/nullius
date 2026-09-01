@@ -93,6 +93,40 @@ whose most valuable finding is often that nothing more is needed, which is why t
 told about the bias explicitly and why "zero material findings" is defined as a verdict
 rather than as a short list.
 
+## The failures this tool gates against, as other people found them
+
+| | |
+|---|---|
+| **Foster et al. (2026)**, *AI Research Preference Models* | [arXiv:2608.13940](https://arxiv.org/abs/2608.13940) |
+
+Budget allocation across candidates you cannot all run. Shaped like the retrieval problem here
+and solved with a learned preference model, which is why it is discussed in
+[algorithms/retrieval.md](algorithms/retrieval.md) as a direction considered and declined.
+
+| | |
+|---|---|
+| *Phantom References: Hallucinated Citations That Survive Peer Review at Top-Tier Venues* (2026) | [arXiv:2607.00738](https://arxiv.org/abs/2607.00738) |
+| *HalluCiteChecker: A Lightweight Toolkit for Hallucinated Citation Detection* (2026) | [arXiv:2604.26835](https://arxiv.org/abs/2604.26835) |
+
+The premise of the citation guard, argued by people who measured it. The first states the
+auditability argument better than this repository did and reports fabricated references
+surviving peer review; the second is a standalone tool for the same check.
+
+| | |
+|---|---|
+| *Confidence-Based Stopping Methods for Systematic Reviews* (2026) | [arXiv:2606.15380](https://arxiv.org/abs/2606.15380) |
+| *Stopping Methods for Technology Assisted Reviews based on Point Processes* (2023) | [arXiv:2311.08597](https://arxiv.org/abs/2311.08597) |
+
+When to stop screening, studied properly and targeting recall rather than saturation. The
+saturation signal here is a crude proxy for what these estimate, and
+[algorithms/graph.md](algorithms/graph.md) says so.
+
+| | |
+|---|---|
+| *How Far Are AI Scientists from Changing the World?* (2025) | [arXiv:2507.23276](https://arxiv.org/abs/2507.23276) |
+
+The autonomous-agent programme this tool is deliberately not part of.
+
 ---
 
 ## What is deliberately not cited here

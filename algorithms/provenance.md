@@ -9,6 +9,14 @@ it **clean**. That is not an unusual style.
 **Why this form matters more, not less.** No bibliography file ever sees a bare identifier, so
 nothing else in a normal workflow catches an invented one.
 
+**Not a new idea, and the framing is borrowed.** Phantom References
+([arXiv:2607.00738](https://arxiv.org/abs/2607.00738)) puts it better than we did: a citation is
+*"a more auditable surface: a reference either resolves to a real source or it does not"*, and
+it reports fabricated references surviving peer review at top venues. HalluCiteChecker
+([arXiv:2604.26835](https://arxiv.org/abs/2604.26835)) is a standalone tool for the same check.
+What is different here is only where the check sits: inside the write, before the text exists,
+rather than as an audit afterwards.
+
 ## A name is a citation
 
 **Measured.** A note attributing three works entirely by author name. Reported **clean** again,

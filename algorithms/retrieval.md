@@ -83,3 +83,18 @@ it as unreachable and the walk as closed, which reads as *the work is not there*
 
 429 and 503 retry with backoff, honour `Retry-After`, and say what they are. A hop whose calls
 were refused reports itself incomplete rather than empty.
+
+## Considered and declined: predicting what is worth reading
+
+AI Research Preference Models ([arXiv:2608.13940](https://arxiv.org/abs/2608.13940)) solves a
+shaped-alike problem for autonomous agents: far more candidate experiments than the GPU budget
+can run, so a model predicts which are promising and the budget follows the prediction. The
+analogue here is obvious. You retrieve 231 works and can read six.
+
+It is declined, for one reason. A preference model is a **judgement**, and a judgement inside a
+gate is the thing this harness exists to keep out: it would quietly decide what you never see,
+and the failure mode is silent. Ranking by impact is a proxy that says what it is; a learned
+preference is a proxy that does not.
+
+The honest middle, if this is ever built, is a **reported** ordering that never filters, sitting
+beside the counts rather than replacing them.
