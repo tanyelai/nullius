@@ -33,6 +33,41 @@ suggests.
 First working version. Installable as a Claude Code plugin; nothing to install beyond
 Python 3.
 
+### The venue completeness walk
+
+`venues/<venue>.md` lists required sections, one per line, with aliases and a per-section
+minimum. Every entry is walked on every check -- present, thin or absent -- and a structural
+finding cites the line in that file it comes from, so the tool cannot require anything the
+venue does not.
+
+What blocks is **not** an absent section. A section can live inside another one without its
+own heading and no textual test separates that from an omission, so the guarantee is
+enumeration rather than completeness: an absence must carry one word about it
+(`planned`, `elsewhere`, `n/a`) before the unit closes. What you do about it stays yours;
+what the tool refuses is letting the list go unlooked-at.
+
+Thin is a word count against a threshold the venue file sets, so it is reported and never
+enforced. A declared venue with no file is a fact and blocks -- without the file nothing can
+be required and nothing checked.
+
+The word budget is read from the venue file at check time rather than copied when the unit
+opens, so editing the limit moves every unit that targets it instead of leaving a stale
+snapshot.
+
+### Configuration has two layers
+
+`contact` lives in `~/.config/nullius/config.json`, outside every repository, because a
+project's `config.json` is meant to be committed and an email placed there leaks on the
+first push. Anything else goes there with `--user`.
+
+The layers merge per key, and an empty value never clobbers a real one from the layer
+beneath -- the placeholder `init` used to write silently overrode a user-level email, which
+took Unpaywall out of the picture and with it the whole route to preprint copies.
+
+What the email is for, measured rather than asserted: Unpaywall returns **HTTP 422** without
+one, and OpenAlex and Crossref use it for their polite pool. It is not a login, no account
+is created, and it grants no access to anything paywalled.
+
 ### Gates that refuse
 
 - an unresolved or retracted citation cannot reach a draft — the write itself is refused

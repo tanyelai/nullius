@@ -325,14 +325,16 @@ wrong in its own. So the tool ships knowing nothing, and the norms are configura
 
 ## 12 · Where this is
 
-This did not come from a theory of research. It came from roughly a thousand hours inside
-Claude Code as a founding AI engineer, watching the same three failures repeat until they
-stopped looking like accidents — and from the discovery, made the slow way, that each of
-them survives every instruction written to prevent it.
+This did not come from a theory of research. It came from a few thousand hours inside Claude
+Code as a founding AI engineer — a **software engineering** intuition, earned watching
+instructions lose under load until the pattern stopped looking like accidents.
 
-The question the whole design answers is one question: *what plays the compiler's part when
-the work is research.* Everything built here is what that answer supports, and nothing
-more.
+The reason it is here is that the same three failures are plainly recognisable in research
+work, which I do alongside the engineering. But the transfer is a hypothesis rather than a
+result, and that label belongs on it: the mechanism is proven in a domain that has a
+compiler, and research does not have one. Everything above is the attempt to answer, honestly,
+what plays that part instead — and the places where the answer is thinner than it first looked
+are marked rather than smoothed over.
 
 The build order follows the confidence. The prose spine and the ledger first, because they
 change behaviour immediately and cost nothing to revise. The blocking gates second, because

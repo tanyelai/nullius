@@ -273,6 +273,80 @@ expect_grep "name matching" "a name-matched group is flagged on the claim" \
   python3 "$NULLIUS" claim "settled by name-matched groups" --warrant replicated \
     --status established --strength holds --source lovelace2020 --source gamma2021
 
+# ------------------------------------------- the venue completeness walk ----
+expect_exit 0 "open a unit against a venue that has no file" \
+  python3 "$NULLIUS" start v write "x" --venue conf --artifact paper.tex --force
+expect_grep "no .nullius/venues/conf.md" "a declared venue with no file is a fact" \
+  python3 "$NULLIUS" status
+expect_exit 1 "and the walk itself refuses to invent one" python3 "$NULLIUS" walk
+
+cat > .nullius/venues/conf.md <<'VENUE'
+## Format
+
+- limit: 8 pages
+- words: 4000
+
+## Required sections
+
+- Introduction
+- Related Work | Background
+- Method | Approach | min 150
+- Limitations | Threats to Validity | min 60
+- Ethics Statement
+VENUE
+cat > paper.tex <<'PAPER'
+\section{Introduction}
+This studies a thing at enough length to be a section rather than a placeholder heading,
+with words in it.
+
+\section{Background}
+Prior work exists and is described here with a reasonable number of words in the body.
+
+\section{Approach}
+We propose a method. It is short.
+
+\subsection{Details}
+More words that belong to the approach rather than to a new top-level section of the paper.
+
+\section{Threats to Validity}
+The sample is small.
+PAPER
+expect_exit 0 "accept it" python3 "$NULLIUS" accept "is the method defensible"
+expect_exit 0 "close it"  python3 "$NULLIUS" close "in the Approach section"
+expect_grep "Related Work" "an alias satisfies its entry" python3 "$NULLIUS" walk
+expect_grep "under the 150" "the minimum comes from the venue file, per section" \
+  python3 "$NULLIUS" walk
+expect_grep "4000" "and so does the word budget" python3 "$NULLIUS" status
+expect_grep "ABSENT   Ethics Statement" "an entry with no heading is absent" \
+  python3 "$NULLIUS" walk
+expect_hook stop 2 "an absence nobody looked at refuses the stop" "$CWD_JSON"
+expect_grep "conf.md:" "and the finding cites a line in the venue file" \
+  python3 "$NULLIUS" status
+expect_exit 1 "elsewhere has to name where" \
+  python3 "$NULLIUS" section "Ethics Statement" elsewhere
+expect_exit 0 "disposition it" \
+  python3 "$NULLIUS" section "Ethics Statement" planned "after registration"
+expect_hook stop 0 "and the stop is allowed once every absence has a word about it" "$CWD_JSON"
+expect_grep "chosen" "a thin section is reported, never enforced" python3 "$NULLIUS" status
+
+# a placeholder must not clobber a real value from the layer beneath it
+export XDG_CONFIG_HOME="$WORK/xdgconf"
+expect_exit 0 "set a user-level contact" \
+  python3 "$NULLIUS" config contact person@example.edu
+[ -f "$XDG_CONFIG_HOME/nullius/config.json" ] && ok || bad "user config not written"
+expect_grep "person@example.edu" "and the project reads it back" \
+  python3 "$NULLIUS" config contact
+python3 - <<'PYIN'
+import json, pathlib
+p = pathlib.Path(".nullius/config.json"); c = json.loads(p.read_text())
+c["contact"] = ""                      # exactly what a placeholder looks like
+p.write_text(json.dumps(c, indent=2))
+PYIN
+expect_grep "person@example.edu" "an empty project value does not clobber it" \
+  python3 "$NULLIUS" config contact
+expect_grep "not in .nullius" "and the project config never holds the address" \
+  bash -c "grep -q person@example.edu .nullius/config.json && echo in .nullius || echo not in .nullius"
+
 echo
 echo "  $pass passed, $fail failed"
 [ "$fail" -eq 0 ]

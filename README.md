@@ -63,12 +63,18 @@ already have. There is nothing to `pip install`. If you want the tool to be able
 PDFs it finds, install [poppler](https://poppler.freedesktop.org/) as well; without it you
 get links to the papers instead of their text, and everything else works the same.
 
-**Give it an email.** The public indexes ask for one so they can rate-limit politely rather
-than harshly. It is sent to OpenAlex and Unpaywall with your searches and nowhere else:
+**Give it an email.** Not a login — it grants no access to anything paywalled, and no
+account is created anywhere. It does two measurable things: **Unpaywall refuses a request
+without one** (HTTP 422), and that is the entire route to preprint copies of paywalled work;
+and OpenAlex and Crossref use it to put you in their polite pool rather than the common one.
 
 ```bash
 ./.nullius/bin/nullius config contact you@university.edu
 ```
+
+`contact` is written to `~/.config/nullius/config.json`, outside every repository, so it
+cannot reach a commit. Anything else set with `--user` goes there too; everything without it
+lands in the project's own `.nullius/config.json`, which is meant to be committed.
 
 ## First five minutes
 
@@ -269,22 +275,26 @@ the rule and can disagree with it in one place.
 
 ## Where this came from
 
-Not from a theory of research. From roughly a thousand hours inside Claude Code as a
-founding AI engineer, watching the same three failures repeat until they stopped looking
-like accidents.
+Not from a theory of research. From a few thousand hours inside Claude Code as a founding
+AI engineer, which is where the intuition was actually earned: watching instructions lose
+under load, over and over, until the pattern stopped looking like accidents.
 
-Literature searched shallowly and written up confidently, because prose hides a thin search
-perfectly. A paper's own summary of itself repeated back as established fact. And a critique
-that could never be finished, because *what is missing* always has one more answer — a
-proposal that went 12 pages, then 24, and still came back with a list.
+That intuition is a **software engineering** one and it should be labelled as such. What
+makes it worth porting is that the same three failures are plainly recognisable in research
+work — a literature searched shallowly and written up confidently, because prose hides a
+thin search perfectly; a paper's own summary of itself repeated back as established fact;
+and a critique that could never be finished, because *what is missing* always has one more
+answer. A proposal went 12 pages, then 24, and the fourth pass still came back with a list.
+I run an active research line alongside the engineering, which is where those are felt
+rather than theorised.
 
-Each time the fix looked like a better instruction, and each time the instruction lost under
-load. It had to: a rule describing *how* to work has nothing to check it against, so it
-competes for attention with everything else and loses exactly when the task gets
-interesting.
+So this is an adaptation, and the honest label is that the transfer is a **hypothesis, not
+a result**. The mechanism is proven in a domain that has a compiler. Research does not have
+one, and finding what plays that part is the whole content of [WHY.md](WHY.md) — including
+the places where the answer turns out to be thinner than it looks, which are marked as such.
 
-What did work was making a failure into a state the session **cannot finish in**. That is
-the whole method, and everything in this repository is one application of it.
+What did work, in both places, was making a failure into a state the session **cannot finish
+in**. That is the method, and everything here is one application of it.
 
 ## Design notes
 

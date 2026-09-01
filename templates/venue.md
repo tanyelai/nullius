@@ -1,26 +1,35 @@
 # Venue
 
 Copy this per target and fill it from the **real** document: the call for papers, the author
-guidelines, the reviewer form. A structural finding must cite a line in this file, so
-anything not written here cannot be required of a draft.
+guidelines, the reviewer form, the field's reporting standard. Nothing is pre-filled here on
+purpose — a checklist invented by the tool is exactly the idealised critique this is meant
+to prevent, and a structural finding has to cite a line in this file to be admissible.
 
 ## Format
 
-- limit: <words or pages, and what counts toward it>
-- what is excluded from the limit: <references, appendix, ...>
-- template: <the style file or template, if there is one>
+- limit: <what the venue says, in its own words: "8 pages excluding references">
+- words: <a number, if you want the budget enforced. Delete the line if not.>
+- template: <the style file, if there is one>
 
 ## Required sections
 
-One per line. This list is walked in full on every review, present / thin / absent.
+One per line, walked in full every time. Syntax:
 
-- <section>
-- <section>
+    - Name | an alias it may appear under | another alias | min 120
+
+`min` is the word count below which the section is reported as thin. It is a threshold you
+chose, so it is reported and never blocks. Aliases matter: a heading reading "Limitations
+and Future Work" should satisfy an entry named "Limitations".
+
+- <Section name>
+- <Section name> | <alias>
+- <Section name> | min 150
 
 ## What reviewers here actually ask for
 
 From the review form if it is public, or from reviews you have received. This is the
-difference between a calibrated critique and an idealised one.
+difference between a calibrated critique and an idealised one, and it is the part no
+template can guess for you.
 
 ## Normal for this venue
 

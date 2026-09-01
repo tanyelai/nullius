@@ -84,6 +84,8 @@ Run them as `./.nullius/bin/nullius <cmd>` from the project root.
     lit "<query>" --vocabulary <name> [--index openalex|arxiv|europepmc]
     screen <search-id> <include|exclude> "<reason>" --index N
     screen <search-id> exclude "<reason>" --below-citations 1     in bulk, by rule
+    walk                                   every required section, present/thin/absent
+    section "<name>" <planned|elsewhere|n/a> "<why>"
     coverage        check <path>        doctor
 
 Three vocabularies minimum on a survey: yours, the field's own terms taken from the first
@@ -99,6 +101,7 @@ DEFAULT_CONFIG = {
     "vocabularies_suggested": 3,
     "indexes": ["openalex", "crossref", "arxiv", "europepmc"],
     "recent_years": 3,
+    "section_thin_words": 80,
     "rank_floor_citations": 1,
     "budget_overrun_ratio": 1.5,
     "cite_patterns": [
@@ -114,6 +117,14 @@ DEFAULT_CONFIG = {
 
 
 # --------------------------------------------------------------------- paths
+
+
+def user_config_path():
+    """Contact details belong to the person, not the project. A project's
+    config.json is meant to be committed, so an email placed there leaks on the
+    first push -- this file sits outside every repository instead."""
+    base = os.environ.get("XDG_CONFIG_HOME") or str(Path.home() / ".config")
+    return Path(base) / "nullius" / "config.json"
 
 
 def find_root(start=None):
@@ -158,7 +169,16 @@ class Store:
     @property
     def config(self):
         cfg = dict(DEFAULT_CONFIG)
-        cfg.update(self.read_json("config.json", {}))
+        u = user_config_path()
+        layers = []
+        if u.is_file():
+            try:
+                layers.append(json.loads(u.read_text(encoding="utf-8")))
+            except json.JSONDecodeError:
+                pass
+        layers.append(self.read_json("config.json", {}))
+        for layer in layers:
+            cfg.update({k: v for k, v in layer.items() if v not in ("", None)})
         return cfg
 
     @property
@@ -611,6 +631,178 @@ def tracked_drafts(store, unit):
     return out
 
 
+# ------------------------------------------------------------------- venues
+# A structural finding must cite a line in the venue's own file. That is what stops
+# the tool from inventing a requirement, which is where an idealised critique comes
+# from: nothing in a call for papers says "add more".
+
+SECTION_DISPOSITIONS = ["planned", "elsewhere", "n/a"]
+
+
+def venue_path(store, venue):
+    return store.p("venues", f"{venue}.md")
+
+
+def parse_venue(path, default_min):
+    """`- Name | Alias | Alias | min 120` -- one required section per line, under a
+    `## Required sections` heading. The threshold lives in the venue file because a
+    venue sets it; nothing here has an opinion about how long a section should be."""
+    text = path.read_text(encoding="utf-8")
+    out = {"words": None, "raw_limit": None, "sections": [], "path": path}
+
+    m = re.search(r"^-?\s*words:\s*(\d+)", text, re.M | re.I)
+    if m:
+        out["words"] = int(m.group(1))
+    m = re.search(r"^-?\s*limit:\s*(.+)$", text, re.M | re.I)
+    if m and "<" not in m.group(1):
+        out["raw_limit"] = m.group(1).strip()
+
+    block = re.search(r"^##+\s*Required sections\s*$(.*?)(^##\s|\Z)", text,
+                      re.M | re.S | re.I)
+    if not block:
+        return out
+    lineno = text[:block.start(1)].count("\n") + 1
+    for raw in block.group(1).splitlines():
+        lineno += 1
+        item = raw.strip()
+        if not item.startswith("-"):
+            continue
+        item = item.lstrip("-").strip()
+        if not item or item.startswith("<"):
+            continue
+        parts = [x.strip() for x in item.split("|") if x.strip()]
+        names, minimum = [], default_min
+        for part in parts:
+            m = re.fullmatch(r"min\s+(\d+)", part, re.I)
+            if m:
+                minimum = int(m.group(1))
+            else:
+                names.append(part)
+        if names:
+            out["sections"].append({"name": names[0], "aliases": names[1:],
+                                    "min": minimum, "line": lineno})
+    return out
+
+
+HEADING_RE = re.compile(
+    r"^(?:(#{1,6})\s*(.+?)\s*#*$"
+    r"|\\(part|chapter|section|subsection|subsubsection|paragraph)\*?"
+    r"(?:\[[^\]]*\])?\{(.+?)\})", re.M)
+LATEX_LEVEL = {"part": 0, "chapter": 1, "section": 2, "subsection": 3,
+               "subsubsection": 4, "paragraph": 5}
+
+
+def headings_of(text):
+    """(level, title, char_offset) for markdown and LaTeX sectioning alike."""
+    out = []
+    for m in HEADING_RE.finditer(text):
+        if m.group(1):
+            out.append((len(m.group(1)), m.group(2), m.start()))
+        else:
+            out.append((LATEX_LEVEL[m.group(3).lower()], m.group(4), m.start()))
+    return out
+
+
+def heading_matches(required, aliases, heading):
+    h = norm_title(heading)
+    for name in [required] + list(aliases):
+        n = norm_title(name)
+        if n and (n in h or h in n):
+            return True
+    return False
+
+
+def walk_sections(store, unit, venue):
+    """Every entry, every run. The guarantee is enumeration, not completeness: a
+    section can live inside another one without its own heading, and no textual test
+    separates that from an omission. So the author dispositions an absence; the tool
+    only refuses to let the list go unlooked-at."""
+    drafts = tracked_drafts(store, unit)
+    joined = "\n\n".join(f.read_text(encoding="utf-8", errors="replace")
+                          for f in drafts)
+    heads = headings_of(joined)
+    entries = []
+    for spec in venue["sections"]:
+        hit, words = None, 0
+        for i, (level, title, off) in enumerate(heads):
+            if not heading_matches(spec["name"], spec["aliases"], title):
+                continue
+            end = len(joined)
+            for level2, _, off2 in heads[i + 1:]:
+                if level2 <= level:
+                    end = off2
+                    break
+            hit, words = title, count_words(joined[off:end])
+            break
+        state = "absent" if hit is None else (
+            "thin" if words < spec["min"] else "present")
+        entries.append({"name": spec["name"], "state": state, "words": words,
+                        "heading": hit, "min": spec["min"], "line": spec["line"]})
+    return entries
+
+
+def cmd_walk(args):
+    store = Store(require_root())
+    unit = store.unit or die("no open unit. The walk is against a unit's venue "
+                             "and its tracked drafts.")
+    venue_name = args.venue or unit.get("venue")
+    if not venue_name:
+        die("this unit declares no venue, so there is no list to walk. "
+            "`nullius start ... --venue <name>`.")
+    path = venue_path(store, venue_name)
+    if not path.is_file():
+        die(f"no {os.path.relpath(path, store.root)}. Write it once from the real "
+            f"call for papers or author guidelines -- the tool may not require "
+            f"anything it cannot cite a line for.")
+    venue = parse_venue(path, store.config["section_thin_words"])
+    if not venue["sections"]:
+        say(f"nullius: {os.path.relpath(path, store.root)} lists no required "
+            f"sections, so the walk has nothing to check. Add them under "
+            f"`## Required sections`, one per line, from the real document.")
+        return
+    entries = walk_sections(store, unit, venue)
+    disp = unit.get("sections") or {}
+    say(f"walking {len(entries)} required sections from "
+        f"{os.path.relpath(path, store.root)}")
+    for e in entries:
+        mark = {"present": "present", "thin": "thin   ", "absent": "ABSENT "}[e["state"]]
+        extra = ""
+        if e["state"] == "present":
+            extra = f"{e['words']} words"
+        elif e["state"] == "thin":
+            extra = f"{e['words']} words, under the {e['min']} this file sets"
+        else:
+            d = disp.get(e["name"])
+            extra = (f"dispositioned: {d['as']} -- {d['why']}" if d
+                     else "no disposition")
+        say(f"  {mark}  {e['name']:<30} {extra}")
+    undone = [e for e in entries
+              if e["state"] == "absent" and e["name"] not in disp]
+    if undone:
+        say("")
+        say("Each absence needs one word about it before the unit can close:")
+        for e in undone:
+            say(f"  nullius section \"{e['name']}\" "
+                f"<planned|elsewhere|n/a> \"<why>\"")
+        say("  A section can be present without its own heading, and no textual "
+            "test separates that from an omission -- which is why this asks you "
+            "rather than deciding.")
+
+
+def cmd_section(args):
+    store = Store(require_root())
+    unit = store.unit or die("no open unit.")
+    if args.disposition not in SECTION_DISPOSITIONS:
+        die(f"disposition must be one of: {', '.join(SECTION_DISPOSITIONS)}")
+    if args.disposition == "elsewhere" and not args.why:
+        die("`elsewhere` has to name where. That is the whole content of the "
+            "claim.")
+    unit.setdefault("sections", {})[args.name] = {
+        "as": args.disposition, "why": args.why or "", "when": now()}
+    store.save_unit(unit)
+    say(f"nullius: '{args.name}' -> {args.disposition}")
+
+
 # ------------------------------------------------------------------ checks
 # A finding is (severity, text). severity is "fact" (blocks in certain mode) or
 # "chosen" (a threshold that was picked, so it is reported and marked as such).
@@ -657,6 +849,23 @@ def check_attribution(store, text, label):
     return out
 
 
+def effective_budget(store, unit, cfg):
+    """The unit's own figure if it declared one, otherwise the venue's. Read here
+    rather than copied at start, so editing the venue file moves every unit that
+    targets it instead of leaving a stale snapshot behind."""
+    declared = (unit.get("budget") or {}).get("words")
+    if declared:
+        return declared, "declared for this unit"
+    name = unit.get("venue")
+    if not name:
+        return None, None
+    vpath = venue_path(store, name)
+    if not vpath.is_file():
+        return None, None
+    words = parse_venue(vpath, cfg["section_thin_words"])["words"]
+    return (words, f"{os.path.relpath(vpath, store.root)}") if words else (None, None)
+
+
 def unit_findings(store):
     """Everything the Stop gate asks. Returns (facts, chosen)."""
     cfg = store.config
@@ -697,7 +906,48 @@ def unit_findings(store):
                           f"suggested {want}. Your framing is not the field's "
                           f"framing, and that is how a literature goes missing.")
 
-    budget = (unit.get("budget") or {}).get("words")
+    venue_name = unit.get("venue")
+    if venue_name:
+        vpath = venue_path(store, venue_name)
+        if not vpath.is_file():
+            facts.append(f"this unit targets `{venue_name}` and there is no "
+                         f"{os.path.relpath(vpath, store.root)}. Write it once from "
+                         f"the real call or author guidelines -- a structural "
+                         f"finding has to cite a line in it, so without the file "
+                         f"nothing can be required of the draft and nothing can be "
+                         f"checked.")
+        else:
+            venue = parse_venue(vpath, cfg["section_thin_words"])
+            if not venue["sections"]:
+                chosen.append(f"{os.path.relpath(vpath, store.root)} lists no "
+                              f"required sections, so the completeness walk has "
+                              f"nothing to check.")
+            elif tracked_drafts(store, unit):
+                entries = walk_sections(store, unit, venue)
+                disp = unit.get("sections") or {}
+                undone = [e for e in entries
+                          if e["state"] == "absent" and e["name"] not in disp]
+                if undone:
+                    facts.append(
+                        "the completeness walk has entries you have not looked at:\n      "
+                        + "\n      ".join(
+                            f"ABSENT  {e['name']}  ({os.path.relpath(vpath, store.root)}"
+                            f":{e['line']})" for e in undone)
+                        + "\n    Each needs one word -- `nullius section \"<name>\" "
+                          "<planned|elsewhere|n/a> \"<why>\"`. The list is walked "
+                          "rather than sampled, which is the only reason \"it never "
+                          "told me\" cannot happen; what you do about an absence "
+                          "stays yours.")
+                thin = [e for e in entries if e["state"] == "thin"]
+                if thin:
+                    chosen.append(
+                        "thin against the minimum that venue file sets: "
+                        + "; ".join(f"{e['name']} {e['words']}/{e['min']}"
+                                    for e in thin)
+                        + ". A word count is a chosen threshold, not a fact about "
+                          "whether the section does its job.")
+
+    budget, _ = effective_budget(store, unit, cfg)
     if budget and not tracked_drafts(store, unit):
         facts.append(f"a budget of {budget} words is declared and no draft is "
                      f"tracked against it, so nothing is measuring it. "
@@ -736,10 +986,21 @@ def cmd_init(args):
     store = Store(root)
     if store.p("config.json").is_file() and not args.force:
         die(f"already initialised at {store.dir}. Pass --force to rewrite config.")
-    cfg = dict(DEFAULT_CONFIG)
-    cfg["field"] = args.field or ""
-    cfg["contact"] = args.email or ""
+    cfg = {k: v for k, v in DEFAULT_CONFIG.items() if k != "contact"}
+    if args.field:
+        cfg["field"] = args.field
     store.write_json("config.json", cfg)
+    if args.email:
+        upath = user_config_path()
+        upath.parent.mkdir(parents=True, exist_ok=True)
+        existing = {}
+        if upath.is_file():
+            try:
+                existing = json.loads(upath.read_text(encoding="utf-8"))
+            except json.JSONDecodeError:
+                pass
+        existing["contact"] = args.email
+        upath.write_text(json.dumps(existing, indent=2) + "\n", encoding="utf-8")
     for d in ("papers", "threads", "searches", "venues", "work", "cache"):
         store.p(d).mkdir(parents=True, exist_ok=True)
     tpl = Path(__file__).resolve().parent.parent / "templates"
@@ -769,29 +1030,47 @@ def cmd_init(args):
         gi.write_text("work/\ncache/\nbin/\n", encoding="utf-8")
     say(f"nullius: initialised {store.dir}")
     say(f"  run it from here as ./{STATE_DIR}/bin/nullius")
-    if not cfg["contact"]:
-        say("  set a contact email so the indexes rate-limit you politely:\n"
-            "    nullius config contact you@example.org")
+    if not store.config.get("contact"):
+        say("  set a contact email -- it is not a login and gives no access to "
+            "anything paywalled, but Unpaywall refuses the request without one\n"
+            "  (HTTP 422), which is the whole route to preprint copies, and "
+            "OpenAlex and Crossref use it for their polite pool:\n"
+            "    nullius config contact you@university.edu")
     say("  next: describe your field in .nullius/field.md, and your target "
         "venue in .nullius/venues/.")
 
 
 def cmd_config(args):
-    store = Store(require_root())
-    cfg = store.read_json("config.json", {})
+    upath = user_config_path()
     if args.value is None:
+        store = Store(require_root())
         merged = store.config
         if args.key:
             say(json.dumps(merged.get(args.key), ensure_ascii=False))
         else:
             say(json.dumps(merged, indent=2, ensure_ascii=False))
         return
-    val = args.value
-    if val.isdigit():
-        val = int(val)
+    val = int(args.value) if args.value.isdigit() else args.value
+    if args.user or args.key == "contact":
+        upath.parent.mkdir(parents=True, exist_ok=True)
+        cfg = {}
+        if upath.is_file():
+            try:
+                cfg = json.loads(upath.read_text(encoding="utf-8"))
+            except json.JSONDecodeError:
+                pass
+        cfg[args.key] = val
+        upath.write_text(json.dumps(cfg, indent=2) + "\n", encoding="utf-8")
+        say(f"nullius: {args.key} = {val}  ({upath})")
+        if args.key == "contact":
+            say("  kept outside the project so it cannot reach a commit. Pass "
+                "--user to put anything else here too.")
+        return
+    store = Store(require_root())
+    cfg = store.read_json("config.json", {})
     cfg[args.key] = val
     store.write_json("config.json", cfg)
-    say(f"nullius: {args.key} = {val}")
+    say(f"nullius: {args.key} = {val}  (.nullius/config.json, committed)")
 
 
 def cmd_start(args):
@@ -803,11 +1082,12 @@ def cmd_start(args):
     if args.kind not in UNIT_KINDS:
         die(f"kind must be one of: {', '.join(UNIT_KINDS)}")
     budget = {}
+    venue_name = args.venue or store.config.get("default_venue") or ""
     if args.words:
         budget["words"] = args.words
     unit = {
         "slug": args.slug, "kind": args.kind, "question": args.question,
-        "venue": args.venue or store.config.get("default_venue") or "",
+        "venue": venue_name,
         "budget": budget, "accept": None, "accept_closed": False,
         "artifacts": list(args.artifact or []), "trade": None,
         "started": now(),
@@ -846,6 +1126,8 @@ def cmd_close(args):
         r"appendix|listing|algorithm|line)\.?\s*[\w.-]*\d",
         r"\b(?:abstract|introduction|methods?|materials|results?|discussion|"
         r"conclusions?|limitations|related work|appendix|supplement\w*)\b",
+        r"\b\w[\w-]*\s+section\b",
+        r"\bsection\s+\w[\w-]*",
     ])
     if not re.search(locator, args.answer, re.I):
         die("that answer carries no locator. An acceptance answer has to be "
@@ -1602,10 +1884,11 @@ def cmd_status(args):
     say(f"question  {unit['question']}")
     say(f"accept    {unit.get('accept') or '(not declared)'}"
         + ("  [closed]" if unit.get("accept_closed") else ""))
-    if unit.get("budget", {}).get("words"):
+    budget, source = effective_budget(store, unit, store.config)
+    if budget:
         words = sum(count_words(f.read_text(encoding='utf-8', errors='replace'))
                     for f in tracked_drafts(store, unit))
-        say(f"budget    {words} / {unit['budget']['words']} words")
+        say(f"budget    {words} / {budget} words  ({source})")
     facts, chosen = unit_findings(store)
     say("")
     if facts:
@@ -1652,7 +1935,10 @@ def cmd_doctor(args):
     cfg = store.config
     say(f"project   {store_root}")
     say(f"mode      {cfg['mode']}")
-    say(f"contact   {cfg['contact'] or '(unset -- the indexes will rate-limit harder)'}")
+    say(f"contact   {cfg['contact'] or '(unset)'}"
+        + ("" if cfg["contact"] else
+           "  -- Unpaywall returns 422 without one, so `fulltext` cannot find "
+           "preprint copies"))
     for d in ("papers", "searches", "venues", "threads"):
         n = len(list(store.p(d).glob("*"))) if store.p(d).is_dir() else 0
         say(f"{d:<9} {n}")
@@ -1835,6 +2121,9 @@ def build_parser():
 
     s = sub.add_parser("config", help="read or set a config key")
     s.add_argument("key", nargs="?"); s.add_argument("value", nargs="?")
+    s.add_argument("--user", action="store_true",
+                   help="write to ~/.config/nullius/config.json instead of the "
+                        "project. `contact` always goes here.")
     s.set_defaults(fn=cmd_config)
 
     s = sub.add_parser("start", help="open a work unit")
@@ -1912,6 +2201,14 @@ def build_parser():
                    help="apply to everything unscreened under this many citations")
     s.add_argument("--all-remaining", action="store_true", dest="all_remaining")
     s.set_defaults(fn=cmd_screen)
+
+    s = sub.add_parser("walk", help="every required section, present/thin/absent")
+    s.add_argument("--venue"); s.set_defaults(fn=cmd_walk)
+
+    s = sub.add_parser("section", help="say what an absent required section is")
+    s.add_argument("name")
+    s.add_argument("disposition", choices=SECTION_DISPOSITIONS)
+    s.add_argument("why", nargs="?"); s.set_defaults(fn=cmd_section)
 
     s = sub.add_parser("coverage", help="the counts, and what is unscreened")
     s.set_defaults(fn=cmd_coverage)
