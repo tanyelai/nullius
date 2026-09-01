@@ -407,11 +407,20 @@ def europepmc_search(query, limit, counter=None):
     return out
 
 
+def arxiv_query(query):
+    """Quoted phrases stay phrases; loose words are ANDed, because `all:a b c` ORs
+    them and answered a four-word question with two million matches."""
+    parts = re.findall(r'"([^"]+)"', query)
+    rest = re.sub(r'"[^"]+"', " ", query)
+    terms = [f'all:"{p}"' for p in parts]
+    terms += [f"all:{w}" for w in re.findall(r"[\w'-]{3,}", rest)]
+    return " AND ".join(terms) or f"all:{query}"
+
+
 def arxiv_search(query, limit, raw=False, counter=None):
     url = ("https://export.arxiv.org/api/query?"
            + urllib.parse.urlencode({
-               "search_query": query if raw else " AND ".join(
-                   f"all:{w}" for w in re.findall(r"[\w'-]{3,}", query)) or f"all:{query}",
+               "search_query": query if raw else arxiv_query(query),
                "max_results": limit, "sortBy": "relevance"}))
     req = urllib.request.Request(url, headers={"User-Agent": "nullius"})
     try:
@@ -589,8 +598,15 @@ def record_from_openalex(w):
 def filter_safe(t):
     """OpenAlex parses its filter values, so punctuation in a title becomes syntax:
     a colon, and a question mark, each return HTTP 400 rather than the work. Keep
-    letters, digits, spaces and hyphens; everything else is a space."""
-    return re.sub(r"\s+", " ", re.sub(r"[^0-9A-Za-z\- ]", " ", t or "")).strip()
+    letters, digits, spaces and hyphens, and keep double quotes, because a quoted
+    phrase is the only thing that makes the index AND its terms: measured on one
+    query, `learning-augmented algorithms prediction error` matched 806 works and
+    `"learning-augmented algorithms"` matched 201, and only the second set was the
+    subject."""
+    kept = re.sub(r"[^0-9A-Za-z\-\" ]", " ", t or "")
+    if kept.count('"') % 2:                       # an unclosed quote is not a phrase
+        kept = kept.replace('"', " ")
+    return re.sub(r"\s+", " ", kept).strip()
 
 
 def norm_title(t):
@@ -2316,7 +2332,7 @@ def cmd_lit(args):
     store = Store(require_root())
     cfg = store.config
     wanted = args.index or cfg["indexes"]
-    hits, reached, failed, matched = [], [], [], {}
+    hits, reached, failed, matched, route_note = [], [], [], {}, None
 
     if "openalex" in wanted:
         try:
@@ -2328,12 +2344,22 @@ def cmd_lit(args):
                 "filter": f"title_and_abstract.search:{filter_safe(args.query)}",
                 "per-page": args.limit})
             tight = len((res or {}).get("results") or [])
-            if tight < 3:
+            if tight < 3 and args.loose:
                 loose = openalex("works", cfg["contact"], search=args.query,
                                  **{"per-page": args.limit})
                 if len((loose or {}).get("results") or []) > tight:
                     res = loose
-                    matched["openalex_route"] = "full text, title and abstract was thin"
+                    route_note = ("--loose: matched over full text rather than "
+                                  "title and abstract, which is much noisier")
+            elif tight < 3:
+                # An empty title-and-abstract result is information: the field does
+                # not use these words. Substituting a full-text search returns
+                # something and destroys the signal, so widening is opt-in.
+                route_note = (f"only {tight} work(s) carry these terms in a title "
+                              f"or abstract. That is a finding about the "
+                              f"vocabulary rather than about the literature: try "
+                              f"the words the field itself uses. `--loose` "
+                              f"searches full text instead, and is much noisier.")
             for h in (res or {}).get("results") or []:
                 hits.append({
                     "index": "openalex", "openalex": h.get("id"),
@@ -2425,17 +2451,17 @@ def cmd_lit(args):
     }
     store.save_search(search)
 
-    words = len(re.findall(r"[\w'-]{3,}", args.query))
-    if words > 7:
-        say(f"nullius: that query is {words} words of prose. An index scores every "
-            f"one of them, so a question dilutes into whatever shares its common "
-            f"words. Three or four terms the field would actually use retrieves a "
-            f"different literature.")
-    per = ", ".join(f"{k} {v if v is not None else '?'}"
-                    for k, v in matched.items() if k != "openalex_route")
+    loose_words = len(re.findall(r"[\w'-]{3,}", re.sub(r'"[^"]+"', " ", args.query)))
+    if loose_words > 3 and '"' not in args.query:
+        say(f"nullius: {loose_words} unquoted terms. The index ORs them, so the "
+            f"result is whatever shares the commonest one. Quote the phrase the "
+            f"field actually uses -- \"a phrase like this\" -- and it ANDs "
+            f"instead.")
+    per = ", ".join(f"{k} {v if v is not None else '?'}" for k, v in matched.items())
     say(f"nullius: retrieved {len(ordered)} distinct works. The indexes report "
         f"{per}"
-        + (f"; unreachable: {', '.join(failed)}" if failed else ""))
+        + (f"; unreachable: {', '.join(failed)}" if failed else "")
+        + (f"\n  {route_note}" if route_note else ""))
     say(f"  relevance decides what is here, citations per year decide the order "
         f"within it. A count from an index that answered a loose query is not a "
         f"finding about the literature.")
@@ -3085,6 +3111,8 @@ def build_parser():
     s = sub.add_parser("lit", help="search the indexes and log the protocol")
     s.add_argument("query"); s.add_argument("--vocabulary")
     s.add_argument("--limit", type=int, default=10)
+    s.add_argument("--loose", action="store_true",
+                   help="match over full text when title and abstract is thin")
     s.add_argument("--index", action="append",
                    choices=["openalex", "arxiv", "europepmc"],
                    help="default: whatever .nullius/config.json lists")

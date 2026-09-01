@@ -633,6 +633,33 @@ expect_grep "nothing to walk from" "with no seed screened in, it says so" \
   bash -c "rm -f .nullius/searches/*.json; python3 \"$NULLIUS\" snowball --no-context"
 cd ..
 
+# ------------------------------------- query construction, offline ---------
+# Measured, not assumed: on one query the index matched 806 works for the bare
+# terms and 201 for the quoted phrase, and only the second set was the subject.
+pure="$(python3 - "$NULLIUS" <<'PYIN'
+import sys, io
+ns = {}
+src = io.open(sys.argv[1], encoding="utf-8").read()
+exec(compile(src.split("def main()")[0], "n", "exec"), ns)
+fs, aq = ns["filter_safe"], ns["arxiv_query"]
+checks = [
+    ('"a phrase" survives', '"' in fs('"learning-augmented algorithms"')),
+    ("a colon does not", ":" not in fs("Reasoners: a study")),
+    ("nor a question mark", "?" not in fs("Are They Reasoners?")),
+    ("an unclosed quote is dropped", '"' not in fs('half "quoted')),
+    ("arxiv ANDs loose words", aq("moral sycophancy models").count(" AND ") == 2),
+    ("arxiv keeps a phrase whole", 'all:"moral sycophancy"' in aq('"moral sycophancy" models')),
+]
+print("\n".join(f"{'OK' if ok else 'NO'} {name}" for name, ok in checks))
+PYIN
+)"
+while IFS= read -r line; do
+  case "$line" in
+    OK*) ok ;;
+    NO*) bad "query construction: ${line#NO }" ;;
+  esac
+done <<< "$pure"
+
 echo
 echo "  $pass passed, $fail failed"
 [ "$fail" -eq 0 ]
