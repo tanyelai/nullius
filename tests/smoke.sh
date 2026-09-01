@@ -256,7 +256,7 @@ done
 python3 "$NULLIUS" claim "the effect is large and general" --warrant authors-claim \
   --status single-result --strength reports --source alpha2021 >/dev/null 2>&1
 printf 'The effect is large and general. We build on this.\n' > bare.md
-printf 'Smith et al. report the effect is large and general.\n' > cued.md
+printf 'Author et al. report the effect is large and general.\n' > cued.md
 expect_grep "bare assertion" "a weak claim written flat is reported" \
   python3 "$NULLIUS" check bare.md
 expect_grep "clean" "the same claim, attributed, is not" \
@@ -659,6 +659,33 @@ while IFS= read -r line; do
     NO*) bad "query construction: ${line#NO }" ;;
   esac
 done <<< "$pure"
+
+# ------------------------------------------ a name is a citation too -------
+# arXiv:2310.15337 was the easy half. "Angelini and Ricci-Tersenghi report" is how
+# prose actually cites, and it is the form nothing else checks.
+printf 'Angelini and Ricci-Tersenghi report that greedy wins.\n' > byname.md
+printf 'Bae reports that the gain does not exist.\n' > byname2.md
+printf 'Ricci-Tersenghi et al. showed it first.\n' > byname3.md
+printf 'As Author (2021) put it, the effect is real.\n' > byname4.md
+expect_exit 2 "an unresolved pair of names is refused" python3 "$NULLIUS" check byname.md
+expect_grep "A name is a citation" "and says why a name counts" \
+  python3 "$NULLIUS" check byname.md
+expect_exit 2 "a single name with a reporting verb too" python3 "$NULLIUS" check byname2.md
+expect_exit 2 "a hyphenated surname is not a loophole" python3 "$NULLIUS" check byname3.md
+expect_exit 0 "a name the ledger holds passes" python3 "$NULLIUS" check byname4.md
+printf 'The effect is real and nobody is named for it.\n' > byname5.md
+expect_exit 0 "and prose that attributes nothing is not policed" \
+  python3 "$NULLIUS" check byname5.md
+python3 - <<'PYIN'
+import json, pathlib
+p = pathlib.Path(".nullius/refs.json"); d = json.loads(p.read_text())
+d["unicode2022"] = dict(d["alpha2021"], doi="10.7777/uni", openalex="https://openalex.org/Wuni",
+                        authors=[{"id": "A9", "name": "Federico Ricci‐Tersenghi"}])
+p.write_text(json.dumps(d, indent=2))
+PYIN
+printf 'Ricci-Tersenghi et al. showed it first.\n' > byname6.md
+expect_exit 0 "a unicode hyphen in the index is not a different person" \
+  python3 "$NULLIUS" check byname6.md
 
 echo
 echo "  $pass passed, $fail failed"

@@ -135,6 +135,15 @@ DEFAULT_CONFIG = {
         r"(?<![\w@])@([A-Za-z][A-Za-z0-9_:.-]{2,})",
     ],
     "draft_extensions": [".tex", ".md", ".markdown", ".txt", ".rst"],
+    "attribution_patterns": [
+        r"\b([A-Z][\wÀ-ɏ'-]{2,})\s+et\s+al\.?",
+        r"\b([A-Z][\wÀ-ɏ'-]{2,})\s+and\s+(?:([A-Z][\wÀ-ɏ'-]{2,})"
+        r"|colleagues|co-workers)\s+(?:report|reports|show|shows|find|finds|argue|"
+        r"argues|prove|proves|observe|observes|claim|claims)",
+        r"\b([A-Z][\wÀ-ɏ'-]{2,})\s+(?:reports?|shows?|finds?|proves?|"
+        r"argues?|observes?)\s+(?:that|in|a|an|the|it)\b",
+        r"\b([A-Z][\wÀ-ɏ'-]{2,})\s*\((?:19|20)\d\d\)",
+    ],
     "bare_identifier_patterns": [
         r"arxiv[:\s/]\s*(\d{4}\.\d{4,5})",
         r"arxiv\.org/(?:abs|pdf)/(\d{4}\.\d{4,5})",
@@ -681,6 +690,43 @@ def bare_identifiers(text, cfg):
     return out
 
 
+DASHES = dict.fromkeys(map(ord, "‐‑‒–—―−"), "-")
+APOSTROPHES = dict.fromkeys(map(ord, "‘’ʼ´"), "'")
+
+
+def fold_name(name):
+    """An index writes Ricci-Tersenghi with U+2010 and a draft writes it with an
+    ASCII hyphen. They look identical and compare unequal, which would flag a work
+    that was cited correctly: the direction of error worth avoiding."""
+    n = (name or "").translate(DASHES).translate(APOSTROPHES)
+    n = unicodedata.normalize("NFKD", n)
+    return "".join(c for c in n if not unicodedata.combining(c)).lower().strip()
+
+
+def attributed_names(text, cfg):
+    """A name is how most prose actually cites. `arXiv:2310.15337` was the easy half;
+    "Angelini and Ricci-Tersenghi report" is the half that carries the claim."""
+    out = set()
+    for pat in cfg.get("attribution_patterns", []):
+        for m in re.finditer(pat, text):
+            for g in m.groups():
+                if g:
+                    out.add(g)
+    return out
+
+
+def resolved_surnames(refs):
+    out = set()
+    for rec in refs.values():
+        for a in rec.get("authors", []):
+            parts = [w for w in re.split(r"[\s,]+", fold_name(a.get("name", ""))) if w]
+            if parts:
+                out.add(parts[-1])
+                if len(parts) > 2:
+                    out.add(" ".join(parts[-2:]))
+    return out
+
+
 def resolved_index(refs):
     """Every identifier the ledger already knows, however it was stored."""
     known = set()
@@ -1105,6 +1151,16 @@ def check_draft_text(store, text, label):
         elif refs[by_id[(kind, value)]].get("retracted"):
             facts.append(f"{label}: `{shown}` is named in the text and the index "
                          f"records it as RETRACTED.")
+    known_names = resolved_surnames(refs)
+    for name in sorted(attributed_names(text, cfg)):
+        low = fold_name(name)
+        if low in known_names or any(low in n.split() for n in known_names):
+            continue
+        facts.append(f"{label}: the text attributes something to `{name}` and no "
+                     f"resolved reference has an author of that name. A name is a "
+                     f"citation -- it is how most prose actually cites -- and it "
+                     f"is the form nothing else checks. `nullius cite` the work, "
+                     f"or drop the attribution.")
     for key in sorted(cited_keys(text, cfg)):
         rec = refs.get(key)
         if rec is None:
@@ -2442,7 +2498,11 @@ def cmd_lit(args):
     ordered = body + recent
 
     search = {
-        "id": f"{today()}-{slugify(args.query, 32)}", "query": args.query,
+        # The label you chose is the handle you will look it up by, so it belongs in
+        # the id: two queries in one vocabulary otherwise differ by a truncated slug.
+        "id": f"{today()}-{slugify(args.vocabulary or 'q', 16)}"
+              f"-{slugify(args.query, 24)}",
+        "query": args.query,
         "vocabulary": args.vocabulary or slugify(args.query, 32),
         "indexes": reached, "unreachable": failed, "matched": matched,
         "when": now(), "matched_total": matched,
@@ -2703,7 +2763,8 @@ def cmd_check(args):
     words = count_words(text)
     cfg = store.config
     say(f"{rel}: {words} words, {len(cited_keys(text, cfg))} citation key(s), "
-        f"{len(bare_identifiers(text, cfg))} bare identifier(s)")
+        f"{len(bare_identifiers(text, cfg))} bare identifier(s), "
+        f"{len(attributed_names(text, cfg))} attributed name(s)")
     for f in facts:
         say(f"  FACT   {f}")
     for c in chosen:
@@ -2931,6 +2992,16 @@ def hook_pre_write(payload):
                          + "\n  - ".join(facts) + "\n")
         return 2
     notes = []
+    known_names = resolved_surnames(refs)
+    for name in sorted(attributed_names(text, cfg)):
+        low = fold_name(name)
+        if low in known_names or any(low in n.split() for n in known_names):
+            continue
+        facts.append(f"{label}: the text attributes something to `{name}` and no "
+                     f"resolved reference has an author of that name. A name is a "
+                     f"citation -- it is how most prose actually cites -- and it "
+                     f"is the form nothing else checks. `nullius cite` the work, "
+                     f"or drop the attribution.")
     for key in sorted(cited_keys(text, cfg)):
         depth = store.note_depth(key)
         if depth:
