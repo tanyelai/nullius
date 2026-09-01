@@ -191,6 +191,26 @@ nullius: walking from ELEPHANT: Measuring and understanding social sycophancy
   forward: 98 in the graph, 5 retrieved  (capped)
 ```
 
+`--depth 2` walks again from whatever the first hop's seeds **agreed on**, rather than from
+everything, because following what the field points at repeatedly is what going deeper means.
+
+The payload is not the list. It is the multiplicity:
+
+```
+hop 1: 1 seed(s)     16 new, 0 already reached
+hop 2: 4 seed(s)     60 new, 4 already reached, 6% of this hop was known
+
+reached from more than one seed, which no query would have told you:
+  2 seeds  2009    276  The Design of Competitive Online Algorithms via a Pr
+  2 seeds  2013    273  Online Matching and Ad Allocation
+```
+
+A work several of your seeds point at is what the field agrees is behind them: the canon, or
+the thing everyone is arguing with. A keyword query will not reliably surface it, because the
+canon is often phrased in older words. And the "already reached" percentage is the saturation
+signal: when a hop stops returning anything new, you have the literature. When it is 6%, you
+do not, and no amount of confident prose changes that.
+
 Everything retrieved lands in a search log like any other, carrying how it was reached
 (`via back from ...`), and gets screened the same way. A `survey` unit cannot close while a
 work you kept has never been walked, which turns *the frontier is closed* from a claim into a

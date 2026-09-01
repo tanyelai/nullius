@@ -687,6 +687,32 @@ printf 'Ricci-Tersenghi et al. showed it first.\n' > byname6.md
 expect_exit 0 "a unicode hyphen in the index is not a different person" \
   python3 "$NULLIUS" check byname6.md
 
+# ------------------------------- an index that does not cover a field ------
+# only adds noise to it: a CS query answered by Europe PMC returns endocrinology.
+pure2="$(python3 - "$NULLIUS" <<'PYIN'
+import sys, io
+ns = {}
+exec(compile(io.open(sys.argv[1], encoding="utf-8").read().split("def main()")[0],
+             "n", "exec"), ns)
+f = ns["indexes_for_field"]
+checks = [
+    ("biomedical gets europepmc", "europepmc" in (f("medical imaging and ECG") or [])),
+    ("cs does not", "europepmc" not in (f("learning-augmented algorithms") or [])),
+    ("cs gets arxiv", "arxiv" in (f("mechanistic interpretability") or [])),
+    ("social science gets neither", (f("economic sociology") or []) == ["openalex", "crossref"]),
+    ("an unmatched field picks nothing", f("basket weaving") is None),
+]
+print("\n".join(f"{'OK' if ok else 'NO'} {n}" for n, ok in checks))
+PYIN
+)"
+while IFS= read -r line; do
+  case "$line" in OK*) ok ;; NO*) bad "field presets: ${line#NO }" ;; esac
+done <<< "$pure2"
+expect_grep "indexes for that field" "init says which indexes it chose" \
+  bash -c "mkdir -p fieldy && cd fieldy && python3 \"$NULLIUS\" init --field 'clinical ECG'"
+expect_grep "no index preset matched" "and says when it could not choose" \
+  bash -c "mkdir -p fieldy2 && cd fieldy2 && python3 \"$NULLIUS\" init --field 'basket weaving'"
+
 echo
 echo "  $pass passed, $fail failed"
 [ "$fail" -eq 0 ]

@@ -118,6 +118,7 @@ DEFAULT_CONFIG = {
     "default_venue": "",
     "vocabularies_suggested": 3,
     "indexes": ["openalex", "crossref", "arxiv", "europepmc"],
+    "snowball_depth": 1,
     "recent_years": 3,
     "snowball_limit": 10,
     "snowball_seeds": 5,
@@ -165,6 +166,33 @@ def user_config_path():
     first push -- this file sits outside every repository instead."""
     base = os.environ.get("XDG_CONFIG_HOME") or str(Path.home() / ".config")
     return Path(base) / "nullius" / "config.json"
+
+
+# An index that does not cover a field only adds noise to it: a CS query answered
+# by Europe PMC returns endocrinology. These are starting points, not verdicts, and
+# `nullius config indexes` overrides any of them.
+FIELD_INDEXES = [
+    (("medic", "clinic", "health", "bio", "genom", "epidemi", "nursing", "pharma",
+      "radiol", "cardio", "onc", "neuro", "imaging", "ecg", "mri"),
+     ["openalex", "crossref", "europepmc", "arxiv"]),
+    (("comput", "machine learning", "artificial intelligence", " ai", "ml ",
+      "algorithm", "software", "nlp", "vision", "robot", "interpretab",
+      "optimis", "optimiz", "theory"),
+     ["openalex", "crossref", "arxiv"]),
+    (("physic", "astro", "math", "statis", "quantum", "geo", "climate", "chem"),
+     ["openalex", "crossref", "arxiv"]),
+    (("econom", "sociol", "psychol", "polit", "law", "educat", "linguist",
+      "philosoph", "histor", "anthropol", "manage", "business"),
+     ["openalex", "crossref"]),
+]
+
+
+def indexes_for_field(field):
+    low = (field or "").lower()
+    for keys, idx in FIELD_INDEXES:
+        if any(k in low for k in keys):
+            return idx
+    return None
 
 
 def find_root(start=None):
@@ -1540,8 +1568,12 @@ def cmd_init(args):
     if store.p("config.json").is_file() and not args.force:
         die(f"already initialised at {store.dir}. Pass --force to rewrite config.")
     cfg = {k: v for k, v in DEFAULT_CONFIG.items() if k != "contact"}
+    picked = None
     if args.field:
         cfg["field"] = args.field
+        picked = indexes_for_field(args.field)
+        if picked:
+            cfg["indexes"] = picked
     store.write_json("config.json", cfg)
     if args.email:
         upath = user_config_path()
@@ -1583,6 +1615,14 @@ def cmd_init(args):
         gi.write_text("work/\ncache/\nbin/\n", encoding="utf-8")
     say(f"nullius: initialised {store.dir}")
     say(f"  run it from here as ./{STATE_DIR}/bin/nullius")
+    if picked:
+        say(f"  indexes for that field: {', '.join(picked)}")
+        say(f"  a starting point, not a verdict. `nullius config indexes` if it is "
+            f"wrong, and `nullius lit --index <name>` overrides it once.")
+    elif args.field:
+        say(f"  no index preset matched \"{args.field}\", so all of "
+            f"{', '.join(DEFAULT_CONFIG['indexes'])} are on. An index that does not "
+            f"cover your field only adds noise to it.")
     if not store.config.get("contact"):
         say("  set a contact email -- it is not a login and gives no access to "
             "anything paywalled, but Unpaywall refuses the request without one\n"
@@ -2552,10 +2592,43 @@ def openalex_short(wid):
     return (wid or "").rsplit("/", 1)[-1]
 
 
+def walk_one(cfg, wid, directions, limit, seed_title, doi, want_context):
+    """One hop from one seed. Returns (rows, counts)."""
+    rows, counts = [], {}
+    for name, filt in directions:
+        try:
+            res = openalex("works", cfg["contact"], **{
+                "filter": f"{filt}:{wid}", "sort": "cited_by_count:desc",
+                "per-page": limit})
+        except RuntimeError as e:
+            counts[name] = None
+            rows.append({"_error": f"{name}: {e}"})
+            continue
+        hits = (res or {}).get("results") or []
+        counts[name] = ((res or {}).get("meta") or {}).get("count", len(hits))
+        influential = {}
+        if name == "forward" and doi and want_context:
+            influential = s2_influential(doi, limit)
+        for h in hits:
+            hdoi = (h.get("doi") or "").replace("https://doi.org/", "").lower()
+            extra = influential.get(hdoi, {})
+            rows.append({
+                "index": "openalex", "title": h.get("display_name", ""),
+                "year": h.get("publication_year"), "doi": hdoi or None,
+                "openalex": h.get("id"), "cited_by": h.get("cited_by_count"),
+                "venue": ((h.get("primary_location") or {}).get("source")
+                          or {}).get("display_name"),
+                "via": f"{name} from {seed_title[:40]}",
+                "influential": extra.get("influential"),
+                "context": extra.get("context"),
+                "screened": None, "reason": None})
+    return rows, counts
+
+
 def cmd_snowball(args):
-    """The citation graph, both directions. A keyword search finds what shares your
-    words; this finds what the field itself linked, which is the only thing that can
-    honestly stand behind a claim that the frontier is closed."""
+    """The citation graph, both directions and to depth. A keyword search finds what
+    shares your words. The graph finds what the field linked, and the works many of
+    your seeds point at are the ones a query will never reliably surface."""
     store = Store(require_root())
     cfg = store.config
     state = snowball_state(store)
@@ -2574,7 +2647,7 @@ def cmd_snowball(args):
                 if r.get("screened") != "include" or not r.get("openalex"):
                     continue
                 wid = openalex_short(r["openalex"])
-                if wid in state or any(wid == s[0] for s in seeds):
+                if wid in state or any(wid == x[0] for x in seeds):
                     continue
                 seeds.append((wid, r.get("title", ""), r.get("doi")))
         seeds = seeds[:args.seeds or cfg["snowball_seeds"]]
@@ -2584,68 +2657,91 @@ def cmd_snowball(args):
         return
 
     limit = args.limit or cfg["snowball_limit"]
+    depth = args.depth or cfg["snowball_depth"]
     directions = ([("back", "cited_by"), ("forward", "cites")]
                   if args.both or not (args.back or args.forward)
                   else ([("back", "cited_by")] if args.back else []) +
                        ([("forward", "cites")] if args.forward else []))
-    for wid, title, doi in seeds:
-        say(f"nullius: walking from {title[:58]}")
-        rows, counts = [], {}
-        for name, filt in directions:
-            try:
-                res = openalex("works", cfg["contact"], **{
-                    "filter": f"{filt}:{wid}", "sort": "cited_by_count:desc",
-                    "per-page": limit})
-            except RuntimeError as e:
-                say(f"  {name}: unreachable ({e})")
-                continue
-            hits = (res or {}).get("results") or []
-            counts[name] = ((res or {}).get("meta") or {}).get("count", len(hits))
-            influential = {}
-            if name == "forward" and doi and not args.no_context:
-                influential = s2_influential(doi, limit)
-            for h in hits:
-                hdoi = (h.get("doi") or "").replace("https://doi.org/", "").lower()
-                extra = influential.get(hdoi, {})
-                rows.append({
-                    "index": "openalex", "title": h.get("display_name", ""),
-                    "year": h.get("publication_year"), "doi": hdoi or None,
-                    "openalex": h.get("id"), "cited_by": h.get("cited_by_count"),
-                    "venue": ((h.get("primary_location") or {}).get("source")
-                              or {}).get("display_name"),
-                    "via": f"{name} from {title[:40]}",
-                    "influential": extra.get("influential"),
-                    "context": extra.get("context"),
-                    "screened": None, "reason": None})
-            say(f"  {name}: {counts[name]} in the graph, {len(hits)} retrieved"
-                + ("  (capped)" if counts[name] > len(hits) else ""))
-        if not rows:
-            continue
-        search = {
-            "id": f"{today()}-snowball-{slugify(title, 24)}",
-            "query": f"snowball from {title}", "vocabulary": "snowball",
-            "indexes": ["openalex"], "unreachable": [], "matched_total": counts,
-            "when": now(), "found": max(counts.values() or [0]),
-            "retrieved": len(rows), "seed": wid, "results": rows}
-        store.save_search(search)
-        state[wid] = {"title": title, "when": now(),
-                      "back": counts.get("back"), "forward": counts.get("forward"),
-                      "retrieved": len(rows),
-                      "capped": any(counts.get(k, 0) > limit for k in counts)}
-        store.write_json("snowball.json", state)
-        for r in rows[:8]:
-            flag = " influential" if r.get("influential") else ""
-            say(f"    {r['year']} {str(r['cited_by']):>6}{flag:>12}  "
-                f"{(r['title'] or '')[:52]}")
-            if r.get("context"):
-                say(f"        \"{r['context'].strip()[:78]}\"")
-        say(f"  logged as {search['id']}; screen it like any other search")
-    ctx_seen = any(r.get("context") for sr in store.searches()
-                   for r in sr.get("results", []))
-    if not ctx_seen and not args.no_context:
-        say("  no citation sentences came back. Semantic Scholar has them only "
-            "where it parsed the citing paper's full text, which is often not the "
-            "case, so they are shown when present and never counted on.")
+
+    reached, all_rows, origin = {}, [], {w: t for w, t, _ in seeds}
+    frontier = list(seeds)
+    for hop in range(1, depth + 1):
+        say(f"hop {hop}: {len(frontier)} seed(s)")
+        hop_rows, seen_before, new_here = [], 0, 0
+        for wid, title, doi in frontier:
+            rows, counts = walk_one(cfg, wid, directions, limit, title, doi,
+                                    not args.no_context)
+            for r in rows:
+                if r.get("_error"):
+                    say(f"  {r['_error']}")
+                    continue
+                key = openalex_short(r["openalex"])
+                if key in reached:
+                    seen_before += 1
+                else:
+                    new_here += 1
+                    reached[key] = dict(r, by=[], hop=hop)
+                if wid not in reached[key]["by"]:
+                    reached[key]["by"].append(wid)
+                hop_rows.append(r)
+            state[wid] = {"title": title, "when": now(), "hop": hop,
+                          "back": counts.get("back"),
+                          "forward": counts.get("forward"),
+                          "capped": any((counts.get(k) or 0) > limit
+                                        for k in counts)}
+        all_rows += hop_rows
+        total = new_here + seen_before
+        sat = (seen_before / total * 100) if total else 0
+        say(f"  {new_here} new, {seen_before} already reached"
+            + (f", {sat:.0f}% of this hop was known" if total else ""))
+        if hop >= depth:
+            break
+        # Follow what the field points at repeatedly, not everything: the next
+        # seeds are the works most of this hop's seeds already agree on.
+        ranked = sorted(reached.values(),
+                        key=lambda r: (len(r["by"]), r.get("cited_by") or 0),
+                        reverse=True)
+        frontier = [(openalex_short(r["openalex"]), r["title"], r.get("doi"))
+                    for r in ranked
+                    if openalex_short(r["openalex"]) not in state][
+                        :args.seeds or cfg["snowball_seeds"]]
+        if not frontier:
+            say("  nothing new to walk from; the graph closed here")
+            break
+
+    store.write_json("snowball.json", state)
+    if not all_rows:
+        return
+    search = {
+        "id": f"{today()}-snowball-{slugify(seeds[0][1], 24)}",
+        "query": f"snowball from {seeds[0][1]}" + (f" +{len(seeds) - 1} more"
+                                                   if len(seeds) > 1 else ""),
+        "vocabulary": "snowball", "indexes": ["openalex"], "unreachable": [],
+        "matched_total": {}, "when": now(), "found": len(reached),
+        "retrieved": len(reached), "depth": depth,
+        "results": [dict({k: v for k, v in r.items() if k != "by"},
+                         seeds_reaching=len(r["by"]))
+                    for r in sorted(reached.values(),
+                                    key=lambda r: (len(r["by"]),
+                                                   r.get("cited_by") or 0),
+                                    reverse=True)]}
+    store.save_search(search)
+
+    shared = [r for r in search["results"] if r["seeds_reaching"] > 1]
+    if shared:
+        say("")
+        say("reached from more than one seed, which no query would have told you:")
+        for r in shared[:10]:
+            say(f"  {r['seeds_reaching']} seeds  {r['year']} {str(r['cited_by']):>6}"
+                f"  {(r['title'] or '')[:52]}")
+        say("  A work several of your seeds point at is what the field agrees is "
+            "behind them. That is the canon, or the thing everyone is arguing with.")
+    else:
+        say("")
+        say("nothing was reached from more than one seed. Either the seed set is "
+            "too small to triangulate, or these works do not share a literature, "
+            "and the second would be the more interesting finding.")
+    say(f"  logged as {search['id']}; screen it like any other search")
 
 
 def cmd_screen(args):
@@ -3195,6 +3291,8 @@ def build_parser():
     s.add_argument("--forward", action="store_true", help="what cites the seed")
     s.add_argument("--both", action="store_true")
     s.add_argument("--limit", type=int); s.add_argument("--seeds", type=int)
+    s.add_argument("--depth", type=int,
+                   help="how many hops; each hop follows the works most seeds agree on")
     s.add_argument("--no-context", action="store_true", dest="no_context",
                    help="skip the Semantic Scholar lookup")
     s.set_defaults(fn=cmd_snowball)
