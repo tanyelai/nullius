@@ -99,6 +99,7 @@ Run them as `./.nullius/bin/nullius <cmd>` from the project root.
     falsify "<idea>" "<why it died>"
 
     lit "<query>" --vocabulary <name> [--index openalex|arxiv|europepmc]
+    snowball [citekey] [--back|--forward|--both]   the citation graph, from what you kept
     screen <search-id> <include|exclude> "<reason>" --index N
     screen <search-id> exclude "<reason>" --below-citations 1     in bulk, by rule
     walk                                   every required section, present/thin/absent
@@ -118,6 +119,8 @@ DEFAULT_CONFIG = {
     "vocabularies_suggested": 3,
     "indexes": ["openalex", "crossref", "arxiv", "europepmc"],
     "recent_years": 3,
+    "snowball_limit": 10,
+    "snowball_seeds": 5,
     "extension_window": 3,
     "extension_growth": 1.25,
     "section_thin_words": 80,
@@ -441,6 +444,27 @@ def document_url(u):
     """An index's `best OA location` is sometimes a graphical abstract. An image is
     not a copy of the paper, and offering one as a route to the text is a lie."""
     return u if u and not NOT_A_DOCUMENT.search(u) else None
+
+
+def s2_influential(doi, limit):
+    """Semantic Scholar marks the citations that actually build on a work. The
+    context sentences are sparse, present only where it parsed the citing paper's
+    full text, so they are shown when they exist and never promised."""
+    try:
+        d = http_json(
+            f"https://api.semanticscholar.org/graph/v1/paper/DOI:"
+            f"{urllib.parse.quote(doi, safe='')}/citations"
+            f"?fields=contexts,isInfluential,title,externalIds&limit={limit}")
+    except RuntimeError:
+        return {}
+    out = {}
+    for c in (d or {}).get("data") or []:
+        pid = (c.get("citingPaper") or {}).get("externalIds") or {}
+        key = (pid.get("DOI") or "").lower()
+        if key:
+            out[key] = {"influential": bool(c.get("isInfluential")),
+                        "context": (c.get("contexts") or [None])[0]}
+    return out
 
 
 def unpaywall_locations(doi, contact):
@@ -1322,6 +1346,29 @@ def unit_findings(store):
                               f"the author can address them without a re-review.")
 
     if unit.get("kind") == "survey":
+        state = snowball_state(store)
+        unwalked = []
+        for sr in store.searches():
+            for r in sr.get("results", []):
+                if r.get("screened") == "include" and r.get("openalex") and \
+                        openalex_short(r["openalex"]) not in state:
+                    unwalked.append(r.get("title", "")[:52])
+        offgraph = [r.get("title", "")[:52] for sr in store.searches()
+                    for r in sr.get("results", [])
+                    if r.get("screened") == "include" and not r.get("openalex")]
+        if offgraph:
+            chosen.append(f"{len(offgraph)} work(s) you kept carry no index record, "
+                          f"so the citation graph cannot be walked from them: "
+                          + "; ".join(sorted(set(offgraph))[:3])
+                          + ". Resolve them with `nullius cite` if they matter.")
+        if unwalked:
+            facts.append(
+                f"{len(unwalked)} work(s) you screened in have never been walked:\n"
+                "      " + "\n      ".join(sorted(set(unwalked))[:6])
+                + "\n    `nullius snowball`. A query finds what shares your words; "
+                  "the citation graph finds what the field itself linked, and it "
+                  "is the only thing a closed frontier can rest on.")
+
         unscreened = sum(1 for s in store.searches()
                          for w in s.get("results", [])
                          if w.get("screened") is None)
@@ -2289,7 +2336,8 @@ def cmd_lit(args):
                     matched["openalex_route"] = "full text, title and abstract was thin"
             for h in (res or {}).get("results") or []:
                 hits.append({
-                    "index": "openalex", "title": h.get("display_name", ""),
+                    "index": "openalex", "openalex": h.get("id"),
+                    "title": h.get("display_name", ""),
                     "year": h.get("publication_year"),
                     "doi": (h.get("doi") or "").replace("https://doi.org/", "") or None,
                     "cited_by": h.get("cited_by_count"),
@@ -2327,6 +2375,7 @@ def cmd_lit(args):
             if prev.get("cited_by") is None and h.get("cited_by") is not None:
                 prev["cited_by"] = h["cited_by"]
             prev["index"] = "+".join(sorted({prev["index"], h["index"]}))
+            prev["openalex"] = prev.get("openalex") or h.get("openalex")
             if h.get("arxiv"):
                 prev["arxiv"] = h["arxiv"]
             continue
@@ -2352,6 +2401,7 @@ def cmd_lit(args):
                 w = by_doi.get(r["doi"].lower())
                 if w:
                     r["cited_by"] = w.get("cited_by_count")
+                    r["openalex"] = r.get("openalex") or w.get("id")
                     r["index"] = "+".join(sorted({r["index"], "openalex"}))
 
     this_year = datetime.now(timezone.utc).year
@@ -2406,6 +2456,110 @@ def cmd_lit(args):
         f"<include|exclude> \"<reason>\" --index N")
     say(f"  or in bulk:  nullius screen {search['id']} exclude "
         f"\"no citations yet, deprioritised\" --below-citations 1")
+
+
+def snowball_state(store):
+    return store.read_json("snowball.json", {})
+
+
+def openalex_short(wid):
+    return (wid or "").rsplit("/", 1)[-1]
+
+
+def cmd_snowball(args):
+    """The citation graph, both directions. A keyword search finds what shares your
+    words; this finds what the field itself linked, which is the only thing that can
+    honestly stand behind a claim that the frontier is closed."""
+    store = Store(require_root())
+    cfg = store.config
+    state = snowball_state(store)
+    refs = store.refs
+
+    seeds = []
+    if args.citekey:
+        rec = refs.get(args.citekey) or die(f"'{args.citekey}' is not resolved.")
+        if not rec.get("openalex"):
+            die(f"'{args.citekey}' has no index record to walk from. The citation "
+                f"graph is OpenAlex's; a manually recorded source has no place in it.")
+        seeds.append((openalex_short(rec["openalex"]), rec["title"], rec.get("doi")))
+    else:
+        for sr in store.searches():
+            for r in sr.get("results", []):
+                if r.get("screened") != "include" or not r.get("openalex"):
+                    continue
+                wid = openalex_short(r["openalex"])
+                if wid in state or any(wid == s[0] for s in seeds):
+                    continue
+                seeds.append((wid, r.get("title", ""), r.get("doi")))
+        seeds = seeds[:args.seeds or cfg["snowball_seeds"]]
+    if not seeds:
+        say("nullius: nothing to walk from. Screen something in first -- the seed "
+            "set is what you decided was close, not what a query returned.")
+        return
+
+    limit = args.limit or cfg["snowball_limit"]
+    directions = ([("back", "cited_by"), ("forward", "cites")]
+                  if args.both or not (args.back or args.forward)
+                  else ([("back", "cited_by")] if args.back else []) +
+                       ([("forward", "cites")] if args.forward else []))
+    for wid, title, doi in seeds:
+        say(f"nullius: walking from {title[:58]}")
+        rows, counts = [], {}
+        for name, filt in directions:
+            try:
+                res = openalex("works", cfg["contact"], **{
+                    "filter": f"{filt}:{wid}", "sort": "cited_by_count:desc",
+                    "per-page": limit})
+            except RuntimeError as e:
+                say(f"  {name}: unreachable ({e})")
+                continue
+            hits = (res or {}).get("results") or []
+            counts[name] = ((res or {}).get("meta") or {}).get("count", len(hits))
+            influential = {}
+            if name == "forward" and doi and not args.no_context:
+                influential = s2_influential(doi, limit)
+            for h in hits:
+                hdoi = (h.get("doi") or "").replace("https://doi.org/", "").lower()
+                extra = influential.get(hdoi, {})
+                rows.append({
+                    "index": "openalex", "title": h.get("display_name", ""),
+                    "year": h.get("publication_year"), "doi": hdoi or None,
+                    "openalex": h.get("id"), "cited_by": h.get("cited_by_count"),
+                    "venue": ((h.get("primary_location") or {}).get("source")
+                              or {}).get("display_name"),
+                    "via": f"{name} from {title[:40]}",
+                    "influential": extra.get("influential"),
+                    "context": extra.get("context"),
+                    "screened": None, "reason": None})
+            say(f"  {name}: {counts[name]} in the graph, {len(hits)} retrieved"
+                + ("  (capped)" if counts[name] > len(hits) else ""))
+        if not rows:
+            continue
+        search = {
+            "id": f"{today()}-snowball-{slugify(title, 24)}",
+            "query": f"snowball from {title}", "vocabulary": "snowball",
+            "indexes": ["openalex"], "unreachable": [], "matched_total": counts,
+            "when": now(), "found": max(counts.values() or [0]),
+            "retrieved": len(rows), "seed": wid, "results": rows}
+        store.save_search(search)
+        state[wid] = {"title": title, "when": now(),
+                      "back": counts.get("back"), "forward": counts.get("forward"),
+                      "retrieved": len(rows),
+                      "capped": any(counts.get(k, 0) > limit for k in counts)}
+        store.write_json("snowball.json", state)
+        for r in rows[:8]:
+            flag = " influential" if r.get("influential") else ""
+            say(f"    {r['year']} {str(r['cited_by']):>6}{flag:>12}  "
+                f"{(r['title'] or '')[:52]}")
+            if r.get("context"):
+                say(f"        \"{r['context'].strip()[:78]}\"")
+        say(f"  logged as {search['id']}; screen it like any other search")
+    ctx_seen = any(r.get("context") for sr in store.searches()
+                   for r in sr.get("results", []))
+    if not ctx_seen and not args.no_context:
+        say("  no citation sentences came back. Semantic Scholar has them only "
+            "where it parsed the citing paper's full text, which is often not the "
+            "case, so they are shown when present and never counted on.")
 
 
 def cmd_screen(args):
@@ -2935,6 +3089,16 @@ def build_parser():
                    choices=["openalex", "arxiv", "europepmc"],
                    help="default: whatever .nullius/config.json lists")
     s.set_defaults(fn=cmd_lit)
+
+    s = sub.add_parser("snowball", help="walk the citation graph from what you kept")
+    s.add_argument("citekey", nargs="?")
+    s.add_argument("--back", action="store_true", help="what the seed cites")
+    s.add_argument("--forward", action="store_true", help="what cites the seed")
+    s.add_argument("--both", action="store_true")
+    s.add_argument("--limit", type=int); s.add_argument("--seeds", type=int)
+    s.add_argument("--no-context", action="store_true", dest="no_context",
+                   help="skip the Semantic Scholar lookup")
+    s.set_defaults(fn=cmd_snowball)
 
     s = sub.add_parser("screen", help="include or exclude retrieved works")
     s.add_argument("search")

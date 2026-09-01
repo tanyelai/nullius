@@ -129,6 +129,7 @@ knows the vocabulary: the gate that fires at startup carries it.
 | `thread` | open or list a research thread |
 | `falsify` | record an idea that died, and why |
 | `lit` | search the indexes and log the protocol |
+| `snowball` | walk the citation graph from what you kept |
 | `screen` | include or exclude retrieved works |
 | `walk` | every required section, present/thin/absent |
 | `scope` | what the draft itself rules out, and why |
@@ -175,6 +176,31 @@ Two things keep the boundary from becoming a shield:
 If a finding shares terms with a row, the tool says so and calls it a lead rather than a
 verdict, because a wrong match here suppresses a legitimate finding, and that is the
 direction of error worth being careful about.
+
+## Closing the frontier
+
+A query finds what shares your words. The citation graph finds what the field itself linked,
+and it is the only thing a claim that the frontier is closed can rest on.
+
+`nullius snowball` walks both directions from the works you **screened in**, not from what a
+query returned: backward into what a seed cites, forward into what cites it.
+
+```
+nullius: walking from ELEPHANT: Measuring and understanding social sycophancy
+  back: 61 in the graph, 5 retrieved  (capped)
+  forward: 98 in the graph, 5 retrieved  (capped)
+```
+
+Everything retrieved lands in a search log like any other, carrying how it was reached
+(`via back from ...`), and gets screened the same way. A `survey` unit cannot close while a
+work you kept has never been walked, which turns *the frontier is closed* from a claim into a
+count. A kept work the index does not carry cannot be walked at all, and that is reported
+rather than skipped.
+
+Where Semantic Scholar has parsed a citing paper's full text it also returns the sentence in
+which the citation appears, and whether the citation was influential. Those are **sparse**:
+present for some papers and not others, so the tool shows them when they exist and never
+counts on them.
 
 ## When a draft is only getting longer
 
@@ -343,7 +369,7 @@ the rule and can disagree with it in one place.
 | **P0** | invariants, templates, the vocabulary | **done** |
 | **P1** | ledger and CLI: `start`, `accept`, `claim`, `note`, `falsify`, `status`, `doctor` | **done** |
 | **P2** | the blocking gates: citation resolved, not retracted, read-depth cap, independence cap, untraded overrun | **done**, and pinned by tests |
-| **P3** | the literature spine: multi-index search and ranking, Crossref, arXiv, Europe PMC, Unpaywall, preprint hunting, the verbatim quote check | **done**; snowballing and citation-context are open |
+| **P3** | the literature spine | **done**: multi-index search and ranking, Crossref, arXiv, Europe PMC, Unpaywall, preprint hunting, the verbatim quote check, and snowballing in both directions |
 | **P4** | the calibration engine | **done**: the venue walk, the gap kinds, the permanent discharge of a `defensible` finding, the draft's own scope boundary, and the extension detector |
 | **P5** | a `stable` release branch, worked examples for two or three fields, public | open |
 

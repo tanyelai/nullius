@@ -5,6 +5,28 @@ and the CLI surface may change; when they do, the change is listed here with wha
 
 ## 0.1.0
 
+### Snowballing, and what closes a frontier
+
+`nullius snowball` walks the citation graph in both directions from the works screened
+**in**, rather than from whatever a query returned: backward through what a seed cites,
+forward through what cites it, each a single call. Results land in a search log like any
+other, carrying how they were reached, and screen the same way.
+
+A `survey` unit cannot close while a work you kept has never been walked. That turns *the
+frontier is closed* from a sentence into a count, which is what it needed to be: a keyword
+query only ever finds what shares your words. A kept work the index does not carry cannot be
+walked at all, and that is reported rather than quietly skipped.
+
+Semantic Scholar adds, where it has parsed the citing paper's full text, the sentence the
+citation sits in and whether it was influential. Measured before building on it: contexts
+came back for one of four citations of BERT and none of four of ResNet, and intents were
+empty throughout. So they are shown when present and never promised, and the tool says so
+when a walk returns none.
+
+Found while wiring it: search results never carried the index's work id, so nothing
+retrieved could be walked and the frontier check had nothing to see. It failed silently in
+both directions at once, which is the shape of bug that survives a green suite.
+
 ### The extension detector
 
 The 12-to-24 story, measured. Artifact length is sampled per file at the stop, and only when

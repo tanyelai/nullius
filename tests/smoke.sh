@@ -596,6 +596,43 @@ expect_exit 1 "and an index out of range is refused" \
   python3 "$NULLIUS" resolve 99 "nothing"
 cd ..
 
+# ------------------------------------------------- snowballing -------------
+# A query finds what shares your words. The citation graph finds what the field
+# itself linked, and it is the only thing a closed frontier can rest on.
+mkdir -p snow && cd snow
+python3 "$NULLIUS" init >/dev/null 2>&1
+SNOW_JSON="{\"cwd\":\"$PWD\"}"
+python3 "$NULLIUS" start sv survey "what exists" >/dev/null
+python3 "$NULLIUS" accept "the frontier is closed" >/dev/null
+python3 "$NULLIUS" close "at coverage:0-unscreened" >/dev/null
+python3 - <<'PYIN'
+import json, pathlib
+pathlib.Path(".nullius/searches").mkdir(parents=True, exist_ok=True)
+pathlib.Path(".nullius/searches/2026-05-05-s.json").write_text(json.dumps({
+    "id": "2026-05-05-s", "query": "s", "vocabulary": "first", "when": "now",
+    "found": 12, "retrieved": 2, "results": [
+        {"title": "kept and on the graph", "year": 2024, "cited_by": 9,
+         "openalex": "https://openalex.org/W111", "screened": "include",
+         "reason": "closest"},
+        {"title": "kept but off the graph", "year": 2024, "cited_by": 2,
+         "openalex": None, "screened": "include", "reason": "a blog"}]}, indent=2))
+PYIN
+expect_grep "never been walked" "a kept work that was never walked blocks a survey" \
+  python3 "$NULLIUS" status
+expect_grep "carry no index record" "and one the graph cannot reach is reported, not blocked" \
+  python3 "$NULLIUS" status
+python3 - <<'PYIN'
+import json, pathlib
+pathlib.Path(".nullius/snowball.json").write_text(json.dumps({
+    "W111": {"title": "kept and on the graph", "when": "now", "back": 40,
+             "forward": 9, "retrieved": 10, "capped": True}}, indent=2))
+PYIN
+out="$(python3 "$NULLIUS" status 2>&1)"
+printf '%s\n' "$out" | grep -q "never been walked" && bad "still asking after the walk" || ok
+expect_grep "nothing to walk from" "with no seed screened in, it says so" \
+  bash -c "rm -f .nullius/searches/*.json; python3 \"$NULLIUS\" snowball --no-context"
+cd ..
+
 echo
 echo "  $pass passed, $fail failed"
 [ "$fail" -eq 0 ]
