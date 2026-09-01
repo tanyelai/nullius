@@ -394,6 +394,47 @@ after="$(python3 "$NULLIUS" status | grep -o '^budget *[0-9]*' | tr -dc 0-9)"
 expect_grep "Ethics Statement" "but the walk still finds its sections" \
   python3 "$NULLIUS" walk
 
+# ------------------------- an idea unit enforces what it always claimed ------
+# Found by running a real idea through the tool: the per-kind acceptance table was
+# prose that could not fail, which is the exact thing this tool exists to replace.
+rm -f .nullius/searches/*.json
+expect_exit 0 "open an idea unit" python3 "$NULLIUS" start i2 idea "is it two things" --force
+expect_exit 0 "accept anything at all" python3 "$NULLIUS" accept "q"
+expect_exit 0 "close it" python3 "$NULLIUS" close "in the Methods"
+expect_grep "no search logged" "an idea with no search cannot close" python3 "$NULLIUS" status
+python3 - <<'PYIN'
+import json, pathlib
+pathlib.Path(".nullius/searches").mkdir(parents=True, exist_ok=True)
+pathlib.Path(".nullius/searches/2026-04-04-n.json").write_text(json.dumps({
+    "id": "2026-04-04-n", "query": "n", "vocabulary": "first", "when": "now",
+    "found": 9, "retrieved": 1, "results": [
+        {"title": "nearest thing", "year": 2025, "cited_by": 4,
+         "screened": "exclude", "reason": "not close"}]}, indent=2))
+PYIN
+expect_grep "empty neighbour set" "and neither can one that screened everything out" \
+  python3 "$NULLIUS" status
+python3 - <<'PYIN'
+import json, pathlib
+p = pathlib.Path(".nullius/searches/2026-04-04-n.json"); d = json.loads(p.read_text())
+d["results"][0]["screened"] = "include"
+p.write_text(json.dumps(d, indent=2))
+PYIN
+expect_grep "no killing assumption" "an idea needs something that would end it" \
+  python3 "$NULLIUS" status
+expect_exit 0 "record it" python3 "$NULLIUS" kills "if the two axes never separate, it is over"
+expect_grep "no cost estimate" "and something that says what it would take" \
+  python3 "$NULLIUS" status
+expect_exit 0 "record that too" python3 "$NULLIUS" cost "8 checkpoints, one reader, ten days"
+expect_hook stop 0 "and then it can close" "$CWD_JSON"
+
+# the decisions an idea rests on have to survive a dead context window
+expect_grep "what would end it" "the killing assumption crosses the boundary" \
+  bash -c "printf %s \"$CWD_JSON\" | python3 \"$NULLIUS\" _hook session-start"
+expect_grep "what it takes" "and so does the cost" \
+  bash -c "printf %s \"$CWD_JSON\" | python3 \"$NULLIUS\" _hook session-start"
+expect_grep "kept: nearest thing" "and why each kept paper was kept" \
+  bash -c "printf %s \"$CWD_JSON\" | python3 \"$NULLIUS\" _hook session-start"
+
 echo
 echo "  $pass passed, $fail failed"
 [ "$fail" -eq 0 ]

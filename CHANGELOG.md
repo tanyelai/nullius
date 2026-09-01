@@ -5,6 +5,40 @@ and the CLI surface may change; when they do, the change is listed here with wha
 
 ## 0.1.0
 
+### Found by doing the research, not by inspecting a document
+
+Ran a genuine session: an open question in LLM interpretability, three vocabularies,
+screening, and an idea unit taken to close. Five defects, and the first is the worst
+thing in this repository so far.
+
+- **the per-kind acceptance rules were prose that could not fail.** The vocabulary
+  injected into every session says an `idea` unit needs a dispositioned neighbour set,
+  a named killing assumption and a cost estimate, and that an empty neighbour set is
+  refused. `nullius accept "vibes"` was accepted. The tool was committing, in its own
+  documentation, the exact failure it exists to replace. Those three are enforced now,
+  and the vocabulary marks which kinds are gated and which only shape what `accept`
+  should say.
+- **relevance and impact were the same knob, and impact won.** The search asked OpenAlex
+  to sort its whole matching corpus by citation count, so the most-cited works sharing
+  any term came back: a 1982 paper on international regimes, at the top of a search
+  about moral reasoning in language models. Relevance gates now; citations per year
+  order what got through.
+- **full-text search dilutes.** The same intent matched 101,007 works through OpenAlex's
+  `search` and 31 through title and abstract, and only the second set was about the
+  subject. Title and abstract is the route now, with the loose one kept as a fallback
+  for when it returns almost nothing.
+- **`all:a b c` ORs its terms**, so arXiv answered a four-word question with 2,060,445
+  matches, and that figure then became the headline number that is supposed to make a
+  thin search undeniable. Terms are ANDed, and per-index counts are reported separately
+  rather than collapsed into one maximum.
+- **the durable half was not durable.** A killing assumption and a cost estimate, the
+  two decisions an idea actually rests on, were written to the ledger and never carried
+  across a context boundary. Neither was the screening state, nor why each kept paper
+  was kept. All of it crosses now, which is the only reason to have written it down.
+
+Also: a query of more than seven words is now called out as prose rather than a query,
+and two records of one work under different DOIs no longer both survive de-duplication.
+
 ### Found by running it against a real proposal
 
 A 26-page study plan, 14,000 words, naming sixteen arXiv papers. Three defects, one

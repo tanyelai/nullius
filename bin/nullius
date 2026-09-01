@@ -66,6 +66,11 @@ Run them as `./.nullius/bin/nullius <cmd>` from the project root.
 
     start <slug> <kind> "<question>" [--venue V] [--words N] [--artifact PATH]
         kind: read survey idea explain interpret critique write referee
+        idea    also needs: kills "<what would end it>" and cost "<what it takes>",
+                plus a search with something screened in. All three are enforced.
+        survey  needs every retrieved work screened. Enforced.
+        write   needs the venue walk and the budget. Enforced.
+        the others shape what `accept` should say; they are not gated.
     accept "<a question open right now>"   close "<the answer, with a locator>"
     trade "<what gets cut>"                status       done
     artifact <path> [--excluded]           --excluded: walked, not counted
@@ -386,7 +391,8 @@ def europepmc_search(query, limit, counter=None):
 def arxiv_search(query, limit, raw=False, counter=None):
     url = ("https://export.arxiv.org/api/query?"
            + urllib.parse.urlencode({
-               "search_query": query if raw else f"all:{query}",
+               "search_query": query if raw else " AND ".join(
+                   f"all:{w}" for w in re.findall(r"[\w'-]{3,}", query)) or f"all:{query}",
                "max_results": limit, "sortBy": "relevance"}))
     req = urllib.request.Request(url, headers={"User-Agent": "nullius"})
     try:
@@ -941,6 +947,31 @@ def unit_findings(store):
         facts += check_draft_text(store, text, rel)
         chosen += check_attribution(store, text, rel)
 
+    if unit.get("kind") == "idea":
+        # The vocabulary has always said an idea unit needs these three. Until now it
+        # only said it, which is the exact failure this tool exists to replace.
+        searches = store.searches()
+        screened_in = [r for sr in searches for r in sr.get("results", [])
+                       if r.get("screened") == "include"]
+        if not searches:
+            facts.append("an idea unit with no search logged. Silence is a failed "
+                         "search rather than novelty, so the neighbour set has to "
+                         "be looked for before the idea can be called open.")
+        elif not screened_in:
+            facts.append(f"{len(searches)} search(es) logged and nothing screened "
+                         f"in. An empty neighbour set is a red flag, not a green "
+                         f"light: it usually means the terms were wrong. Include "
+                         f"the nearest work even when it is not close, or record "
+                         f"why the field genuinely has none.")
+        if not unit.get("kills"):
+            facts.append("no killing assumption. `nullius kills \"<what would make "
+                         "you abandon this>\"` -- an idea no observation could end "
+                         "is not a test.")
+        if not unit.get("cost"):
+            facts.append("no cost estimate. `nullius cost \"<data, compute, access, "
+                         "approvals, calendar>\"` -- the ideas that die late are the "
+                         "ones nobody priced early.")
+
     if unit.get("kind") == "survey":
         unscreened = sum(1 for s in store.searches()
                          for w in s.get("results", [])
@@ -1191,6 +1222,28 @@ def cmd_close(args):
     unit["accept_answer"] = args.answer
     store.save_unit(unit)
     say("nullius: acceptance closed.")
+
+
+def cmd_kills(args):
+    """The observation that would make you abandon the idea. An idea that has none is
+    not an idea yet, and writing it down before the work is what stops it being
+    rewritten afterwards to match whatever happened."""
+    store = Store(require_root())
+    unit = store.unit or die("no open unit.")
+    unit["kills"] = args.text
+    store.save_unit(unit)
+    say("nullius: recorded. If that turns out to be true, the idea is over, and "
+        "saying so now is what makes it a test rather than a hope.")
+
+
+def cmd_cost(args):
+    """Data, compute, access, approvals, calendar. The ideas that die late are the
+    ones nobody priced early."""
+    store = Store(require_root())
+    unit = store.unit or die("no open unit.")
+    unit["cost"] = args.text
+    store.save_unit(unit)
+    say("nullius: recorded.")
 
 
 def cmd_trade(args):
@@ -1713,8 +1766,20 @@ def cmd_lit(args):
 
     if "openalex" in wanted:
         try:
-            res = openalex("works", cfg["contact"], search=args.query,
-                           **{"per-page": args.limit, "sort": "cited_by_count:desc"})
+            # Full-text search dilutes: the same intent matched 101,007 works through
+            # `search` and 31 through title and abstract, and only the second set was
+            # about the subject. Fall back to the loose route only if the tight one
+            # returns almost nothing.
+            res = openalex("works", cfg["contact"], **{
+                "filter": f"title_and_abstract.search:{filter_safe(args.query)}",
+                "per-page": args.limit})
+            tight = len((res or {}).get("results") or [])
+            if tight < 3:
+                loose = openalex("works", cfg["contact"], search=args.query,
+                                 **{"per-page": args.limit})
+                if len((loose or {}).get("results") or []) > tight:
+                    res = loose
+                    matched["openalex_route"] = "full text, title and abstract was thin"
             for h in (res or {}).get("results") or []:
                 hits.append({
                     "index": "openalex", "title": h.get("display_name", ""),
@@ -1724,6 +1789,7 @@ def cmd_lit(args):
                     "venue": ((h.get("primary_location") or {}).get("source")
                               or {}).get("display_name"),
                     "oa": bool((h.get("open_access") or {}).get("is_oa")),
+                    "relevance": h.get("relevance_score"),
                 })
             matched["openalex"] = ((res or {}).get("meta") or {}).get("count")
             reached.append("openalex")
@@ -1744,7 +1810,11 @@ def cmd_lit(args):
 
     seen, merged = {}, []
     for h in hits:
-        k = h.get("doi") or norm_title(h.get("title"))
+        title_key = norm_title(h.get("title"))
+        k = seen.get(title_key) is not None and title_key or (
+            h.get("doi") or title_key)
+        if title_key in seen:
+            k = title_key
         if k in seen:
             prev = merged[seen[k]]
             if prev.get("cited_by") is None and h.get("cited_by") is not None:
@@ -1754,6 +1824,8 @@ def cmd_lit(args):
                 prev["arxiv"] = h["arxiv"]
             continue
         seen[k] = len(merged)
+        if title_key:
+            seen[title_key] = len(merged)
         merged.append(dict(h, screened=None, reason=None))
 
     # arXiv and Europe PMC do not always carry a citation count, and a row with no
@@ -1790,17 +1862,26 @@ def cmd_lit(args):
         "id": f"{today()}-{slugify(args.query, 32)}", "query": args.query,
         "vocabulary": args.vocabulary or slugify(args.query, 32),
         "indexes": reached, "unreachable": failed, "matched": matched,
-        "when": now(), "found": max([v for v in matched.values() if v] or [0]),
+        "when": now(), "matched_total": matched,
+        "found": min([v for v in matched.values() if v] or [0]),
         "retrieved": len(ordered), "results": ordered,
     }
     store.save_search(search)
 
-    per = ", ".join(f"{k} {v if v is not None else '?'}" for k, v in matched.items())
+    words = len(re.findall(r"[\w'-]{3,}", args.query))
+    if words > 7:
+        say(f"nullius: that query is {words} words of prose. An index scores every "
+            f"one of them, so a question dilutes into whatever shares its common "
+            f"words. Three or four terms the field would actually use retrieves a "
+            f"different literature.")
+    per = ", ".join(f"{k} {v if v is not None else '?'}"
+                    for k, v in matched.items() if k != "openalex_route")
     say(f"nullius: retrieved {len(ordered)} distinct works. The indexes report "
         f"{per}"
         + (f"; unreachable: {', '.join(failed)}" if failed else ""))
-    say(f"  what you retrieved is a sample of that, and the gap is the finding -- "
-        f"not the four you read")
+    say(f"  relevance decides what is here, citations per year decide the order "
+        f"within it. A count from an index that answered a loose query is not a "
+        f"finding about the literature.")
     say(f"  ranked by citations per year -- raw counts would put a 2015 paper "
         f"above a 2026 one that matters more")
     for i, r in enumerate(ordered):
@@ -1885,7 +1966,11 @@ def cmd_coverage(args):
     if not searches:
         say("nullius: no searches logged yet. `nullius lit \"<query>\"`.")
         return
-    found = max([s.get("found", 0) for s in searches] or [0])
+    per_index = {}
+    for sr in searches:
+        for k, v in (sr.get("matched_total") or {}).items():
+            if v:
+                per_index[k] = max(per_index.get(k, 0), v)
     results = [r for s in searches for r in s.get("results", [])]
     screened = sum(1 for r in results if r["screened"] is not None)
     included = sum(1 for r in results if r["screened"] == "include")
@@ -1895,7 +1980,8 @@ def cmd_coverage(args):
     groups = author_groups(refs, list(refs.keys()))
     want = cfg["vocabularies_suggested"]
 
-    say(f"matched      {found:<6} the largest number any one index reported")
+    say("matched      " + (", ".join(f"{k} {v}" for k, v in sorted(per_index.items()))
+                            or "not recorded"))
     say(f"retrieved    {len(results):<6} screened {screened:<5} included {included}"
         f"  unscreened {len(results) - screened}")
     say(f"vocabularies {len(vocabs):<6} of {want} suggested"
@@ -2060,12 +2146,31 @@ def hook_session_start(payload):
         for f in sorted(inv.glob("*.md")):
             parts.append(f.read_text(encoding="utf-8").rstrip())
     unit = store.unit
+    cfg = store.config
     lines = []
     if unit:
         lines.append(f"Open unit: {unit['slug']} ({unit['kind']}) -- "
                      f"{unit['question']}")
-        lines.append(f"  accept: {unit.get('accept') or 'NOT DECLARED'}"
-                     + ("  [closed]" if unit.get("accept_closed") else ""))
+        lines.append(f"  accept: {unit.get('accept') or 'NOT DECLARED'}")
+        if unit.get("accept_answer"):
+            lines.append(f"  answered: {unit['accept_answer']}")
+        # These two are the decisions an idea rests on. Losing them at a context
+        # boundary is how an idea gets quietly rewritten to match what happened.
+        if unit.get("kills"):
+            lines.append(f"  what would end it: {unit['kills']}")
+        if unit.get("cost"):
+            lines.append(f"  what it takes: {unit['cost']}")
+        if unit.get("venue"):
+            budget, source = effective_budget(store, unit, cfg)
+            drafts = tracked_drafts(store, unit, counted_only=True)
+            words = sum(count_words(f.read_text(encoding="utf-8", errors="replace"))
+                        for f in drafts)
+            lines.append(f"  venue {unit['venue']}"
+                         + (f", {words}/{budget} words" if budget else ""))
+        for name, d in (unit.get("sections") or {}).items():
+            lines.append(f"  section '{name}': {d['as']}, {d['why']}")
+        if unit.get("trade"):
+            lines.append(f"  trade taken: {unit['trade']}")
         facts, chosen = unit_findings(store)
         for f in facts:
             lines.append(f"  fact:   {f}")
@@ -2075,6 +2180,21 @@ def hook_session_start(payload):
         lines.append("No unit is open, so nothing about the current work is "
                      "being checked. For anything past reading one paper: "
                      "`nullius start <slug> <kind> \"<question>\"`.")
+
+    searches = store.searches()
+    if searches:
+        results = [r for sr in searches for r in sr.get("results", [])]
+        inc = sum(1 for r in results if r.get("screened") == "include")
+        un = sum(1 for r in results if r.get("screened") is None)
+        vocabs = {sr.get("vocabulary") for sr in searches if sr.get("vocabulary")}
+        lines.append(f"Searches: {len(searches)} across {len(vocabs)} vocabular"
+                     f"{'y' if len(vocabs) == 1 else 'ies'}, {len(results)} "
+                     f"retrieved, {inc} included, {un} unscreened.")
+        for sr in searches:
+            kept = [r for r in sr.get("results", []) if r.get("screened") == "include"]
+            for r in kept[:4]:
+                lines.append(f"  kept: {(r.get('title') or '')[:64]}"
+                             + (f" -- {r.get('reason')}" if r.get("reason") else ""))
     refs = store.refs
     lines.append(f"Ledger: {len(refs)} reference(s), {len(store.claims())} claim(s).")
     tdir = store.p("threads")
@@ -2212,6 +2332,12 @@ def build_parser():
 
     s = sub.add_parser("close", help="answer the acceptance question")
     s.add_argument("answer"); s.set_defaults(fn=cmd_close)
+
+    s = sub.add_parser("kills", help="the observation that would end this idea")
+    s.add_argument("text"); s.set_defaults(fn=cmd_kills)
+
+    s = sub.add_parser("cost", help="what this idea would take to run")
+    s.add_argument("text"); s.set_defaults(fn=cmd_cost)
 
     s = sub.add_parser("trade", help="price an addition made over budget")
     s.add_argument("what"); s.set_defaults(fn=cmd_trade)
