@@ -434,14 +434,14 @@ in**. That is the method, and everything here is one application of it.
 [WHY.md](WHY.md) is the argument: what goes wrong, why instructions do not fix it, and what a
 harness has to constrain instead.
 
-**[ALGORITHMS.md](ALGORITHMS.md) is the interesting half.** Every mechanism in this tool
-replaced something that looked reasonable and did not work, and that file carries each one with
-the measurement that killed the naive version: the query that matched 15,277 works against the one
-that matched 811, the citation walk that offered a 1962 statistics paper as the canon of a
-field two decades younger, the guard that called a document clean while every reference in it
-was unverified.
-It is written to be argued with. If a mechanism there is wrong, the measurement is the thing to
-attack.
+**[algorithms/](algorithms/) is the interesting half.** Every mechanism in this tool replaced
+something that looked reasonable and did not work, and each entry carries the measurement that
+killed the naive version: the query that matched 15,277 works against the one that matched 811,
+the citation walk that offered a 1962 statistics paper as the canon of a field two decades
+younger, the guard that called a document clean while every reference in it was unverified.
+Written as schemas rather than prose where the mechanism has any structure, one file per stage,
+and open at the end of each on where it is still weak. If one is wrong, the measurement is the
+thing to attack.
 
 [examples/](examples/) has three worked fields: clinical machine learning, language model
 evaluation, and quantitative social science. The `field.md` files are real and you

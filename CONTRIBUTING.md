@@ -54,6 +54,13 @@ If something in [WHY.md](WHY.md) or [REFERENCES.md](REFERENCES.md) is wrong, ope
 Name the locator. The tool would refuse to let the claim stand without one, and the
 documents are held to the same bar, including the parts that flatter the design.
 
+## A new mechanism goes in algorithms/
+
+Four parts, in order: the naive thing that was tried, the measurement that killed it, the
+mechanism as a schema, and where it is still weak. An entry with no weakness listed has not
+been used enough. The measurement is what makes it arguable, and a mechanism nobody can argue
+with cannot be improved.
+
 ## Commits
 
 Say what changed and why it was wrong before. A commit message is the only place the

@@ -1,0 +1,85 @@
+# Retrieval
+
+## Relevance gates, impact orders
+
+**Naive.** Ask the index to sort its matches by citation count, so the important work is first.
+
+**Measured.** *retrieval augmented generation evaluation faithfulness*, sorted that way over
+15,277 matches, returned **"Revolutionizing healthcare: the role of artificial intelligence"**
+at the top. Sorting the whole corpus by citations returns the most cited work sharing **any**
+term, and *artificial intelligence* is a term.
+
+**Instead.**
+
+```
+candidates ← index.search(query)        # relevance decides membership
+ranked     ← sort(candidates, by = citations / age)   # impact decides order
+```
+
+Two knobs, never one. The index knows more about relevance than we do; we decide what to read
+first among what it returned.
+
+**Weak.** Relevance is whatever the index scores. There is no appeal.
+
+## Match title and abstract, not full text
+
+**Measured.** The same query: **15,277** through `search`, **811** through
+`title_and_abstract.search`. The top result changed from a general survey to *Evaluation of
+Retrieval-Augmented Generation: A Survey*, which was the subject.
+
+Full text is `--loose`, and says so when used.
+
+## Only a quoted phrase narrows
+
+**Measured**, same terms, three syntaxes:
+
+| syntax | matches |
+|---|---|
+| `retrieval augmented generation evaluation` | 13,655 |
+| `retrieval AND augmented AND generation AND evaluation` | 13,655 |
+| `"retrieval augmented generation" evaluation` | 13,239 |
+
+The first two being **identical** is the finding: `AND` is not an operator, it is another term
+to OR. Where terms do occur apart it bites: *context relevance answer faithfulness* matched
+**205**, `"answer faithfulness"` matched **65**, same paper on top.
+
+```
+sanitise(q):
+    keep letters, digits, spaces, hyphens, and DOUBLE QUOTES
+    drop an unclosed quote rather than send it
+    if unquoted_terms(q) > 3: warn that the index will OR them
+```
+
+arXiv has the same shape. `all:a b c d` matched **1,174,335** works, most of arXiv; the four
+terms ANDed matched **3,789**. Quoted phrases stay whole, loose words are ANDed.
+
+## An empty result is information
+
+**Naive.** Few results, so widen and return something.
+
+**Why it is wrong.** An empty title-and-abstract result says *the field does not use these
+words*, which is the finding that makes a literature search work. Substituting a looser search
+destroys it. Thin stays thin and says what it means; widening is opt-in.
+
+## Counts
+
+```
+impact(w)  = w.citations / max(1, this_year - w.year + 1)   # None if year unknown
+recent(w)  = w.year > this_year - 3 and w.citations < 1     # own band, not buried
+rule(w, n) = SKIP if w.citations is None                    # unknown ≠ zero
+             else w.citations < n
+```
+
+**Measured.** `(citations or 0) < n` swept away every row no index reported a count for, which
+were exactly the preprints enrichment had missed.
+
+Per-index totals are reported separately, never as one maximum: one index answering nonsense
+should not poison the number.
+
+## A rate limit is a wait, not a wall
+
+**Measured, by deserving it.** Enough calls and the index answers HTTP 429. The tool reported
+it as unreachable and the walk as closed, which reads as *the work is not there*.
+
+429 and 503 retry with backoff, honour `Retry-After`, and say what they are. A hop whose calls
+were refused reports itself incomplete rather than empty.

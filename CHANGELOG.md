@@ -8,7 +8,7 @@ and the CLI surface may change; when they do, the change is listed here with wha
 Everything on the roadmap is built. What changed in this release beyond the features listed
 under 0.1.0 is recorded in the entries below; what is worth reading first is new.
 
-**[ALGORITHMS.md](ALGORITHMS.md)** collects every mechanism with the measurement that killed
+**[algorithms/](algorithms/)** collects every mechanism with the measurement that killed
 the naive version of it: the query that matched 101,007 works against the one that matched 31,
 the citation walk that offered a 1962 statistics paper as the canon of a much younger
 field, the guard that
