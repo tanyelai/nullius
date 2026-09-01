@@ -643,12 +643,12 @@ src = io.open(sys.argv[1], encoding="utf-8").read()
 exec(compile(src.split("def main()")[0], "n", "exec"), ns)
 fs, aq = ns["filter_safe"], ns["arxiv_query"]
 checks = [
-    ('"a phrase" survives', '"' in fs('"learning-augmented algorithms"')),
+    ('"a phrase" survives', '"' in fs('"probability density estimation"')),
     ("a colon does not", ":" not in fs("Reasoners: a study")),
     ("nor a question mark", "?" not in fs("Are They Reasoners?")),
     ("an unclosed quote is dropped", '"' not in fs('half "quoted')),
-    ("arxiv ANDs loose words", aq("moral sycophancy models").count(" AND ") == 2),
-    ("arxiv keeps a phrase whole", 'all:"moral sycophancy"' in aq('"moral sycophancy" models')),
+    ("arxiv ANDs loose words", aq("kernel density estimators").count(" AND ") == 2),
+    ("arxiv keeps a phrase whole", 'all:"kernel density"' in aq('"kernel density" estimators')),
 ]
 print("\n".join(f"{'OK' if ok else 'NO'} {name}" for name, ok in checks))
 PYIN
@@ -661,11 +661,11 @@ while IFS= read -r line; do
 done <<< "$pure"
 
 # ------------------------------------------ a name is a citation too -------
-# arXiv:2310.15337 was the easy half. "Angelini and Ricci-Tersenghi report" is how
+# A bare arXiv id was the easy half. "Ostrom and Gardner report" is how
 # prose actually cites, and it is the form nothing else checks.
-printf 'Angelini and Ricci-Tersenghi report that greedy wins.\n' > byname.md
+printf 'Ostrom and Gardner report that the commons can hold.\n' > byname.md
 printf 'Bae reports that the gain does not exist.\n' > byname2.md
-printf 'Ricci-Tersenghi et al. showed it first.\n' > byname3.md
+printf 'Vaughan-Williams et al. showed it first.\n' > byname3.md
 printf 'As Author (2021) put it, the effect is real.\n' > byname4.md
 expect_exit 2 "an unresolved pair of names is refused" python3 "$NULLIUS" check byname.md
 expect_grep "A name is a citation" "and says why a name counts" \
@@ -680,10 +680,10 @@ python3 - <<'PYIN'
 import json, pathlib
 p = pathlib.Path(".nullius/refs.json"); d = json.loads(p.read_text())
 d["unicode2022"] = dict(d["alpha2021"], doi="10.7777/uni", openalex="https://openalex.org/Wuni",
-                        authors=[{"id": "A9", "name": "Federico Ricci‐Tersenghi"}])
+                        authors=[{"id": "A9", "name": "Elinor Vaughan‐Williams"}])
 p.write_text(json.dumps(d, indent=2))
 PYIN
-printf 'Ricci-Tersenghi et al. showed it first.\n' > byname6.md
+printf 'Vaughan-Williams et al. showed it first.\n' > byname6.md
 expect_exit 0 "a unicode hyphen in the index is not a different person" \
   python3 "$NULLIUS" check byname6.md
 
@@ -696,8 +696,8 @@ exec(compile(io.open(sys.argv[1], encoding="utf-8").read().split("def main()")[0
              "n", "exec"), ns)
 f = ns["indexes_for_field"]
 checks = [
-    ("biomedical gets europepmc", "europepmc" in (f("medical imaging and ECG") or [])),
-    ("cs does not", "europepmc" not in (f("learning-augmented algorithms") or [])),
+    ("biomedical gets europepmc", "europepmc" in (f("clinical radiology") or [])),
+    ("cs does not", "europepmc" not in (f("distributed systems") or [])),
     ("cs gets arxiv", "arxiv" in (f("mechanistic interpretability") or [])),
     ("social science gets neither", (f("economic sociology") or []) == ["openalex", "crossref"]),
     ("an unmatched field picks nothing", f("basket weaving") is None),
@@ -709,13 +709,13 @@ while IFS= read -r line; do
   case "$line" in OK*) ok ;; NO*) bad "field presets: ${line#NO }" ;; esac
 done <<< "$pure2"
 expect_grep "indexes for that field" "init says which indexes it chose" \
-  bash -c "mkdir -p fieldy && cd fieldy && python3 \"$NULLIUS\" init --field 'clinical ECG'"
+  bash -c "mkdir -p fieldy && cd fieldy && python3 \"$NULLIUS\" init --field 'clinical radiology'"
 expect_grep "no index preset matched" "and says when it could not choose" \
   bash -c "mkdir -p fieldy2 && cd fieldy2 && python3 \"$NULLIUS\" init --field 'basket weaving'"
 
 # ------------------- agreement is a share, and old is not the same as shared --
-# Thirteen seeds surfaced Parzen 1962 and kernel density estimation as "the canon"
-# of learning-augmented algorithms, because the frontier was ranked by citation
+# Thirteen seeds surfaced a 1962 statistics classic as "the canon" of a subject two
+# decades younger, because the frontier was ranked by citation
 # count after multiplicity. Going deeper amplified a weak signal into a wrong one.
 pure3="$(python3 - "$NULLIUS" <<'PYIN'
 import sys, io

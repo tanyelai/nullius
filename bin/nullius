@@ -657,9 +657,8 @@ def filter_safe(t):
     a colon, and a question mark, each return HTTP 400 rather than the work. Keep
     letters, digits, spaces and hyphens, and keep double quotes, because a quoted
     phrase is the only thing that makes the index AND its terms: measured on one
-    query, `learning-augmented algorithms prediction error` matched 806 works and
-    `"learning-augmented algorithms"` matched 201, and only the second set was the
-    subject."""
+    query, four bare terms matched 806 works and the same intent written as a quoted
+    phrase matched 201, and only the second set was the subject."""
     kept = re.sub(r"[^0-9A-Za-z\-\" ]", " ", t or "")
     if kept.count('"') % 2:                       # an unclosed quote is not a phrase
         kept = kept.replace('"', " ")
@@ -743,7 +742,7 @@ APOSTROPHES = dict.fromkeys(map(ord, "‘’ʼ´"), "'")
 
 
 def fold_name(name):
-    """An index writes Ricci-Tersenghi with U+2010 and a draft writes it with an
+    """An index writes a hyphenated surname with U+2010 and a draft writes it with an
     ASCII hyphen. They look identical and compare unequal, which would flag a work
     that was cited correctly: the direction of error worth avoiding."""
     n = (name or "").translate(DASHES).translate(APOSTROPHES)
@@ -752,8 +751,8 @@ def fold_name(name):
 
 
 def attributed_names(text, cfg):
-    """A name is how most prose actually cites. `arXiv:2310.15337` was the easy half;
-    "Angelini and Ricci-Tersenghi report" is the half that carries the claim."""
+    """A name is how most prose actually cites. A bare `arXiv:` id was the easy half;
+    "X and Y report" is the half that carries the claim."""
     out = set()
     for pat in cfg.get("attribution_patterns", []):
         for m in re.finditer(pat, text):
