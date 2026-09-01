@@ -1,0 +1,12 @@
+# LaTeX intermediates (tectonic skips most of these, other engines do not)
+*.aux
+*.log
+*.out
+*.toc
+*.synctex.gz
+*.fls
+*.fdb_latexmk
+*.bbl
+*.blg
+
+.DS_Store
