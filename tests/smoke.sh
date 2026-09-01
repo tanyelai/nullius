@@ -713,6 +713,36 @@ expect_grep "indexes for that field" "init says which indexes it chose" \
 expect_grep "no index preset matched" "and says when it could not choose" \
   bash -c "mkdir -p fieldy2 && cd fieldy2 && python3 \"$NULLIUS\" init --field 'basket weaving'"
 
+# ------------------- agreement is a share, and old is not the same as shared --
+# Thirteen seeds surfaced Parzen 1962 and kernel density estimation as "the canon"
+# of learning-augmented algorithms, because the frontier was ranked by citation
+# count after multiplicity. Going deeper amplified a weak signal into a wrong one.
+pure3="$(python3 - "$NULLIUS" <<'PYIN'
+import sys, io
+ns = {}
+exec(compile(io.open(sys.argv[1], encoding="utf-8").read().split("def main()")[0],
+             "n", "exec"), ns)
+era = 2020
+def key(r):
+    gap = abs((r.get("year") or era) - era)
+    return (len(r["by"]), -gap)
+ancient = {"by": [1, 2, 3], "year": 1962, "cited_by": 10593}
+current = {"by": [1, 2, 3], "year": 2021, "cited_by": 124}
+weaker  = {"by": [1, 2],    "year": 2021, "cited_by": 900}
+order = sorted([ancient, current, weaker], key=key, reverse=True)
+checks = [
+    ("the contemporary work leads at equal multiplicity", order[0] is current),
+    ("and a huge citation count does not rescue the ancient one", order[1] is ancient),
+    ("multiplicity still outranks recency", order[2] is weaker),
+    ("the gap default is a real number", isinstance(ns["DEFAULT_CONFIG"]["snowball_ancestor_gap"], int)),
+]
+print("\n".join(f"{'OK' if ok else 'NO'} {n}" for n, ok in checks))
+PYIN
+)"
+while IFS= read -r line; do
+  case "$line" in OK*) ok ;; NO*) bad "frontier ranking: ${line#NO }" ;; esac
+done <<< "$pure3"
+
 echo
 echo "  $pass passed, $fail failed"
 [ "$fail" -eq 0 ]

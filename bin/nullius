@@ -119,6 +119,7 @@ DEFAULT_CONFIG = {
     "vocabularies_suggested": 3,
     "indexes": ["openalex", "crossref", "arxiv", "europepmc"],
     "snowball_depth": 1,
+    "snowball_ancestor_gap": 12,
     "recent_years": 3,
     "snowball_limit": 10,
     "snowball_seeds": 5,
@@ -2640,7 +2641,8 @@ def cmd_snowball(args):
         if not rec.get("openalex"):
             die(f"'{args.citekey}' has no index record to walk from. The citation "
                 f"graph is OpenAlex's; a manually recorded source has no place in it.")
-        seeds.append((openalex_short(rec["openalex"]), rec["title"], rec.get("doi")))
+        seeds.append((openalex_short(rec["openalex"]), rec["title"],
+                      rec.get("doi"), rec.get("year")))
     else:
         for sr in store.searches():
             for r in sr.get("results", []):
@@ -2649,7 +2651,8 @@ def cmd_snowball(args):
                 wid = openalex_short(r["openalex"])
                 if wid in state or any(wid == x[0] for x in seeds):
                     continue
-                seeds.append((wid, r.get("title", ""), r.get("doi")))
+                seeds.append((wid, r.get("title", ""), r.get("doi"),
+                              r.get("year")))
         seeds = seeds[:args.seeds or cfg["snowball_seeds"]]
     if not seeds:
         say("nullius: nothing to walk from. Screen something in first -- the seed "
@@ -2663,12 +2666,15 @@ def cmd_snowball(args):
                   else ([("back", "cited_by")] if args.back else []) +
                        ([("forward", "cites")] if args.forward else []))
 
-    reached, all_rows, origin = {}, [], {w: t for w, t, _ in seeds}
+    seed_years = sorted(y for _, _, _, y in seeds if y)
+    era = seed_years[len(seed_years) // 2] if seed_years else None
+    oldest_seed = seed_years[0] if seed_years else None
+    reached, all_rows = {}, []
     frontier = list(seeds)
     for hop in range(1, depth + 1):
         say(f"hop {hop}: {len(frontier)} seed(s)")
         hop_rows, seen_before, new_here = [], 0, 0
-        for wid, title, doi in frontier:
+        for wid, title, doi, _sy in frontier:
             rows, counts = walk_one(cfg, wid, directions, limit, title, doi,
                                     not args.no_context)
             for r in rows:
@@ -2698,10 +2704,17 @@ def cmd_snowball(args):
             break
         # Follow what the field points at repeatedly, not everything: the next
         # seeds are the works most of this hop's seeds already agree on.
-        ranked = sorted(reached.values(),
-                        key=lambda r: (len(r["by"]), r.get("cited_by") or 0),
-                        reverse=True)
-        frontier = [(openalex_short(r["openalex"]), r["title"], r.get("doi"))
+        # Not by citation count. A work reached by three seeds with ten thousand
+        # citations and a 1962 date is an ancestor of everything, not this field's
+        # shared reference, and letting it lead the next hop walks the search into
+        # a different literature. Multiplicity first, then nearness to the seeds' era.
+        def frontier_key(r):
+            gap = abs((r.get("year") or era or 0) - era) if era else 0
+            return (len(r["by"]), -gap)
+
+        ranked = sorted(reached.values(), key=frontier_key, reverse=True)
+        frontier = [(openalex_short(r["openalex"]), r["title"], r.get("doi"),
+                     r.get("year"))
                     for r in ranked
                     if openalex_short(r["openalex"]) not in state][
                         :args.seeds or cfg["snowball_seeds"]]
@@ -2713,12 +2726,15 @@ def cmd_snowball(args):
     if not all_rows:
         return
     search = {
-        "id": f"{today()}-snowball-{slugify(seeds[0][1], 24)}",
-        "query": f"snowball from {seeds[0][1]}" + (f" +{len(seeds) - 1} more"
-                                                   if len(seeds) > 1 else ""),
+        # Naming a multi-seed walk after whichever seed happened to be first says
+        # something false about what was walked.
+        "id": f"{today()}-snowball-d{depth}-{len(seeds)}seeds",
+        "query": (f"snowball from {seeds[0][1]}" if len(seeds) == 1
+                  else f"snowball from {len(seeds)} seeds, depth {depth}"),
         "vocabulary": "snowball", "indexes": ["openalex"], "unreachable": [],
         "matched_total": {}, "when": now(), "found": len(reached),
         "retrieved": len(reached), "depth": depth,
+        "seeds": len(seeds), "era": era,
         "results": [dict({k: v for k, v in r.items() if k != "by"},
                          seeds_reaching=len(r["by"]))
                     for r in sorted(reached.values(),
@@ -2728,14 +2744,27 @@ def cmd_snowball(args):
     store.save_search(search)
 
     shared = [r for r in search["results"] if r["seeds_reaching"] > 1]
+    gap = cfg["snowball_ancestor_gap"]
     if shared:
         say("")
-        say("reached from more than one seed, which no query would have told you:")
-        for r in shared[:10]:
-            say(f"  {r['seeds_reaching']} seeds  {r['year']} {str(r['cited_by']):>6}"
-                f"  {(r['title'] or '')[:52]}")
+        say(f"reached from more than one of {len(seeds)} seeds, which no query "
+            f"would have told you:")
+        for r in shared[:12]:
+            share = r["seeds_reaching"] / max(1, len(seeds))
+            old = (oldest_seed and r.get("year")
+                   and r["year"] < oldest_seed - gap)
+            note = "  ancestor?" if old else ""
+            say(f"  {r['seeds_reaching']}/{len(seeds)} ({share:.0%})  {r['year']} "
+                f"{str(r['cited_by']):>6}  {(r['title'] or '')[:46]}{note}")
+        if any(r.get("year") and oldest_seed and r["year"] < oldest_seed - gap
+               for r in shared[:12]):
+            say(f"  `ancestor?` marks a work more than {gap} years older than your "
+                f"oldest seed. Reached by several seeds it is often an ancestor of "
+                f"everything nearby rather than this field's own reference, and it "
+                f"is a lead rather than a verdict.")
         say("  A work several of your seeds point at is what the field agrees is "
-            "behind them. That is the canon, or the thing everyone is arguing with.")
+            "behind them. Read the share, not the count: two of thirteen is noise, "
+            "and two of three is agreement.")
     else:
         say("")
         say("nothing was reached from more than one seed. Either the seed set is "
