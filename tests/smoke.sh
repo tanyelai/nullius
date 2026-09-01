@@ -210,6 +210,69 @@ expect_exit 0 "quote passes on the real string" \
 expect_exit 2 "quote refuses a near miss" \
   python3 "$NULLIUS" quote alpha2021 "improves recall by twenty percent"
 
+# ------------------------------------- what the review turned up, pinned ----
+# unknown is not zero: a rule about citation counts must not sweep away the rows
+# no index reported a count for.
+python3 - <<'PYIN'
+import json, pathlib
+pathlib.Path(".nullius/searches/2026-03-03-u.json").write_text(json.dumps({
+    "id": "2026-03-03-u", "query": "u", "vocabulary": "third", "when": "now",
+    "found": 90, "retrieved": 3, "results": [
+        {"title": "known zero", "year": 2020, "cited_by": 0, "screened": None, "reason": None},
+        {"title": "unknown", "year": 2024, "cited_by": None, "screened": None, "reason": None},
+        {"title": "cited", "year": 2019, "cited_by": 90, "screened": None, "reason": None}]},
+    indent=2))
+PYIN
+expect_grep "excluded 1 by rule" "a citation rule sweeps only the counts it has" \
+  python3 "$NULLIUS" screen 2026-03-03-u exclude "none yet" --below-citations 1
+expect_grep "unknown is not zero" "and says why it left the rest alone" \
+  python3 "$NULLIUS" screen 2026-03-03-u exclude "none yet" --below-citations 1
+
+# a budget nothing measures looks like a working gate and is not one
+expect_exit 0 "open a budgeted unit with nothing tracked" \
+  python3 "$NULLIUS" start b write "x" --words 10 --force
+expect_exit 0 "accept it" python3 "$NULLIUS" accept "does it hold"
+expect_exit 0 "close it"  python3 "$NULLIUS" close "shown in the Methods section"
+expect_hook stop 2 "a declared budget with no tracked draft refuses the stop" "$CWD_JSON"
+expect_grep "nothing is measuring it" "and names the omission" python3 "$NULLIUS" status
+printf 'one two three\n' > tracked.md
+expect_exit 0 "track something" python3 "$NULLIUS" artifact tracked.md
+expect_hook stop 0 "and allows once a draft is tracked" "$CWD_JSON"
+
+# a locator is anything the next reader can turn to -- and "yes" is not
+for good in "shown in Table 2" "see the Limitations" "draft.tex:88"; do
+  python3 "$NULLIUS" accept "q" --force >/dev/null 2>&1
+  expect_exit 0 "locator accepted: $good" python3 "$NULLIUS" close "$good"
+done
+for bad in "yes it is" "trust me" "obviously"; do
+  python3 "$NULLIUS" accept "q" --force >/dev/null 2>&1
+  expect_exit 1 "locator refused: $bad" python3 "$NULLIUS" close "$bad"
+done
+
+# the attribution heuristic reports a bare assertion and stays quiet on an
+# attributed one -- a check that can never fire is dead weight
+python3 "$NULLIUS" claim "the effect is large and general" --warrant authors-claim \
+  --status single-result --strength reports --source alpha2021 >/dev/null 2>&1
+printf 'The effect is large and general. We build on this.\n' > bare.md
+printf 'Smith et al. report the effect is large and general.\n' > cued.md
+expect_grep "bare assertion" "a weak claim written flat is reported" \
+  python3 "$NULLIUS" check bare.md
+expect_grep "clean" "the same claim, attributed, is not" \
+  python3 "$NULLIUS" check cued.md
+
+# threads were promised by the documentation and written by nothing
+expect_grep "no threads yet" "an empty thread list says so" python3 "$NULLIUS" thread
+expect_exit 0 "open a thread" python3 "$NULLIUS" thread "sample-efficiency"
+[ -f .nullius/threads/sample-efficiency.md ] && ok || bad "thread file not written"
+expect_grep "sample-efficiency" "and it lists" python3 "$NULLIUS" thread
+expect_grep "Threads open" "the session gate surfaces open threads" \
+  bash -c "printf %s \"$CWD_JSON\" | python3 \"$NULLIUS\" _hook session-start"
+
+# independence by name is weaker than independence by identifier, and says so
+expect_grep "name matching" "a name-matched group is flagged on the claim" \
+  python3 "$NULLIUS" claim "settled by name-matched groups" --warrant replicated \
+    --status established --strength holds --source lovelace2020 --source gamma2021
+
 echo
 echo "  $pass passed, $fail failed"
 [ "$fail" -eq 0 ]

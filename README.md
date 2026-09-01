@@ -93,6 +93,37 @@ and the write itself is refused.
 When you try to finish, `nullius status` says why the gate is holding — and which of its
 reasons are facts and which are thresholds somebody chose.
 
+## Every command
+
+Run them as `./.nullius/bin/nullius <command>`, or just ask Claude — the session already
+knows the vocabulary, because the gate that fires at startup carries it.
+
+| | |
+|---|---|
+| `init` | scaffold .nullius/ here |
+| `config` | read or set a config key |
+| `start` | open a work unit |
+| `accept` | declare what would close this unit |
+| `close` | answer the acceptance question |
+| `trade` | price an addition made over budget |
+| `artifact` | track a draft against this unit |
+| `cite` | resolve an identifier, or record a source no index |
+| `fulltext` | find a legal full text, and cache it |
+| `quote` | check a quote verbatim against cached text |
+| `note` | open a paper note at a read depth |
+| `claim` | record a claim with its warrant and status |
+| `thread` | open or list a research thread |
+| `falsify` | record an idea that died, and why |
+| `lit` | search the indexes and log the protocol |
+| `screen` | include or exclude retrieved works |
+| `coverage` | the counts, and what is unscreened |
+| `check` | run the write guards over a draft |
+| `status` | why the stop gate is refusing |
+| `done` | close the unit |
+| `doctor` | is this project still set up correctly |
+
+`--help` on any of them spells out its flags.
+
 ## The problem
 
 An AI assistant is a good research collaborator right up to the point where nothing can
@@ -219,7 +250,7 @@ the rule and can disagree with it in one place.
 | --- | --- | --- |
 | **P0** | invariants, templates, the vocabulary | **done** |
 | **P1** | ledger and CLI — `start`, `accept`, `claim`, `note`, `falsify`, `status`, `doctor` | **done** |
-| **P2** | the blocking gates — citation resolved, not retracted, read-depth cap, independence cap, untraded overrun | **done**, 46 assertions both directions |
+| **P2** | the blocking gates — citation resolved, not retracted, read-depth cap, independence cap, untraded overrun | **done**, and pinned by tests |
 | **P3** | the literature spine — multi-index search and ranking, Crossref, arXiv, Europe PMC, Unpaywall, preprint hunting, the verbatim quote check | **done**; snowballing and citation-context are open |
 | **P4** | the venue completeness walk, the gap kinds, the extension detector | open — the calibration engine is the part most likely to be wrong on first contact |
 | **P5** | a `stable` release branch, worked examples for two or three fields, public | open |

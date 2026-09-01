@@ -335,11 +335,13 @@ def crossref_lookup(doi, contact):
     }
 
 
-def europepmc_search(query, limit):
+def europepmc_search(query, limit, counter=None):
     d = http_json("https://www.ebi.ac.uk/europepmc/webservices/rest/search?"
                   + urllib.parse.urlencode({
                       "query": query, "format": "json", "pageSize": limit,
                       "resultType": "core"}))
+    if counter is not None:
+        counter["europepmc"] = (d or {}).get("hitCount")
     out = []
     for r in ((d or {}).get("resultList") or {}).get("result", []):
         out.append({
@@ -354,7 +356,7 @@ def europepmc_search(query, limit):
     return out
 
 
-def arxiv_search(query, limit, raw=False):
+def arxiv_search(query, limit, raw=False, counter=None):
     url = ("https://export.arxiv.org/api/query?"
            + urllib.parse.urlencode({
                "search_query": query if raw else f"all:{query}",
@@ -365,6 +367,9 @@ def arxiv_search(query, limit, raw=False):
             xml = r.read().decode("utf-8", "replace")
     except (urllib.error.URLError, urllib.error.HTTPError):
         return []
+    if counter is not None:
+        m = re.search(r"<opensearch:totalResults[^>]*>(\d+)<", xml)
+        counter["arxiv"] = int(m.group(1)) if m else None
     out = []
     for entry in xml.split("<entry>")[1:]:
         def tag(name):
@@ -461,12 +466,6 @@ def arxiv_lookup(arxiv_id):
         "authors": names,
         "abs_url": f"https://arxiv.org/abs/{arxiv_id}",
     }
-
-
-class _Resolved(Exception):
-    def __init__(self, work):
-        super().__init__("resolved")
-        self.work = work
 
 
 def record_from_arxiv(meta, arxiv_id):
@@ -699,7 +698,11 @@ def unit_findings(store):
                           f"framing, and that is how a literature goes missing.")
 
     budget = (unit.get("budget") or {}).get("words")
-    if budget:
+    if budget and not tracked_drafts(store, unit):
+        facts.append(f"a budget of {budget} words is declared and no draft is "
+                     f"tracked against it, so nothing is measuring it. "
+                     f"`nullius artifact <path>`, or drop the budget.")
+    elif budget:
         words = sum(count_words(f.read_text(encoding="utf-8", errors="replace"))
                     for f in tracked_drafts(store, unit))
         if words > budget and not unit.get("trade"):
@@ -707,6 +710,15 @@ def unit_findings(store):
                          f"Over budget an addition is a trade, not an addition: "
                          f"record what it costs with `nullius trade \"<what "
                          f"gets cut>\"`, or subtract.")
+
+    named = [c for c in store.claims()
+             if c.get("independence_by_name")
+             and c.get("status") in STATUS_NEEDS_GROUPS]
+    if named:
+        chosen.append(f"{len(named)} claim(s) reach their status through author "
+                      f"names rather than identifiers. Two spellings of one "
+                      f"person read as two groups, so the independence is "
+                      f"weaker than the label suggests.")
 
     singles = [c for c in store.claims() if len(c.get("sources", [])) == 1]
     if singles:
@@ -825,11 +837,22 @@ def cmd_close(args):
     unit = store.unit or die("no open unit.")
     if not unit.get("accept"):
         die("nothing to close -- no acceptance question was declared.")
-    locator = r"(\w+:[\w./#-]+)|\b(table|fig(ure)?|section|sec|eq|p{1,2}|page)\.?\s*\d"
+    # A locator is anything the next reader can turn to. A named part of a paper
+    # counts; "yes it is" does not.
+    locator = "|".join([
+        r"\w+:[\w./#-]+",
+        r"\u00a7\s*[\w.-]+",
+        r"\b(?:table|fig(?:ure)?|section|sec|eq(?:uation)?|p{1,2}|page|chapter|"
+        r"appendix|listing|algorithm|line)\.?\s*[\w.-]*\d",
+        r"\b(?:abstract|introduction|methods?|materials|results?|discussion|"
+        r"conclusions?|limitations|related work|appendix|supplement\w*)\b",
+    ])
     if not re.search(locator, args.answer, re.I):
         die("that answer carries no locator. An acceptance answer has to be "
-            "re-checkable by the next reader: a file:line, a table, a section, "
-            "a page. Otherwise it is an assertion about your own work.")
+            "re-checkable by the next reader -- draft.tex:88, Table 2, \u00a73.1, "
+            "p. 7, or a named section such as Methods. Otherwise it is an "
+            "assertion about your own work, and you are the one person who "
+            "cannot check it.")
     unit["accept_closed"] = True
     unit["accept_answer"] = args.answer
     store.save_unit(unit)
@@ -1186,12 +1209,24 @@ def cmd_note(args):
     tpl = Path(__file__).resolve().parent.parent / "templates" / "paper-note.md"
     body = tpl.read_text(encoding="utf-8") if tpl.is_file() else \
         "read_depth: {depth}\n\n# {title}\n"
-    f.write_text(body.format(
-        citekey=args.citekey, depth=args.depth, title=rec["title"],
-        year=rec.get("year"), venue=rec.get("venue") or "",
-        doi=rec.get("doi") or "", retracted=str(rec.get("retracted")).lower(),
-        peer_reviewed=str(rec.get("peer_reviewed")).lower(), date=today(),
-    ), encoding="utf-8")
+    fields = {
+        "citekey": args.citekey, "depth": args.depth, "title": rec["title"],
+        "year": rec.get("year"), "venue": rec.get("venue") or "",
+        "doi": rec.get("doi") or "", "retracted": str(rec.get("retracted")).lower(),
+        "peer_reviewed": str(rec.get("peer_reviewed")).lower(), "date": today(),
+    }
+    try:
+        filled = body.format(**fields)
+    except (KeyError, IndexError, ValueError):
+        # templates/ is meant to be edited, and an edit may add a brace that
+        # str.format cannot read. Substituting the known fields is better than
+        # refusing to open a note.
+        filled = body
+        for k, v in fields.items():
+            filled = filled.replace("{" + k + "}", str(v))
+        say("  the template carries braces str.format could not read; the known "
+            "fields were substituted and the rest left as written.")
+    f.write_text(filled, encoding="utf-8")
     say(f"nullius: {os.path.relpath(f, store.root)} ({args.depth})")
     say("  the three mandatory fields are the point: the gap between claimed and "
         "evidenced, what it does not show, and what you still do not understand.")
@@ -1250,12 +1285,14 @@ def cmd_claim(args):
                 f"not independent replication -- use `emerging` or "
                 f"`single-result`, or add a group.")
 
+    by_name = [x for x in sources if refs[x].get("author_ids") == "name"]
     claims = store.claims()
     claim = {
         "id": f"c{len(claims) + 1:03d}", "text": args.text,
         "warrant": args.warrant, "status": args.status,
         "strength": args.strength, "sources": sources,
         "locator": args.locator or "", "created": now(),
+        "independence_by_name": by_name,
     }
     store.append_claim(claim)
     say(f"nullius: {claim['id']} recorded ({args.warrant} / {args.status} / "
@@ -1263,6 +1300,38 @@ def cmd_claim(args):
     if args.status in ("single-result", "folklore") or args.warrant == "authors-claim":
         say("  this may not be written as a bare assertion. Attribute and "
             "situate it in the prose.")
+    if by_name and need:
+        say(f"  independence here rests on name matching for "
+            f"{', '.join(by_name)} -- two spellings of one person would read as "
+            f"two groups. Weaker than it looks.")
+
+
+def cmd_thread(args):
+    """The unit that outlives a context window. Promised by the documentation and,
+    until this existed, written by nothing."""
+    store = Store(require_root())
+    d = store.p("threads")
+    d.mkdir(parents=True, exist_ok=True)
+    if not args.slug:
+        threads = sorted(d.glob("*.md"))
+        if not threads:
+            say("nullius: no threads yet. `nullius thread <slug>` opens one.")
+            return
+        for f in threads:
+            head = f.read_text(encoding="utf-8")
+            q = re.search(r"^## The question\s*\n+(.+)$", head, re.M)
+            say(f"  {f.stem:<24} {(q.group(1).strip()[:52] if q else '(no question yet)')}")
+        return
+    f = d / f"{slugify(args.slug, 48)}.md"
+    if f.is_file():
+        say(f"nullius: {os.path.relpath(f, store.root)} already exists.")
+        return
+    tpl = Path(__file__).resolve().parent.parent / "templates" / "thread.md"
+    body = tpl.read_text(encoding="utf-8") if tpl.is_file() else "# Thread\n"
+    f.write_text(body.replace("<slug>", args.slug), encoding="utf-8")
+    say(f"nullius: {os.path.relpath(f, store.root)}")
+    say("  the current best answer carries its warrant and its status. Without "
+        "those it is a note to self, and a note to self is what you already had.")
 
 
 def cmd_falsify(args):
@@ -1277,18 +1346,17 @@ def cmd_falsify(args):
 def impact(rec):
     """Citations per year since publication. Raw counts rank a 2015 paper above a
     2026 one that matters more, which is the wrong ordering for a live search."""
-    c = rec.get("cited_by")
-    if c is None:
+    c, y = rec.get("cited_by"), rec.get("year")
+    if c is None or not y:
         return None
-    age = max(1, datetime.now(timezone.utc).year - (rec.get("year") or 0) + 1)
-    return c / age
+    return c / max(1, datetime.now(timezone.utc).year - y + 1)
 
 
 def cmd_lit(args):
     store = Store(require_root())
     cfg = store.config
     wanted = args.index or cfg["indexes"]
-    hits, reached, failed = [], [], []
+    hits, reached, failed, matched = [], [], [], {}
 
     if "openalex" in wanted:
         try:
@@ -1304,21 +1372,20 @@ def cmd_lit(args):
                               or {}).get("display_name"),
                     "oa": bool((h.get("open_access") or {}).get("is_oa")),
                 })
-            reached.append(f"openalex({(res or {}).get('meta', {}).get('count', 0)})")
+            matched["openalex"] = ((res or {}).get("meta") or {}).get("count")
+            reached.append("openalex")
         except RuntimeError as e:
             failed.append(f"openalex ({e})")
     if "arxiv" in wanted:
         try:
-            got = arxiv_search(args.query, args.limit)
-            hits += got
-            reached.append(f"arxiv({len(got)})")
+            hits += arxiv_search(args.query, args.limit, counter=matched)
+            reached.append("arxiv")
         except RuntimeError as e:
             failed.append(f"arxiv ({e})")
     if "europepmc" in wanted:
         try:
-            got = europepmc_search(args.query, args.limit)
-            hits += got
-            reached.append(f"europepmc({len(got)})")
+            hits += europepmc_search(args.query, args.limit, counter=matched)
+            reached.append("europepmc")
         except RuntimeError as e:
             failed.append(f"europepmc ({e})")
 
@@ -1362,19 +1429,25 @@ def cmd_lit(args):
     recent = [r for r in ranked
               if (r.get("year") or 0) > cutoff and (r.get("cited_by") or 0)
               < cfg["rank_floor_citations"]]
-    body = [r for r in ranked if r not in recent]
+    recent_ids = {id(r) for r in recent}
+    body = [r for r in ranked if id(r) not in recent_ids]
     ordered = body + recent
 
     search = {
         "id": f"{today()}-{slugify(args.query, 32)}", "query": args.query,
         "vocabulary": args.vocabulary or slugify(args.query, 32),
-        "indexes": reached, "unreachable": failed,
-        "when": now(), "found": len(ordered), "results": ordered,
+        "indexes": reached, "unreachable": failed, "matched": matched,
+        "when": now(), "found": max([v for v in matched.values() if v] or [0]),
+        "retrieved": len(ordered), "results": ordered,
     }
     store.save_search(search)
 
-    say(f"nullius: {len(ordered)} distinct works from {', '.join(reached) or 'nothing'}"
+    per = ", ".join(f"{k} {v if v is not None else '?'}" for k, v in matched.items())
+    say(f"nullius: retrieved {len(ordered)} distinct works. The indexes report "
+        f"{per}"
         + (f"; unreachable: {', '.join(failed)}" if failed else ""))
+    say(f"  what you retrieved is a sample of that, and the gap is the finding -- "
+        f"not the four you read")
     say(f"  ranked by citations per year -- raw counts would put a 2015 paper "
         f"above a 2026 one that matters more")
     for i, r in enumerate(ordered):
@@ -1405,11 +1478,20 @@ def cmd_screen(args):
     if args.below_citations is not None or args.all_remaining:
         # One recorded rule beats forty individual judgements, and it is the more
         # reproducible of the two: the next reader can see what was applied.
-        touched = 0
+        touched, unknown = 0, 0
         for r in rows:
             if r["screened"] is not None:
                 continue
-            if args.all_remaining or (r.get("cited_by") or 0) < args.below_citations:
+            if args.all_remaining:
+                hit = True
+            elif r.get("cited_by") is None:
+                # An index that does not report a count has not reported zero. Sweeping
+                # these away drops exactly the preprints the count could not be found for.
+                unknown += 1
+                continue
+            else:
+                hit = r["cited_by"] < args.below_citations
+            if hit:
                 r["screened"] = args.decision
                 r["reason"] = args.reason
                 r["by_rule"] = ("all-remaining" if args.all_remaining
@@ -1423,6 +1505,9 @@ def cmd_screen(args):
         store.save_search(search)
         left = sum(1 for r in rows if r["screened"] is None)
         say(f"nullius: {args.decision}d {touched} by rule. {left} unscreened.")
+        if unknown:
+            say(f"  {unknown} left alone: no index reported a citation count for "
+                f"them, and unknown is not zero. Judge those on the abstract.")
         if args.decision == "exclude" and args.below_citations:
             say("  recorded as a rule, so it is one exclusion criterion rather "
                 "than forty judgements -- and a reader can disagree with it "
@@ -1447,7 +1532,7 @@ def cmd_coverage(args):
     if not searches:
         say("nullius: no searches logged yet. `nullius lit \"<query>\"`.")
         return
-    found = sum(s.get("found", 0) for s in searches)
+    found = max([s.get("found", 0) for s in searches] or [0])
     results = [r for s in searches for r in s.get("results", [])]
     screened = sum(1 for r in results if r["screened"] is not None)
     included = sum(1 for r in results if r["screened"] == "include")
@@ -1457,8 +1542,9 @@ def cmd_coverage(args):
     groups = author_groups(refs, list(refs.keys()))
     want = cfg["vocabularies_suggested"]
 
-    say(f"found        {found:<6} screened {screened:<5} included   {included}")
-    say(f"retrieved    {len(results):<6} unscreened {len(results) - screened}")
+    say(f"matched      {found:<6} the largest number any one index reported")
+    say(f"retrieved    {len(results):<6} screened {screened:<5} included {included}"
+        f"  unscreened {len(results) - screened}")
     say(f"vocabularies {len(vocabs):<6} of {want} suggested"
         + ("" if len(vocabs) >= want else
            "  -- try the field's terms, not yours"))
@@ -1633,6 +1719,12 @@ def hook_session_start(payload):
                      "`nullius start <slug> <kind> \"<question>\"`.")
     refs = store.refs
     lines.append(f"Ledger: {len(refs)} reference(s), {len(store.claims())} claim(s).")
+    tdir = store.p("threads")
+    if tdir.is_dir():
+        names = sorted(f.stem for f in tdir.glob("*.md"))
+        if names:
+            lines.append(f"Threads open: {', '.join(names[:10])}"
+                         + (f" (+{len(names) - 10} more)" if len(names) > 10 else ""))
     fals = store.p("falsified.md")
     if fals.is_file():
         killed = re.findall(r"^## (.+)$", fals.read_text(encoding="utf-8"), re.M)
@@ -1796,6 +1888,9 @@ def build_parser():
     s.add_argument("--strength", default="reports", choices=CLAIM_STRENGTHS)
     s.add_argument("--source", action="append"); s.add_argument("--locator")
     s.set_defaults(fn=cmd_claim)
+
+    s = sub.add_parser("thread", help="open or list a research thread")
+    s.add_argument("slug", nargs="?"); s.set_defaults(fn=cmd_thread)
 
     s = sub.add_parser("falsify", help="record an idea that died, and why")
     s.add_argument("idea"); s.add_argument("why"); s.set_defaults(fn=cmd_falsify)

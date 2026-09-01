@@ -5,6 +5,31 @@ and the CLI surface may change; when they do, the change is listed here with wha
 
 ## 0.1.0
 
+### Found by reviewing the first cut
+
+Seven defects, each fixed and pinned by a test:
+
+- a citation-count rule swept away rows **no index reported a count for** — unknown is not
+  zero, and the rows it dropped were exactly the preprints enrichment had missed
+- a declared word budget with no tracked draft measured zero and reported *finishable*: a
+  gate that looks like it is working and is not. It now refuses and names the omission
+- `found` had come to mean *retrieved*, which destroyed the one number that makes a thin
+  search undeniable. Index totals and retrieval are reported separately again
+- a work with no publication year sank to the bottom of the ranking as though it had no
+  impact, rather than being unrankable
+- an index's "best open-access location" is sometimes the graphical abstract, and offering
+  a JPEG as a route to the text is a lie
+- OpenAlex reads `:` as a filter operator, so every title carrying a colon — most of them
+  in this field — returned HTTP 400 instead of the work
+- `threads/` was promised by the documentation and written by nothing. `nullius thread`
+  exists now, and the session gate surfaces open ones
+
+Also: the acceptance locator rule refused *"stated in the Methods section"* and *"§3.1"*,
+which are locators; it now takes a named part of a paper and still refuses "yes it is". And
+a status reached through author **names** rather than identifiers is flagged on the claim —
+two spellings of one person read as two independent groups, which is weaker than the label
+suggests.
+
 First working version. Installable as a Claude Code plugin; nothing to install beyond
 Python 3.
 

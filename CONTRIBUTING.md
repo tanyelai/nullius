@@ -11,7 +11,7 @@ because a gate that only ever passes is not a gate, and a gate that always fires
 switched off within a week.
 
 ```bash
-bash tests/smoke.sh        # 60 assertions, a few seconds
+bash tests/smoke.sh        # a few seconds, no network
 ```
 
 If your change makes a gate stricter, add the case it now refuses *and* a neighbouring case

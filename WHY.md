@@ -233,14 +233,14 @@ into a nuisance.
 
 | facts · these refuse the stop | chosen · these are reported and marked |
 | --- | --- |
-| the acceptance question is still open | a citation trail that never reaches data |
-| a citation is unresolved, or retracted | source independence looking thin |
-| a quote is not verbatim against cached text | fewer vocabularies than suggested |
-| a claim sits above its source's read depth | passes with no new external object |
-| a status is stronger than independence earns | a one-sided support/refute balance |
-| a required section was never walked | the extension-loop signal |
-| over the format budget with no trade named | single-source claims present |
-| a survey unit left items unscreened | judge scores, for ranking only |
+| the acceptance question is still open, or closed with no locator | fewer vocabularies than suggested |
+| a citation is unresolved, or retracted | single-source claims present |
+| a claim sits above its source's read depth | a status reached through author *names* rather than identifiers |
+| a status is stronger than source independence earns | a weak claim written as a bare assertion |
+| a source kind cannot carry the status claimed of it | a citation trail that never reaches data |
+| a survey unit left items unscreened | the extension-loop signal |
+| over the format budget with no trade named | judge scores, for ranking only |
+| a budget is declared and no draft is tracked against it | |
 
 The left column needs no calibration to be right. The right column would need a hundred or
 two labelled examples and an agreement measure before it could honestly refuse anything, and
@@ -295,7 +295,9 @@ wrong in its own. So the tool ships knowing nothing, and the norms are configura
   cite a line in this file, so the tool cannot invent a requirement.
 - **`program.md`** — what you are actually working on, so a thread that does not trace to it
   can be flagged as the distraction it is.
-- **`threads/`, `papers/`, `claims.jsonl`, `falsified.md`** — the durable record. This is the
+- **`threads/`, `papers/`, `claims.jsonl`, `falsified.md`** — the durable record. A thread
+  holds the question, the current best answer *with its warrant and its status*, what would
+  change it, what has been ruled out, and the next falsifiable step. This is the
   half that survives a dead context window, and a dead semester.
 
 > **The one file people underestimate.** `falsified.md` holds the ideas you killed and why.
