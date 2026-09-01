@@ -5,6 +5,25 @@ and the CLI surface may change; when they do, the change is listed here with wha
 
 ## 0.1.0
 
+### The extension detector
+
+The 12-to-24 story, measured. Artifact length is sampled per file at the stop, and only when
+the measured state moves, so the series counts turns rather than keystrokes. Beside it runs
+a count of `fatal` and `material` findings actually closed with `nullius resolve`, across
+every unit the project has run.
+
+Growth on its own is not the signal and the detector says so: a draft that grew while four
+material findings were fixed is a draft being worked on. Growth across three turns with
+nothing closed is the other thing, and it is reported with the numbers rather than as an
+impression.
+
+It is a chosen threshold, so it reports and never ends a turn. Three turns and a quarter of
+growth are numbers somebody picked, and the tool says which of its reasons are like that.
+
+`nullius findings` lists what a unit has found and what closed; `nullius resolve <n> "<what
+changed>"` closes one. Until this existed there was nothing to count, which is why the
+detector could not have been built before the critique gate was.
+
 ### A draft can declare its own scope boundary
 
 `nullius scope` reads what the draft rules out from the draft itself, out of a markdown

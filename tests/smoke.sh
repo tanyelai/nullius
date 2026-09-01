@@ -548,6 +548,54 @@ expect_grep "out: A human persuasion study" "the boundary crosses a context boun
 expect_grep "no tracked draft declares" "and a draft without one says so plainly" \
   bash -c "python3 \"$NULLIUS\" artifact tracked.md >/dev/null; python3 \"$NULLIUS\" start nb critique q --artifact tracked.md --force >/dev/null; python3 \"$NULLIUS\" scope"
 
+# --------------------------------------------- the extension detector ------
+# The 12-to-24 story, in miniature. Growth is not the signal; growth with nothing
+# closed is, because a draft that grew while four material findings were fixed is
+# a draft being worked on.
+mkdir -p loop && cd loop
+python3 "$NULLIUS" init >/dev/null 2>&1
+LOOP_JSON="{\"cwd\":\"$PWD\"}"
+python3 -c "open('p.md','w').write('# Method\n' + 'word '*3000)"
+expect_exit 0 "open a write unit over a draft" \
+  python3 "$NULLIUS" start w1 write "revise" --artifact p.md
+expect_exit 0 "accept" python3 "$NULLIUS" accept "is the frame stated"
+expect_exit 0 "close"  python3 "$NULLIUS" close "in the Method"
+for n in 4200 5600 7000; do
+  python3 -c "open('p.md','w').write('# Method\n' + 'word '*$n)"
+  printf '%s' "$LOOP_JSON" | python3 "$NULLIUS" _hook stop >/dev/null 2>&1
+done
+expect_grep "turns, 4201 to 7001 words" "growth with nothing closed is reported" \
+  python3 "$NULLIUS" status
+expect_grep "chosen" "and it is a chosen threshold, so it never ends the turn" \
+  python3 "$NULLIUS" status
+expect_hook stop 0 "the stop is allowed" "$LOOP_JSON"
+cd ..
+
+mkdir -p worked && cd worked
+python3 "$NULLIUS" init >/dev/null 2>&1
+WORK_JSON="{\"cwd\":\"$PWD\"}"
+python3 -c "open('p.md','w').write('# Method\n' + 'word '*3000)"
+python3 "$NULLIUS" start w2 critique "revise" --artifact p.md >/dev/null
+python3 "$NULLIUS" accept "does it go out" >/dev/null
+python3 "$NULLIUS" close "in the Method" >/dev/null
+i=0
+for n in 4200 5600 7000; do
+  python3 "$NULLIUS" finding material evidential "gap $i has no evidence" --at "p.md:$n" >/dev/null
+  python3 -c "open('p.md','w').write('# Method\n' + 'word '*$n)"
+  python3 "$NULLIUS" resolve $i "wrote the evidence in" >/dev/null
+  printf '%s' "$WORK_JSON" | python3 "$NULLIUS" _hook stop >/dev/null 2>&1
+  i=$((i+1))
+done
+out="$(python3 "$NULLIUS" status 2>&1)"
+printf '%s\n' "$out" | grep -q "turns," && bad "the detector fired on a draft being worked on" || ok
+expect_grep "closed  material" "the closed findings are listed as closed" \
+  python3 "$NULLIUS" findings
+expect_exit 1 "a finding cannot be closed twice" \
+  python3 "$NULLIUS" resolve 0 "again"
+expect_exit 1 "and an index out of range is refused" \
+  python3 "$NULLIUS" resolve 99 "nothing"
+cd ..
+
 echo
 echo "  $pass passed, $fail failed"
 [ "$fail" -eq 0 ]

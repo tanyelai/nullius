@@ -80,6 +80,7 @@ Run them as `./.nullius/bin/nullius <cmd>` from the project root.
     decisive "<what would change the conclusion>" [--post-hoc]    reading "<what it was>"
     scope                                  what the draft itself rules out, and why
     finding <fatal|material|defensible|taste> <structural|evidential|coherence|scope> "<text>" --at L
+    findings                               resolve <n> "<what changed>"
     verdict <the venue's scale>            a defensible finding closes permanently
     accept "<a question open right now>"   close "<the answer, with a locator>"
     trade "<what gets cut>"                status       done
@@ -117,6 +118,8 @@ DEFAULT_CONFIG = {
     "vocabularies_suggested": 3,
     "indexes": ["openalex", "crossref", "arxiv", "europepmc"],
     "recent_years": 3,
+    "extension_window": 3,
+    "extension_growth": 1.25,
     "section_thin_words": 80,
     "scope_headings": ["what this study does not do", "what this paper does not do",
                        "out of scope", "scope boundary", "non-goals",
@@ -1117,6 +1120,88 @@ def effective_budget(store, unit, cfg):
     return (words, f"{os.path.relpath(vpath, store.root)}") if words else (None, None)
 
 
+def closed_work_count(store):
+    """Fatal and material findings closed, across every unit this project has run."""
+    n = 0
+    for f in (store.unit or {}).get("findings", []):
+        if f.get("resolved") and f["severity"] in GENERATES_WORK:
+            n += 1
+    log = store.p("work", "log.jsonl")
+    if log.is_file():
+        for line in log.read_text(encoding="utf-8").splitlines():
+            try:
+                unit = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            for f in unit.get("findings", []):
+                if f.get("resolved") and f["severity"] in GENERATES_WORK:
+                    n += 1
+    return n
+
+
+def sample_growth(store):
+    """One row per artifact whenever its measured state moves. Sampled at the stop
+    rather than on every command, so the series counts turns rather than keystrokes."""
+    unit = store.unit
+    if not unit:
+        return
+    closed = closed_work_count(store)
+    path = store.p("growth.jsonl")
+    last = {}
+    if path.is_file():
+        for line in path.read_text(encoding="utf-8").splitlines():
+            try:
+                row = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            last[row["artifact"]] = row
+    rows = []
+    for f in tracked_drafts(store, unit, counted_only=True):
+        rel = os.path.relpath(f, store.root)
+        words = count_words(f.read_text(encoding="utf-8", errors="replace"))
+        prev = last.get(rel)
+        if prev and prev["words"] == words and prev["closed"] == closed:
+            continue
+        rows.append({"when": now(), "artifact": rel, "words": words,
+                     "closed": closed, "unit": unit["slug"], "kind": unit["kind"]})
+    if rows:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("a", encoding="utf-8") as fh:
+            for r in rows:
+                fh.write(json.dumps(r, ensure_ascii=False) + "\n")
+
+
+def extension_signal(store, cfg):
+    """Growth is not the signal. Growth with nothing closed is."""
+    path = store.p("growth.jsonl")
+    if not path.is_file():
+        return []
+    series = {}
+    for line in path.read_text(encoding="utf-8").splitlines():
+        try:
+            row = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        series.setdefault(row["artifact"], []).append(row)
+    out = []
+    window, ratio = cfg["extension_window"], cfg["extension_growth"]
+    for artifact, rows in series.items():
+        if len(rows) < window:
+            continue
+        first, last = rows[-window], rows[-1]
+        if not first["words"]:
+            continue
+        grew = last["words"] / first["words"]
+        if grew >= ratio and last["closed"] <= first["closed"]:
+            out.append(
+                f"{artifact}: {window} turns, {first['words']} to {last['words']} "
+                f"words, and no finding that generates work closed in that span. "
+                f"Growth is not the signal; growth with nothing closed is. If the "
+                f"last real gap is shut, the answer is a verdict rather than "
+                f"another pass.")
+    return out
+
+
 def unit_findings(store):
     """Everything the Stop gate asks. Returns (facts, chosen)."""
     cfg = store.config
@@ -1316,6 +1401,8 @@ def unit_findings(store):
                       f"names rather than identifiers. Two spellings of one "
                       f"person read as two groups, so the independence is "
                       f"weaker than the label suggests.")
+
+    chosen += extension_signal(store, cfg)
 
     singles = [c for c in store.claims() if len(c.get("sources", [])) == 1]
     if singles:
@@ -1595,6 +1682,40 @@ def cmd_finding(args):
         say("  a property of the study rather than a defect in it. One sentence in "
             "Limitations closes it permanently; it is now in discharged.md and "
             "cannot be raised again.")
+
+
+def cmd_resolve(args):
+    """A finding that generates work is closed by the work, not by time passing.
+    Counting what closed is the only way to tell a draft that is being fixed from
+    one that is only getting longer."""
+    store = Store(require_root())
+    unit = store.unit or die("no open unit.")
+    findings = unit.get("findings") or []
+    if not 0 <= args.index < len(findings):
+        die(f"index out of range (0..{len(findings) - 1}). `nullius findings` lists "
+            f"them.")
+    f = findings[args.index]
+    if f.get("resolved"):
+        die(f"[{args.index}] is already closed: {f['resolution']}")
+    f["resolved"] = now()
+    f["resolution"] = args.what
+    store.save_unit(unit)
+    say(f"nullius: [{args.index}] {f['severity']} closed")
+
+
+def cmd_findings(args):
+    store = Store(require_root())
+    unit = store.unit or die("no open unit.")
+    findings = unit.get("findings") or []
+    if not findings:
+        say("nullius: no findings in this unit.")
+        return
+    for i, f in enumerate(findings):
+        mark = "closed " if f.get("resolved") else "open   "
+        say(f"  [{i}] {mark} {f['severity']:<11} {f['referent']:<11} "
+            f"{f['text'][:52]}")
+        say(f"       at {f['at']}"
+            + (f"  -- {f['resolution']}" if f.get("resolved") else ""))
 
 
 def cmd_verdict(args):
@@ -2652,6 +2773,7 @@ def hook_stop(payload):
     store = Store(root)
     if store.unit is None:
         return 0
+    sample_growth(store)
     facts, chosen = unit_findings(store)
     mode = store.config["mode"]
     if facts and mode in ("certain", "block"):
@@ -2742,6 +2864,13 @@ def build_parser():
     s.add_argument("text")
     s.add_argument("--at", required=True, help="where: file:line, a section, a table")
     s.set_defaults(fn=cmd_finding)
+
+    s = sub.add_parser("findings", help="what this unit has found so far")
+    s.set_defaults(fn=cmd_findings)
+
+    s = sub.add_parser("resolve", help="close a finding, with what changed")
+    s.add_argument("index", type=int); s.add_argument("what")
+    s.set_defaults(fn=cmd_resolve)
 
     s = sub.add_parser("verdict", help="the recommendation this critique adds up to")
     s.add_argument("recommendation"); s.set_defaults(fn=cmd_verdict)

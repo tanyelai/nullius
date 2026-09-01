@@ -114,6 +114,8 @@ knows the vocabulary: the gate that fires at startup carries it.
 | `decisive` | the number that would change the conclusion |
 | `reading` | what was actually observed |
 | `finding` | one finding, with a referent and a locator |
+| `findings` | what this unit has found so far |
+| `resolve` | close a finding, with what changed |
 | `verdict` | the recommendation this critique adds up to |
 | `kills` | the observation that would end this idea |
 | `cost` | what this idea would take to run |
@@ -136,7 +138,6 @@ knows the vocabulary: the gate that fires at startup carries it.
 | `status` | why the stop gate is refusing |
 | `done` | close the unit |
 | `doctor` | is this project still set up correctly |
-
 `--help` on any of them spells out its flags.
 
 ## The stopping rule a draft writes for itself
@@ -174,6 +175,25 @@ Two things keep the boundary from becoming a shield:
 If a finding shares terms with a row, the tool says so and calls it a lead rather than a
 verdict, because a wrong match here suppresses a legitimate finding, and that is the
 direction of error worth being careful about.
+
+## When a draft is only getting longer
+
+Growth is not the signal. A draft that grew while four material findings were fixed is a
+draft being worked on. Growth **with nothing closed** is the other thing:
+
+```
+p.md: 3 turns, 4201 to 7001 words, and no finding that generates work closed in
+that span. Growth is not the signal; growth with nothing closed is. If the last
+real gap is shut, the answer is a verdict rather than another pass.
+```
+
+Length is sampled per artifact at the stop, and only when the measured state moves, so the
+series counts turns rather than keystrokes. Alongside it runs a count of `fatal` and
+`material` findings actually closed with `nullius resolve`, across every unit the project
+has run. The detector compares the two over a window of three turns.
+
+It is a **chosen threshold**, not a fact: three turns and a quarter of growth are numbers
+somebody picked. So it reports to you and never ends a turn.
 
 ## The problem
 
@@ -324,7 +344,7 @@ the rule and can disagree with it in one place.
 | **P1** | ledger and CLI: `start`, `accept`, `claim`, `note`, `falsify`, `status`, `doctor` | **done** |
 | **P2** | the blocking gates: citation resolved, not retracted, read-depth cap, independence cap, untraded overrun | **done**, and pinned by tests |
 | **P3** | the literature spine: multi-index search and ranking, Crossref, arXiv, Europe PMC, Unpaywall, preprint hunting, the verbatim quote check | **done**; snowballing and citation-context are open |
-| **P4** | the calibration engine | the walk, the gap kinds and the permanent discharge of a `defensible` finding are **done**; the extension detector and honouring an artifact's own scope boundary are open |
+| **P4** | the calibration engine | **done**: the venue walk, the gap kinds, the permanent discharge of a `defensible` finding, the draft's own scope boundary, and the extension detector |
 | **P5** | a `stable` release branch, worked examples for two or three fields, public | open |
 
 ## What this is not
