@@ -70,7 +70,16 @@ Run them as `./.nullius/bin/nullius <cmd>` from the project root.
                 plus a search with something screened in. All three are enforced.
         survey  needs every retrieved work screened. Enforced.
         write   needs the venue walk and the budget. Enforced.
-        the others shape what `accept` should say; they are not gated.
+        interpret  needs decisive "<what would change the conclusion>" before the
+                results, and reading "<what it was>" after. Enforced.
+        critique / referee  need a verdict, and every finding needs a referent and a
+                locator. Zero fatal and zero material means the verdict is the
+                positive end of the scale. Enforced.
+        read and explain shape what `accept` should say; they are not gated.
+
+    decisive "<what would change the conclusion>" [--post-hoc]    reading "<what it was>"
+    finding <fatal|material|defensible|taste> <structural|evidential|coherence> "<text>" --at L
+    verdict <the venue's scale>            a defensible finding closes permanently
     accept "<a question open right now>"   close "<the answer, with a locator>"
     trade "<what gets cut>"                status       done
     artifact <path> [--excluded]           --excluded: walked, not counted
@@ -679,9 +688,33 @@ def tracked_drafts(store, unit, counted_only=False):
 
 SECTION_DISPOSITIONS = ["planned", "elsewhere", "n/a"]
 
+SEVERITIES = ["fatal", "material", "defensible", "taste"]
+GENERATES_WORK = ("fatal", "material")
+# A finding cites a required section, a claim whose evidence is missing, or two places
+# that conflict. Anything citing none of the three is enhancement: it would be stronger
+# with more, which is true of everything ever written.
+REFERENTS = ["structural", "evidential", "coherence"]
+DEFAULT_SCALE = ["desk-reject", "major", "minor", "accept"]
+# The asks that have no terminating answer. A critique aimed at one of these is not a
+# critique; it is an open tap.
+EMPTY_ASKS = ["make it better", "improve it", "improve the", "what is missing",
+              "what's missing", "polish", "tighten it up", "make it stronger",
+              "any feedback", "review it", "look it over"]
+
 
 def venue_path(store, venue):
     return store.p("venues", f"{venue}.md")
+
+
+def section_dispositions(store, venue):
+    """Kept per venue and section at project level, so a decision taken once is not
+    re-asked by every unit that walks the same list afterwards."""
+    out = {}
+    for key, d in store.read_json("sections.json", {}).items():
+        v, _, name = key.partition("::")
+        if v == (venue or "-"):
+            out[name] = d
+    return out
 
 
 def parse_venue(path, default_min):
@@ -802,7 +835,7 @@ def cmd_walk(args):
             f"`## Required sections`, one per line, from the real document.")
         return
     entries = walk_sections(store, unit, venue)
-    disp = unit.get("sections") or {}
+    disp = section_dispositions(store, venue_name)
     say(f"walking {len(entries)} required sections from "
         f"{os.path.relpath(path, store.root)}")
     for e in entries:
@@ -838,9 +871,12 @@ def cmd_section(args):
     if args.disposition == "elsewhere" and not args.why:
         die("`elsewhere` has to name where. That is the whole content of the "
             "claim.")
-    unit.setdefault("sections", {})[args.name] = {
-        "as": args.disposition, "why": args.why or "", "when": now()}
-    store.save_unit(unit)
+    venue = unit.get("venue") or "-"
+    disp = store.read_json("sections.json", {})
+    disp[f"{venue}::{args.name}"] = {"as": args.disposition, "why": args.why or "",
+                                     "venue": venue, "section": args.name,
+                                     "when": now()}
+    store.write_json("sections.json", disp)
     say(f"nullius: '{args.name}' -> {args.disposition}")
 
 
@@ -972,6 +1008,59 @@ def unit_findings(store):
                          "approvals, calendar>\"` -- the ideas that die late are the "
                          "ones nobody priced early.")
 
+    if unit.get("kind") == "interpret":
+        if not unit.get("decisive"):
+            facts.append("no decisive observation named. `nullius decisive \"<the "
+                         "number that would change your conclusion>\"` -- named "
+                         "after the results it is not a prediction, and the whole "
+                         "value of this unit kind is the ordering.")
+        elif not unit.get("reading"):
+            facts.append(f"named what would change the conclusion and never "
+                         f"recorded what was actually observed. `nullius reading "
+                         f"\"<what the number was>\"`.")
+        if (unit.get("decisive") or {}).get("post_hoc"):
+            chosen.append("this interpretation was framed after the results were "
+                          "in. That is exploratory, which is legitimate, and it "
+                          "has to travel with the conclusion rather than be "
+                          "dropped when the paragraph is written.")
+
+    if unit.get("kind") in ("critique", "referee"):
+        if not tracked_drafts(store, unit):
+            facts.append("this unit reviews nothing. `nullius artifact <path>` -- "
+                         "without it the completeness walk cannot run, the limit "
+                         "cannot be checked, and a finding has nowhere to point.")
+        low = (unit.get("accept") or "").lower()
+        hit = next((a for a in EMPTY_ASKS if a in low), None)
+        if hit:
+            facts.append(f"this critique accepts on \"{hit}\", which has no "
+                         f"terminating answer. Name the decision it has to enable "
+                         f"instead: whether this goes out, whether the design can "
+                         f"answer the question, which of two framings to keep.")
+        findings = unit.get("findings") or []
+        blank = [f for f in findings if not f.get("at")]
+        if blank:
+            facts.append(f"{len(blank)} finding(s) with no locator.")
+        verdict = (unit.get("verdict") or {}).get("recommendation")
+        if not verdict:
+            facts.append(f"no recommendation. `nullius verdict <"
+                         f"{'|'.join(venue_scale(store, unit))}>` -- findings "
+                         f"without one leave the author to guess what they add up "
+                         f"to, which is the guess this unit exists to remove.")
+        else:
+            work = [f for f in findings if f["severity"] in GENERATES_WORK]
+            positive = verdict in ("accept", "minor", "submit")
+            if not work and not positive:
+                facts.append(
+                    f"zero fatal and zero material findings, and the "
+                    f"recommendation is `{verdict}`. With nothing that generates "
+                    f"work, the honest recommendation is the positive end of the "
+                    f"scale. Producing more findings past this point is pressure "
+                    f"rather than rigour.")
+            if work and positive:
+                chosen.append(f"{len(work)} finding(s) that generate work, and a "
+                              f"recommendation of `{verdict}`. Consistent only if "
+                              f"the author can address them without a re-review.")
+
     if unit.get("kind") == "survey":
         unscreened = sum(1 for s in store.searches()
                          for w in s.get("results", [])
@@ -1007,7 +1096,7 @@ def unit_findings(store):
                               f"nothing to check.")
             elif tracked_drafts(store, unit):
                 entries = walk_sections(store, unit, venue)
-                disp = unit.get("sections") or {}
+                disp = section_dispositions(store, venue_name)
                 undone = [e for e in entries
                           if e["state"] == "absent" and e["name"] not in disp]
                 if undone:
@@ -1222,6 +1311,110 @@ def cmd_close(args):
     unit["accept_answer"] = args.answer
     store.save_unit(unit)
     say("nullius: acceptance closed.")
+
+
+def venue_scale(store, unit):
+    name = unit.get("venue")
+    if not name:
+        return DEFAULT_SCALE
+    path = venue_path(store, name)
+    if not path.is_file():
+        return DEFAULT_SCALE
+    m = re.search(r"^##+\s*Recommendation scale\s*$(.*?)(^##\s|\Z)",
+                  path.read_text(encoding="utf-8"), re.M | re.S | re.I)
+    if not m:
+        return DEFAULT_SCALE
+    words = [w.strip().lower() for w in re.split(r"[/,\n]", m.group(1))
+             if w.strip() and not w.strip().startswith("<")]
+    return words or DEFAULT_SCALE
+
+
+def discharged_findings(store):
+    f = store.p("discharged.md")
+    if not f.is_file():
+        return []
+    return re.findall(r"^## (.+)$", f.read_text(encoding="utf-8"), re.M)
+
+
+def cmd_decisive(args):
+    """The number that would change the conclusion, named before the results are
+    opened. Named afterwards it is not a prediction, which is a fact about the
+    ordering rather than a judgement about the person."""
+    store = Store(require_root())
+    unit = store.unit or die("no open unit.")
+    have_results = any(c.get("warrant") == "mine-unpublished" for c in store.claims())
+    if have_results and not args.post_hoc:
+        die("your own unpublished results are already in the ledger, so this is "
+            "being named after the fact. That is legitimate and common, and it is "
+            "a different kind of claim. Say so: --post-hoc.")
+    unit["decisive"] = {"text": args.text, "when": now(),
+                        "post_hoc": bool(args.post_hoc or have_results)}
+    store.save_unit(unit)
+    say("nullius: recorded" + (" as post-hoc" if unit["decisive"]["post_hoc"] else ""))
+    if unit["decisive"]["post_hoc"]:
+        say("  exploratory, and it travels with the conclusion. What is not "
+            "allowed is presenting it as confirmatory later.")
+
+
+def cmd_reading(args):
+    store = Store(require_root())
+    unit = store.unit or die("no open unit.")
+    if not unit.get("decisive"):
+        die("nothing to read against. `nullius decisive \"<what would change the "
+            "conclusion>\"` first, which is the whole point of the ordering.")
+    unit["reading"] = {"text": args.text, "when": now()}
+    store.save_unit(unit)
+    say("nullius: recorded against \"" + unit["decisive"]["text"][:60] + "\"")
+
+
+def cmd_finding(args):
+    store = Store(require_root())
+    unit = store.unit or die("no open unit.")
+    if args.severity not in SEVERITIES:
+        die(f"severity must be one of: {', '.join(SEVERITIES)}")
+    if args.referent not in REFERENTS:
+        die(f"a finding cites one of: {', '.join(REFERENTS)}. One that cites none "
+            f"of them is enhancement, which is true of every text ever written and "
+            f"is the one kind that never runs out.")
+    if not args.at:
+        die("--at is required. A finding without a locator cannot be acted on and "
+            "cannot be disagreed with.")
+    norm = norm_title(args.text)
+    for old in discharged_findings(store):
+        o = norm_title(old)
+        if o and (o in norm or norm in o):
+            die(f"this was discharged already:\n  \"{old}\"\nA defensible finding "
+                f"closes once, with a sentence in Limitations, and does not come "
+                f"back. Re-raising it is how a finished draft becomes an infinite "
+                f"project.")
+    unit.setdefault("findings", []).append({
+        "severity": args.severity, "referent": args.referent, "text": args.text,
+        "at": args.at, "when": now()})
+    store.save_unit(unit)
+    say(f"nullius: {args.severity} / {args.referent} at {args.at}")
+    if args.severity == "defensible":
+        f = store.p("discharged.md")
+        prev = f.read_text(encoding="utf-8") if f.is_file() else (
+            "# Discharged\n\nDefensible findings, closed with one sentence in "
+            "Limitations. These do not come back.\n")
+        f.write_text(prev.rstrip() + f"\n\n## {args.text}\n\n- at: {args.at}\n"
+                     f"- discharged: {today()}\n", encoding="utf-8")
+        say("  a property of the study rather than a defect in it. One sentence in "
+            "Limitations closes it permanently; it is now in discharged.md and "
+            "cannot be raised again.")
+
+
+def cmd_verdict(args):
+    store = Store(require_root())
+    unit = store.unit or die("no open unit.")
+    scale = venue_scale(store, unit)
+    if args.recommendation not in scale:
+        die(f"this unit's scale is: {', '.join(scale)}. It comes from the venue "
+            f"file's Recommendation scale, so the vocabulary is the venue's rather "
+            f"than ours.")
+    unit["verdict"] = {"recommendation": args.recommendation, "when": now()}
+    store.save_unit(unit)
+    say(f"nullius: {args.recommendation}")
 
 
 def cmd_kills(args):
@@ -2167,7 +2360,7 @@ def hook_session_start(payload):
                         for f in drafts)
             lines.append(f"  venue {unit['venue']}"
                          + (f", {words}/{budget} words" if budget else ""))
-        for name, d in (unit.get("sections") or {}).items():
+        for name, d in section_dispositions(store, unit.get("venue")).items():
             lines.append(f"  section '{name}': {d['as']}, {d['why']}")
         if unit.get("trade"):
             lines.append(f"  trade taken: {unit['trade']}")
@@ -2332,6 +2525,25 @@ def build_parser():
 
     s = sub.add_parser("close", help="answer the acceptance question")
     s.add_argument("answer"); s.set_defaults(fn=cmd_close)
+
+    s = sub.add_parser("decisive", help="the number that would change the conclusion")
+    s.add_argument("text")
+    s.add_argument("--post-hoc", action="store_true", dest="post_hoc",
+                   help="named after the results; exploratory, and labelled as such")
+    s.set_defaults(fn=cmd_decisive)
+
+    s = sub.add_parser("reading", help="what was actually observed")
+    s.add_argument("text"); s.set_defaults(fn=cmd_reading)
+
+    s = sub.add_parser("finding", help="one finding, with a referent and a locator")
+    s.add_argument("severity", choices=SEVERITIES)
+    s.add_argument("referent")
+    s.add_argument("text")
+    s.add_argument("--at", required=True, help="where: file:line, a section, a table")
+    s.set_defaults(fn=cmd_finding)
+
+    s = sub.add_parser("verdict", help="the recommendation this critique adds up to")
+    s.add_argument("recommendation"); s.set_defaults(fn=cmd_verdict)
 
     s = sub.add_parser("kills", help="the observation that would end this idea")
     s.add_argument("text"); s.set_defaults(fn=cmd_kills)

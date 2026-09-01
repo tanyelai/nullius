@@ -5,6 +5,36 @@ and the CLI surface may change; when they do, the change is listed here with wha
 
 ## 0.1.0
 
+### interpret and critique are gated
+
+Two kinds that had been guidance are now checks.
+
+**`interpret`** turns on the ordering. The observation that would change your conclusion
+has to be named before the results are opened (`nullius decisive`), and what was actually
+seen has to be recorded against it (`nullius reading`). Naming it after the results is
+legitimate and common, so it is not forbidden: it is refused silently and allowed with
+`--post-hoc`, which labels the unit exploratory and carries that label into the next
+session. What cannot happen is a prediction quietly written after the fact.
+
+**`critique`** has to add up to something.
+
+- Every finding cites a referent, one of `structural`, `evidential` or `coherence`, and
+  carries a locator. A finding citing none of the three is *enhancement*, which is true
+  of every text ever written and is the one kind that never runs out.
+- A `defensible` finding is discharged with one sentence in Limitations and written to
+  `discharged.md`, which is project-level and committed. It cannot be raised again, and
+  the match is on normalised text, so rewording it does not get it back in.
+- A verdict is required, from the scale the venue file names rather than one of ours.
+- **Zero fatal and zero material findings means the verdict is the positive end of the
+  scale**, and recording anything else is refused. With nothing that generates work,
+  continuing to produce findings is pressure rather than rigour. This is the mechanism
+  the whole calibration argument was for.
+- A critique unit that tracks no artifact is reviewing nothing, and says so.
+
+Section dispositions moved from the unit to the project, keyed by venue and section. Kept
+on the unit, every new unit re-asked a question that had already been answered, which is
+how a gate becomes noise and then gets switched off.
+
 ### Found by doing the research, not by inspecting a document
 
 Ran a genuine session: an open question in LLM interpretability, three vocabularies,

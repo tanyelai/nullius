@@ -329,6 +329,7 @@ expect_exit 1 "elsewhere has to name where" \
 expect_exit 0 "disposition it" \
   python3 "$NULLIUS" section "Ethics Statement" planned "after registration"
 expect_hook stop 0 "and the stop is allowed once every absence has a word about it" "$CWD_JSON"
+[ -f .nullius/sections.json ] && ok || bad "the disposition was not kept at project level"
 expect_grep "chosen" "a thin section is reported, never enforced" python3 "$NULLIUS" status
 
 # a placeholder must not clobber a real value from the layer beneath it
@@ -434,6 +435,63 @@ expect_grep "what it takes" "and so does the cost" \
   bash -c "printf %s \"$CWD_JSON\" | python3 \"$NULLIUS\" _hook session-start"
 expect_grep "kept: nearest thing" "and why each kept paper was kept" \
   bash -c "printf %s \"$CWD_JSON\" | python3 \"$NULLIUS\" _hook session-start"
+
+# ------------------------------ interpret: the ordering is the point --------
+expect_exit 0 "open an interpret unit" python3 "$NULLIUS" start ip interpret "did it separate" --force
+expect_exit 0 "accept" python3 "$NULLIUS" accept "does A separate from B"
+expect_exit 0 "close"  python3 "$NULLIUS" close "at results.md:12"
+expect_grep "no decisive observation" "an interpretation with no prediction cannot close" \
+  python3 "$NULLIUS" status
+expect_exit 1 "reading refuses before there is anything to read against" \
+  python3 "$NULLIUS" reading "0.71"
+expect_exit 0 "name what would change the conclusion" \
+  python3 "$NULLIUS" decisive "split-half cosine above 0.6 at any layer"
+expect_grep "never recorded what was actually observed" "and it must be read against" \
+  python3 "$NULLIUS" status
+expect_exit 0 "record the observation" python3 "$NULLIUS" reading "0.71 at layer 18"
+expect_hook stop 0 "then it closes" "$CWD_JSON"
+
+# naming the number after the results is exploratory, which is allowed and labelled
+python3 "$NULLIUS" claim "our pilot shows a split" --warrant mine-unpublished \
+  --status single-result --strength reports >/dev/null 2>&1
+expect_exit 0 "open a second one" python3 "$NULLIUS" start ip2 interpret "what did we see" --force
+expect_exit 1 "decisive refuses silently after results exist" \
+  python3 "$NULLIUS" decisive "anything above 0.6"
+expect_exit 0 "unless it is labelled exploratory" \
+  python3 "$NULLIUS" decisive "anything above 0.6" --post-hoc
+expect_grep "framed after the results" "and the label travels with the conclusion" \
+  python3 "$NULLIUS" status
+
+# ---------------------------- critique: it has to add up to something --------
+expect_exit 0 "open a critique unit" \
+  python3 "$NULLIUS" start cr critique "make it better" --venue conf --force
+expect_grep "reviews nothing" "a critique with nothing tracked is reviewing nothing" \
+  python3 "$NULLIUS" status
+expect_exit 0 "track what is under review" python3 "$NULLIUS" artifact paper.tex
+expect_exit 0 "accept the empty ask" python3 "$NULLIUS" accept "make it better"
+expect_exit 0 "close" python3 "$NULLIUS" close "in the Methods"
+expect_grep "no terminating answer" "an ask with no end is refused" python3 "$NULLIUS" status
+expect_exit 0 "name the decision instead" \
+  python3 "$NULLIUS" accept "does this go out as it stands" --force
+expect_exit 0 "and close it again" python3 "$NULLIUS" close "in the Methods"
+expect_exit 1 "a finding that cites nothing is enhancement" \
+  python3 "$NULLIUS" finding material enhancement "would be stronger with more" --at "paper.tex:1"
+expect_exit 2 "and one with no locator cannot be acted on" \
+  python3 "$NULLIUS" finding material evidential "no evidence here"
+expect_grep "no recommendation" "findings without a verdict leave the author guessing" \
+  python3 "$NULLIUS" status
+expect_exit 1 "a verdict outside the venue scale is refused" \
+  python3 "$NULLIUS" verdict "looks-fine"
+expect_exit 0 "record a defensible finding" \
+  python3 "$NULLIUS" finding defensible evidential "one site bounds generality" --at "paper.tex:4"
+[ -f .nullius/discharged.md ] && ok || bad "discharged.md not written"
+expect_exit 1 "and it cannot be raised again, even reworded" \
+  python3 "$NULLIUS" finding material evidential "one site, bounds generality" --at "paper.tex:4"
+expect_exit 0 "verdict on the venue scale" python3 "$NULLIUS" verdict major
+expect_grep "zero fatal and zero material" "nothing generating work means the positive end" \
+  python3 "$NULLIUS" status
+expect_exit 0 "the honest verdict" python3 "$NULLIUS" verdict accept
+expect_hook stop 0 "and then the critique is finished" "$CWD_JSON"
 
 echo
 echo "  $pass passed, $fail failed"
