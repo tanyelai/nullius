@@ -268,6 +268,31 @@ enumerated rather than intuited. And “required” comes from a real document: 
 the author guidelines, the venue's checklist, the field's reporting standard, so the tool
 cannot invent a requirement it cannot cite.
 
+### The draft's own boundary
+
+There is a third source of "already decided", and it does not belong to the tool at all.
+
+A plan that is going to survive review states what it deliberately does not cover, with a
+reason per row, in the plan. That section is what makes review converge: without it a
+competent critic names another control every round, each round adds scope, and the study
+never starts.
+
+So the boundary is read out of the draft rather than kept beside it. The symmetry with the
+venue file is exact: the tool may not require what the venue does not ask for, and it may
+not dismiss what the draft does not itself rule out. Neither list is ours.
+
+What the tool does with it is again enumeration rather than judgement. No textual test can
+decide whether a suggestion falls under a boundary row, so a critique cannot write a finding
+until the boundary has been read, and a term overlap between a finding and a row is reported
+as a lead rather than acted on: a wrong match here silences a legitimate finding, which is
+the error worth being careful about.
+
+Two rules stop it becoming a shield. A row that excludes something without saying why is a
+fact the gate refuses on. And the boundary itself is attackable, through a finding whose
+referent is `scope`, which is the only admissible way back in. A design decision is
+reviewable. What is not reviewable is re-raising it round after round as though it had never
+been taken.
+
 ### The budget is a price, not a ceiling
 
 Now the two axes compose. A gap is real or it is not; the artifact is inside its format or

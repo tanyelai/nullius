@@ -102,7 +102,7 @@ reasons are facts and which are thresholds somebody chose.
 ## Every command
 
 Run them as `./.nullius/bin/nullius <command>`, or just ask Claude, since the session already
-knows the vocabulary, because the gate that fires at startup carries it.
+knows the vocabulary: the gate that fires at startup carries it.
 
 | | |
 |---|---|
@@ -111,6 +111,12 @@ knows the vocabulary, because the gate that fires at startup carries it.
 | `start` | open a work unit |
 | `accept` | declare what would close this unit |
 | `close` | answer the acceptance question |
+| `decisive` | the number that would change the conclusion |
+| `reading` | what was actually observed |
+| `finding` | one finding, with a referent and a locator |
+| `verdict` | the recommendation this critique adds up to |
+| `kills` | the observation that would end this idea |
+| `cost` | what this idea would take to run |
 | `trade` | price an addition made over budget |
 | `artifact` | track a draft against this unit |
 | `cite` | resolve an identifier, or record a source no index |
@@ -122,6 +128,9 @@ knows the vocabulary, because the gate that fires at startup carries it.
 | `falsify` | record an idea that died, and why |
 | `lit` | search the indexes and log the protocol |
 | `screen` | include or exclude retrieved works |
+| `walk` | every required section, present/thin/absent |
+| `scope` | what the draft itself rules out, and why |
+| `section` | say what an absent required section is |
 | `coverage` | the counts, and what is unscreened |
 | `check` | run the write guards over a draft |
 | `status` | why the stop gate is refusing |
@@ -129,6 +138,42 @@ knows the vocabulary, because the gate that fires at startup carries it.
 | `doctor` | is this project still set up correctly |
 
 `--help` on any of them spells out its flags.
+
+## The stopping rule a draft writes for itself
+
+Review on a plan does not converge on its own. A competent critic can always name another
+control, so without a written boundary each round adds scope and the study never starts.
+
+The answer is not for the tool to decide what is out of scope. It is for **the draft to say
+so, in the draft**, where a reviewer will see it:
+
+```latex
+\section{What this study does not do}
+...
+A human persuasion study & Established by others and cited. Attempted underpowered,
+                           it would make the paper about the user study \\
+Causal analysis on frontier models & Impossible without weights. The behavioural arm
+                           runs there and the transfer inference is labelled conditional \\
+```
+
+`nullius scope` reads that section out of the tracked draft, from a markdown list, a table,
+or a LaTeX `tabular`. A critique unit **cannot write a finding until the boundary has been
+read**, and cannot close without it. That is the same guarantee the completeness walk gives:
+enumeration, not judgement. No textual test can decide whether a suggestion falls under a
+boundary row, so the tool refuses to guess and refuses to let you not look.
+
+Two things keep the boundary from becoming a shield:
+
+- **Every row has to say why.** A row that excludes something without a reason is a fact the
+  gate refuses on. Out by decision, with the decision missing, is not a boundary.
+- **The boundary itself can be attacked.** `nullius finding <severity> scope "<why this
+  boundary is wrong>"` is admissible, and it is the only way back in. A design decision is
+  reviewable; what is not reviewable is re-raising it round after round as though it had
+  never been taken.
+
+If a finding shares terms with a row, the tool says so and calls it a lead rather than a
+verdict, because a wrong match here suppresses a legitimate finding, and that is the
+direction of error worth being careful about.
 
 ## The problem
 

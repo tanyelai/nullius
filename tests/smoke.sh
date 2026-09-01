@@ -493,6 +493,61 @@ expect_grep "zero fatal and zero material" "nothing generating work means the po
 expect_exit 0 "the honest verdict" python3 "$NULLIUS" verdict accept
 expect_hook stop 0 "and then the critique is finished" "$CWD_JSON"
 
+# ------------------------ the draft declares its own scope boundary ---------
+# A plan that states what it deliberately does not cover is why review converges.
+# The tool may not require what the venue does not ask for; symmetrically it may
+# not dismiss what the draft does not itself rule out, so the boundary is read
+# from the draft rather than kept beside it where no reviewer would see it.
+cat > bounded.tex <<'BOUND'
+\section{Method}
+We do the thing, at enough length for the section to count as written rather than
+as a heading with nothing under it at all.
+
+\section{What this study does not do}
+A design is finished when its claims are covered, not when no critic can add a control.
+
+\begin{table}[H]
+\begin{tabular}{@{}L{4.8cm}L{10.0cm}@{}}
+\toprule
+\textbf{Deliberately not done} & \textbf{Why that is the right call} \\
+\midrule
+A human persuasion study & Established by others and cited. Underpowered it would
+make the paper about the user study \\
+\rowcolor{black!4}
+Causal analysis on frontier models & Impossible without weights, and the transfer
+inference is labelled conditional \\
+Anything about deployment \\
+\bottomrule
+\end{tabular}
+\end{table}
+BOUND
+expect_exit 0 "open a critique against a draft with a boundary" \
+  python3 "$NULLIUS" start sb critique "does it go out" --artifact bounded.tex --force
+expect_exit 0 "accept" python3 "$NULLIUS" accept "does the design answer its question"
+expect_exit 0 "close"  python3 "$NULLIUS" close "in the Method"
+expect_grep "has not read it" "a critique cannot close over an unread boundary" \
+  python3 "$NULLIUS" status
+expect_exit 1 "and a finding cannot be written before it is read" \
+  python3 "$NULLIUS" finding material evidential "add a human study" --at "bounded.tex:6"
+expect_exit 0 "read it" python3 "$NULLIUS" scope
+expect_grep "A human persuasion study" "a latex tabular row is parsed" \
+  python3 "$NULLIUS" scope
+expect_grep "Established by others" "with the reason that makes it reviewable" \
+  python3 "$NULLIUS" scope
+out="$(python3 "$NULLIUS" scope 2>&1)"
+printf '%s\n' "$out" | grep -q "L{4.8cm}" && bad "the column spec leaked in as a row" || ok
+printf '%s\n' "$out" | grep -q "Deliberately not done" && bad "the header row was kept" || ok
+expect_grep "without saying why" "a row that excludes with no reason is a fact" \
+  python3 "$NULLIUS" status
+expect_grep "shares" "a finding overlapping a row gets a lead, not a verdict" \
+  python3 "$NULLIUS" finding material evidential "run a human persuasion study of the effect" --at "bounded.tex:6"
+expect_exit 0 "and the boundary itself can be challenged without reading it first" \
+  python3 "$NULLIUS" finding material scope "excluding frontier causal work leaves external validity on the transfer inference alone" --at "bounded.tex:16"
+expect_grep "out: A human persuasion study" "the boundary crosses a context boundary" \
+  bash -c "printf %s \"$CWD_JSON\" | python3 \"$NULLIUS\" _hook session-start"
+expect_grep "no tracked draft declares" "and a draft without one says so plainly" \
+  bash -c "python3 \"$NULLIUS\" artifact tracked.md >/dev/null; python3 \"$NULLIUS\" start nb critique q --artifact tracked.md --force >/dev/null; python3 \"$NULLIUS\" scope"
+
 echo
 echo "  $pass passed, $fail failed"
 [ "$fail" -eq 0 ]

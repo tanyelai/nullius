@@ -5,6 +5,28 @@ and the CLI surface may change; when they do, the change is listed here with wha
 
 ## 0.1.0
 
+### A draft can declare its own scope boundary
+
+`nullius scope` reads what the draft rules out from the draft itself, out of a markdown
+list, a pipe table or a LaTeX `tabular`, with the reason each row carries. The symmetry with
+the venue file is the point: the tool may not require what the venue does not ask for, and
+it may not dismiss what the draft does not itself rule out. Neither list belongs to the tool.
+
+A critique unit cannot write a finding until the boundary has been read, and cannot close
+without it. That is enumeration rather than judgement, for the same reason the completeness
+walk is: no textual test decides whether a suggestion falls under a boundary row, and a
+wrong match here silences a legitimate finding, which is the direction of error worth
+avoiding. A term overlap is reported as a lead and never acted on.
+
+Two rules keep the boundary from being a shield. A row that excludes something without
+saying why is a fact and refuses the stop. And the boundary is attackable through a finding
+whose referent is `scope`, which is the only way back in: a design decision is reviewable,
+and what is not reviewable is re-raising it every round as though it had never been taken.
+
+Found by reading a real plan's `What this study does not do` section, which is a LaTeX table
+whose column spec `{@{}L{4.8cm}L{10.0cm}@{}}` a regex stopping at the first closing brace
+handed back as if it were the first row.
+
 ### interpret and critique are gated
 
 Two kinds that had been guidance are now checks.

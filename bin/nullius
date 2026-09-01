@@ -78,7 +78,8 @@ Run them as `./.nullius/bin/nullius <cmd>` from the project root.
         read and explain shape what `accept` should say; they are not gated.
 
     decisive "<what would change the conclusion>" [--post-hoc]    reading "<what it was>"
-    finding <fatal|material|defensible|taste> <structural|evidential|coherence> "<text>" --at L
+    scope                                  what the draft itself rules out, and why
+    finding <fatal|material|defensible|taste> <structural|evidential|coherence|scope> "<text>" --at L
     verdict <the venue's scale>            a defensible finding closes permanently
     accept "<a question open right now>"   close "<the answer, with a locator>"
     trade "<what gets cut>"                status       done
@@ -117,6 +118,9 @@ DEFAULT_CONFIG = {
     "indexes": ["openalex", "crossref", "arxiv", "europepmc"],
     "recent_years": 3,
     "section_thin_words": 80,
+    "scope_headings": ["what this study does not do", "what this paper does not do",
+                       "out of scope", "scope boundary", "non-goals",
+                       "what this study does not claim", "outside the scope"],
     "rank_floor_citations": 1,
     "budget_overrun_ratio": 1.5,
     "cite_patterns": [
@@ -693,7 +697,7 @@ GENERATES_WORK = ("fatal", "material")
 # A finding cites a required section, a claim whose evidence is missing, or two places
 # that conflict. Anything citing none of the three is enhancement: it would be stronger
 # with more, which is true of everything ever written.
-REFERENTS = ["structural", "evidential", "coherence"]
+REFERENTS = ["structural", "evidential", "coherence", "scope"]
 DEFAULT_SCALE = ["desk-reject", "major", "minor", "accept"]
 # The asks that have no terminating answer. A critique aimed at one of these is not a
 # critique; it is an open tap.
@@ -704,6 +708,129 @@ EMPTY_ASKS = ["make it better", "improve it", "improve the", "what is missing",
 
 def venue_path(store, venue):
     return store.p("venues", f"{venue}.md")
+
+
+def chunk_offset(haystack, chunk):
+    i = haystack.find(chunk)
+    return i if i >= 0 else 0
+
+
+def balanced_group(text, i):
+    """Return (contents, index_after) for the {...} starting at i, counting nesting.
+    A tabular column spec is `{@{}L{4.8cm}L{10.0cm}@{}}`, and a regex that stops at
+    the first closing brace hands the spec back as if it were the first row."""
+    if i >= len(text) or text[i] != "{":
+        return None, i
+    depth, j = 0, i
+    while j < len(text):
+        if text[j] == "{":
+            depth += 1
+        elif text[j] == "}":
+            depth -= 1
+            if depth == 0:
+                return text[i + 1:j], j + 1
+        j += 1
+    return None, i
+
+
+def tabular_bodies(body):
+    """(inner_text, offset_in_body) for every tabular in the section."""
+    out = []
+    for m in re.finditer(r"\\begin\{tabular\}", body):
+        j = m.end()
+        if j < len(body) and body[j] == "[":
+            k = body.find("]", j)
+            j = k + 1 if k >= 0 else j
+        spec, j = balanced_group(body, j)
+        if spec is None:
+            continue
+        end = body.find(r"\end{tabular}", j)
+        if end < 0:
+            continue
+        out.append((body[j:end], j))
+    return out
+
+
+def parse_scope(text, cfg):
+    """A well-made plan declares what it deliberately does not cover. The tool may
+    not require what the venue does not ask for; symmetrically it may not dismiss
+    what the artifact does not itself rule out. So the boundary is read from the
+    draft rather than kept beside it, where a reviewer would never see it."""
+    heads = headings_of(text)
+    want = [norm_title(h) for h in cfg.get("scope_headings", [])]
+    body, start_line = None, 0
+    for i, (level, title, off) in enumerate(heads):
+        h = norm_title(title)
+        if not any(w and (w in h or h in w) for w in want):
+            continue
+        end = len(text)
+        for level2, _, off2 in heads[i + 1:]:
+            if level2 <= level:
+                end = off2
+                break
+        body, start_line = text[off:end], text[:off].count("\n") + 1
+        break
+    if body is None:
+        return None
+    rows = []
+
+    # A boundary in a paper is usually a table, and in LaTeX a table row is not a
+    # line: cells are separated by & and rows by \\, both wrapping freely.
+    for raw_inner, offset in tabular_bodies(body):
+        inner = re.sub(r"\\(?:top|mid|bottom)rule|\\hline"
+                       r"|\\rowcolor(?:\[[^\]]*\])?\{[^}]*\}"
+                       r"|\\multicolumn\{\d+\}\{[^}]*\}", " ", raw_inner)
+        for chunk in re.split(r"\\\\", inner):
+            if not chunk.strip():
+                continue
+            cells = [c.strip() for c in re.split(r"(?<!\\)&", chunk)]
+            cells = [re.sub(r"\\(?:text(?:bf|it|sc)|emph|small|footnotesize)\s*"
+                            r"\{([^{}]*)\}", r"\1", c).strip() for c in cells]
+            cells = [re.sub(r"\s+", " ", re.sub(r"\\[a-zA-Z@]+\*?", " ", c)).strip()
+                     for c in cells]
+            cells = [c for c in cells if c]
+            if not cells:
+                continue
+            head = norm_title(cells[0])
+            if head.startswith("deliberately not") or head in (
+                    "what", "item", "out of scope", "not done"):
+                continue
+            rows.append({
+                "item": cells[0],
+                "reason": " ".join(cells[1:]).strip(),
+                "line": start_line + body[:offset + chunk_offset(inner, chunk)]
+                        .count("\n")})
+    line = start_line
+    for raw in body.splitlines():
+        line += 1
+        item = raw.strip()
+        m = re.match(r"^(?:[-*]|\\item(?:\[[^\]]*\])?)\s+(.*)$", item)
+        if m:
+            content = m.group(1)
+        elif item.startswith("|") and item.count("|") >= 3 and \
+                not re.match(r"^\|[\s:|-]+\|$", item):
+            cells = [c.strip() for c in item.strip("|").split("|")]
+            content = " :: ".join(c for c in cells if c)
+        else:
+            continue
+        content = re.sub(r"\\text(bf|it)\{([^}]*)\}", r"\2", content).strip()
+        if not content or content.startswith("<"):
+            continue
+        parts = re.split(r"\s+::\s+|\s+--\s+|:\s+", content, maxsplit=1)
+        rows.append({"item": parts[0].strip(),
+                     "reason": (parts[1].strip() if len(parts) > 1 else ""),
+                     "line": line})
+    return {"rows": rows, "line": start_line, "prose": not rows}
+
+
+def artifact_scope(store, unit):
+    cfg = store.config
+    for f in tracked_drafts(store, unit):
+        got = parse_scope(f.read_text(encoding="utf-8", errors="replace"), cfg)
+        if got:
+            got["file"] = os.path.relpath(f, store.root)
+            return got
+    return None
 
 
 def section_dispositions(store, venue):
@@ -861,6 +988,36 @@ def cmd_walk(args):
         say("  A section can be present without its own heading, and no textual "
             "test separates that from an omission -- which is why this asks you "
             "rather than deciding.")
+
+
+def cmd_scope(args):
+    store = Store(require_root())
+    unit = store.unit or die("no open unit.")
+    scope = artifact_scope(store, unit)
+    if not scope:
+        say("nullius: no tracked draft declares a scope boundary. The headings "
+            "looked for are in config as `scope_headings`.")
+        say("  A plan without one is why review does not converge: a competent "
+            "critic can always name another control, so each round adds scope and "
+            "the study never starts.")
+        return
+    say(f"the draft rules these out, at {scope['file']}:{scope['line']}")
+    if scope["prose"]:
+        say("  the boundary is prose rather than a list, so it can be shown and "
+            "not checked. Each exclusion carrying its own reason is what makes it "
+            "reviewable instead of a shield.")
+    for r in scope["rows"]:
+        say(f"  {scope['file']}:{r['line']}  {r['item'][:66]}")
+        say(f"      because: {r['reason'] or 'NO REASON GIVEN'}")
+    unit["scope_read"] = {"file": scope["file"], "rows": len(scope["rows"]),
+                          "when": now()}
+    store.save_unit(unit)
+    say("")
+    say("A suggestion that matches one of these is a decision already taken, not a "
+        "gap. If a boundary is itself wrong, that is the one admissible way back "
+        "in:")
+    say("  nullius finding <fatal|material> scope \"<why this boundary is wrong>\" "
+        "--at \"<file:line of the row>\"")
 
 
 def cmd_section(args):
@@ -1040,6 +1197,24 @@ def unit_findings(store):
         blank = [f for f in findings if not f.get("at")]
         if blank:
             facts.append(f"{len(blank)} finding(s) with no locator.")
+        scope = artifact_scope(store, unit)
+        if scope and not unit.get("scope_read"):
+            facts.append(f"the draft declares a scope boundary at "
+                         f"{scope['file']}:{scope['line']} and this unit has not "
+                         f"read it. `nullius scope`. Review on a plan does not "
+                         f"otherwise converge: a competent critic can always name "
+                         f"another control, so without a written boundary each "
+                         f"round adds scope and the work never starts.")
+        elif scope:
+            unreasoned = [r for r in scope["rows"] if not r["reason"]]
+            if unreasoned:
+                facts.append(
+                    "the scope boundary has rows that exclude something without "
+                    "saying why:\n      "
+                    + "\n      ".join(f"{scope['file']}:{r['line']}  {r['item'][:56]}"
+                                       for r in unreasoned)
+                    + "\n    Out by decision, with the decision missing, is a "
+                      "shield rather than a boundary.")
         verdict = (unit.get("verdict") or {}).get("recommendation")
         if not verdict:
             facts.append(f"no recommendation. `nullius verdict <"
@@ -1379,7 +1554,25 @@ def cmd_finding(args):
     if not args.at:
         die("--at is required. A finding without a locator cannot be acted on and "
             "cannot be disagreed with.")
+    scope = artifact_scope(store, unit)
+    if scope and args.referent != "scope" and not unit.get("scope_read"):
+        sys.stderr.write(
+            f"nullius: this draft declares its own scope boundary at "
+            f"{scope['file']}:{scope['line']}, and it has not been read in this "
+            f"unit. Read it first -- `nullius scope`. A suggestion that matches a "
+            f"row there is a decision already taken rather than a gap, and no "
+            f"textual test can tell the two apart, which is why you are being "
+            f"asked rather than filtered.\n")
+        sys.exit(1)
     norm = norm_title(args.text)
+    if scope and args.referent != "scope":
+        terms = {w for w in norm.split() if len(w) > 4}
+        for r in scope["rows"]:
+            shared = terms & {w for w in norm_title(r["item"]).split() if len(w) > 4}
+            if len(shared) >= 3:
+                say(f"  note: shares {', '.join(sorted(shared))} with the boundary "
+                    f"row at {scope['file']}:{r['line']}. A lead, not a verdict.")
+                break
     for old in discharged_findings(store):
         o = norm_title(old)
         if o and (o in norm or norm in o):
@@ -2362,6 +2555,14 @@ def hook_session_start(payload):
                          + (f", {words}/{budget} words" if budget else ""))
         for name, d in section_dispositions(store, unit.get("venue")).items():
             lines.append(f"  section '{name}': {d['as']}, {d['why']}")
+        if unit.get("kind") in ("critique", "referee", "write"):
+            sc = artifact_scope(store, unit)
+            if sc and sc["rows"]:
+                lines.append(f"The draft rules these out by decision "
+                             f"({sc['file']}:{sc['line']}); a suggestion matching "
+                             f"one is not a gap:")
+                for r in sc["rows"][:8]:
+                    lines.append(f"  out: {r['item'][:70]}")
         if unit.get("trade"):
             lines.append(f"  trade taken: {unit['trade']}")
         facts, chosen = unit_findings(store)
@@ -2618,6 +2819,9 @@ def build_parser():
 
     s = sub.add_parser("walk", help="every required section, present/thin/absent")
     s.add_argument("--venue"); s.set_defaults(fn=cmd_walk)
+
+    s = sub.add_parser("scope", help="what the draft itself rules out, and why")
+    s.set_defaults(fn=cmd_scope)
 
     s = sub.add_parser("section", help="say what an absent required section is")
     s.add_argument("name")
