@@ -32,7 +32,9 @@ expect_hook() {
 
 expect_grep() {
   local pat="$1" label="$2"; shift 2
-  if "$@" 2>&1 | grep -q -- "$pat"; then ok; else bad "$label: no match for '$pat'"; fi
+  local out; out="$("$@" 2>&1)"
+  if printf '%s\n' "$out" | grep -q -- "$pat"; then ok
+  else bad "$label: no match for '$pat'"; printf '        %s\n' "${out%%$'\n'*}"; fi
 }
 
 N() { python3 "$NULLIUS" "$@"; }
@@ -74,7 +76,7 @@ A = {"id": "https://openalex.org/A1", "name": "Shared Author"}
 B = {"id": "https://openalex.org/A2", "name": "Other One"}
 C = {"id": "https://openalex.org/A3", "name": "Third Party"}
 def rec(t, authors, retracted=False):
-    return {"openalex": "https://openalex.org/W" + t, "doi": "10.1/" + t,
+    return {"openalex": "https://openalex.org/W" + t, "doi": "10.1234/" + t,
             "title": t, "year": 2021, "type": "article", "venue": "Test J",
             "peer_reviewed": True, "retracted": retracted, "authors": authors,
             "institutions": [], "cited_by": 1, "oa_url": None,
@@ -346,6 +348,51 @@ expect_grep "person@example.edu" "an empty project value does not clobber it" \
   python3 "$NULLIUS" config contact
 expect_grep "not in .nullius" "and the project config never holds the address" \
   bash -c "grep -q person@example.edu .nullius/config.json && echo in .nullius || echo not in .nullius"
+
+# ---------------------------------- a bare identifier is a citation ---------
+# Found on a real 26-page proposal that names sixteen arXiv papers in running
+# prose and carries not one \cite. The guard reported it clean.
+printf 'Recent work (arXiv:2310.15337) shows a thing.\n' > bare-id.tex
+printf 'See https://doi.org/10.1234/alpha for the result.\n' > bare-doi.tex
+printf 'Following arXiv:2401.00001 we do the same.\n' > bare-unknown.tex
+expect_exit 2 "an unresolved arXiv id in prose is refused" \
+  python3 "$NULLIUS" check bare-id.tex
+expect_grep "bare identifier is a citation" "and says why it counts" \
+  python3 "$NULLIUS" check bare-id.tex
+python3 - <<'PYIN'
+import json, pathlib
+p = pathlib.Path(".nullius/refs.json"); d = json.loads(p.read_text())
+d["known2023"] = dict(d["alpha2021"], arxiv="2310.15337", doi="10.5555/known",
+                      title="known preprint")
+p.write_text(json.dumps(d, indent=2))
+PYIN
+expect_exit 0 "and allowed once that identifier is resolved" \
+  python3 "$NULLIUS" check bare-id.tex
+expect_exit 0 "a bare DOI matching a resolved record passes" \
+  python3 "$NULLIUS" check bare-doi.tex
+expect_exit 2 "an unknown one does not" python3 "$NULLIUS" check bare-unknown.tex
+printf 'As reported in 10.1234/bad.\n' > bare-retracted.tex
+expect_exit 2 "a bare identifier for a retracted work is refused" \
+  python3 "$NULLIUS" check bare-retracted.tex
+
+# ------------------------- walked, but outside the limit --------------------
+# Also from real use: a positioning draft the venue does not count still has to
+# be searched for the sections it holds.
+python3 "$NULLIUS" start ex write "x" --venue conf --force >/dev/null
+python3 "$NULLIUS" accept "q" >/dev/null; python3 "$NULLIUS" close "in the Methods" >/dev/null
+cat > extra.tex <<'EXTRA'
+\section{Ethics Statement}
+This lives in the supplement and runs to a reasonable number of words so that it
+counts as a written section rather than as a bare heading with nothing under it.
+EXTRA
+python3 "$NULLIUS" artifact paper.tex >/dev/null
+before="$(python3 "$NULLIUS" status | grep -o '^budget *[0-9]*' | tr -dc 0-9)"
+expect_exit 0 "track a supplement outside the limit" \
+  python3 "$NULLIUS" artifact extra.tex --excluded
+after="$(python3 "$NULLIUS" status | grep -o '^budget *[0-9]*' | tr -dc 0-9)"
+[ "$before" = "$after" ] && ok || bad "an excluded artifact moved the word count ($before -> $after)"
+expect_grep "Ethics Statement" "but the walk still finds its sections" \
+  python3 "$NULLIUS" walk
 
 echo
 echo "  $pass passed, $fail failed"

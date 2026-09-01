@@ -67,7 +67,8 @@ Run them as `./.nullius/bin/nullius <cmd>` from the project root.
     start <slug> <kind> "<question>" [--venue V] [--words N] [--artifact PATH]
         kind: read survey idea explain interpret critique write referee
     accept "<a question open right now>"   close "<the answer, with a locator>"
-    trade "<what gets cut>"                artifact <path>      status   done
+    trade "<what gets cut>"                status       done
+    artifact <path> [--excluded]           --excluded: walked, not counted
 
     cite <doi|arxiv|title>                 resolves, or refuses. never invent one
     cite <url> --kind <docs|blog|book|chapter|thesis|report|dataset|software|talk|web>
@@ -110,6 +111,12 @@ DEFAULT_CONFIG = {
         r"(?<![\w@])@([A-Za-z][A-Za-z0-9_:.-]{2,})",
     ],
     "draft_extensions": [".tex", ".md", ".markdown", ".txt", ".rst"],
+    "bare_identifier_patterns": [
+        r"arxiv[:\s/]\s*(\d{4}\.\d{4,5})",
+        r"arxiv\.org/(?:abs|pdf)/(\d{4}\.\d{4,5})",
+        r"(?<![\w/.])(10\.\d{4,9}/[^\s,;)\]}\"']+)",
+        r"doi\.org/(10\.\d{4,9}/[^\s,;)\]}\"']+)",
+    ],
     "attribution_cues": ["et al", "report", "reports", "reported", "suggest",
                          "suggests", "claim", "claims", "find", "finds", "found",
                          "observe", "observes", "according to"],
@@ -534,9 +541,10 @@ def record_from_openalex(w):
 
 
 def filter_safe(t):
-    """OpenAlex reads `:` `,` `|` and `+` as filter operators, so a title carrying
-    any of them returns HTTP 400 rather than the work. Most CS titles carry a colon."""
-    return re.sub(r"\s+", " ", re.sub(r"[:,|+()\[\]]", " ", t or "")).strip()
+    """OpenAlex parses its filter values, so punctuation in a title becomes syntax:
+    a colon, and a question mark, each return HTTP 400 rather than the work. Keep
+    letters, digits, spaces and hyphens; everything else is a space."""
+    return re.sub(r"\s+", " ", re.sub(r"[^0-9A-Za-z\- ]", " ", t or "")).strip()
 
 
 def norm_title(t):
@@ -598,6 +606,30 @@ def cited_keys(text, cfg):
     return keys
 
 
+def bare_identifiers(text, cfg):
+    """A reference does not become a citation by wearing \\cite. Plenty of real drafts
+    name a work as `arXiv:2310.15337` in running prose, and a bare identifier is the
+    form most likely to be invented, because no bibliography file ever sees it."""
+    out = set()
+    for pat in cfg.get("bare_identifier_patterns", []):
+        for m in re.finditer(pat, text, re.I):
+            v = m.group(1).rstrip(".,;")
+            out.add(("doi", v.lower()) if v.lower().startswith("10.")
+                    else ("arxiv", v))
+    return out
+
+
+def resolved_index(refs):
+    """Every identifier the ledger already knows, however it was stored."""
+    known = set()
+    for rec in refs.values():
+        if rec.get("doi"):
+            known.add(("doi", rec["doi"].lower()))
+        if rec.get("arxiv"):
+            known.add(("arxiv", rec["arxiv"]))
+    return known
+
+
 def is_draft(path, cfg):
     return Path(path).suffix.lower() in cfg["draft_extensions"]
 
@@ -621,10 +653,13 @@ def author_groups(refs, citekeys):
     return len(sets) if sets else (1 if citekeys else 0)
 
 
-def tracked_drafts(store, unit):
+def tracked_drafts(store, unit, counted_only=False):
     cfg = store.config
+    excluded = set((unit or {}).get("excluded", []))
     out = []
     for rel in (unit or {}).get("artifacts", []):
+        if counted_only and rel in excluded:
+            continue
         f = store.root / rel
         if f.is_file() and is_draft(f, cfg):
             out.append(f)
@@ -811,6 +846,23 @@ def cmd_section(args):
 def check_draft_text(store, text, label):
     cfg, refs = store.config, store.refs
     facts = []
+    known = resolved_index(refs)
+    by_id = {}
+    for k, rec in refs.items():
+        if rec.get("doi"):
+            by_id[("doi", rec["doi"].lower())] = k
+        if rec.get("arxiv"):
+            by_id[("arxiv", rec["arxiv"])] = k
+    for kind, value in sorted(bare_identifiers(text, cfg)):
+        shown = f"arXiv:{value}" if kind == "arxiv" else value
+        if (kind, value) not in known:
+            facts.append(f"{label}: `{shown}` is named in the text and has never "
+                         f"been resolved. A bare identifier is a citation, and it "
+                         f"is the form most likely to be invented -- no "
+                         f"bibliography ever checks it. `nullius cite {value}`.")
+        elif refs[by_id[(kind, value)]].get("retracted"):
+            facts.append(f"{label}: `{shown}` is named in the text and the index "
+                         f"records it as RETRACTED.")
     for key in sorted(cited_keys(text, cfg)):
         rec = refs.get(key)
         if rec is None:
@@ -948,13 +1000,13 @@ def unit_findings(store):
                           "whether the section does its job.")
 
     budget, _ = effective_budget(store, unit, cfg)
-    if budget and not tracked_drafts(store, unit):
+    if budget and not tracked_drafts(store, unit, counted_only=True):
         facts.append(f"a budget of {budget} words is declared and no draft is "
                      f"tracked against it, so nothing is measuring it. "
                      f"`nullius artifact <path>`, or drop the budget.")
     elif budget:
         words = sum(count_words(f.read_text(encoding="utf-8", errors="replace"))
-                    for f in tracked_drafts(store, unit))
+                    for f in tracked_drafts(store, unit, counted_only=True))
         if words > budget and not unit.get("trade"):
             facts.append(f"{words} words against a declared budget of {budget}. "
                          f"Over budget an addition is a trade, not an addition: "
@@ -1155,8 +1207,20 @@ def cmd_artifact(args):
     rel = os.path.relpath(Path(args.path).resolve(), store.root)
     if rel not in unit["artifacts"]:
         unit["artifacts"].append(rel)
+    excluded = set(unit.get("excluded", []))
+    if args.excluded:
+        excluded.add(rel)
+    else:
+        excluded.discard(rel)
+    unit["excluded"] = sorted(excluded)
     store.save_unit(unit)
-    say(f"nullius: tracking {rel}")
+    if args.excluded:
+        say(f"nullius: tracking {rel}, outside the limit")
+        say("  the walk searches it for required sections; the word budget does "
+            "not count it. Say so in the venue file's Format block too, so the "
+            "exclusion is the venue's rather than yours.")
+    else:
+        say(f"nullius: tracking {rel}")
 
 
 def merge_records(primary, secondary):
@@ -1212,9 +1276,16 @@ def resolve_reference(cfg, identifier, first=False):
     else:
         hits = []
         if "openalex" in idx:
-            res = openalex("works", cfg["contact"],
-                           **{"filter": f"title.search:{filter_safe(value)}",
-                              "per-page": 5})
+            res = None
+            try:
+                res = openalex("works", cfg["contact"],
+                               **{"filter": f"title.search:{filter_safe(value)}",
+                                  "per-page": 5})
+            except RuntimeError:
+                pass
+            if not (res or {}).get("results"):
+                res = openalex("works", cfg["contact"], search=filter_safe(value),
+                               **{"per-page": 5})
             hits = (res or {}).get("results") or []
         if arxiv_meta:
             want, year = norm_title(arxiv_meta["title"]), arxiv_meta.get("year")
@@ -1857,8 +1928,9 @@ def cmd_check(args):
     facts = check_draft_text(store, text, rel)
     chosen = check_attribution(store, text, rel)
     words = count_words(text)
-    say(f"{rel}: {words} words, "
-        f"{len(cited_keys(text, store.config))} citation key(s)")
+    cfg = store.config
+    say(f"{rel}: {words} words, {len(cited_keys(text, cfg))} citation key(s), "
+        f"{len(bare_identifiers(text, cfg))} bare identifier(s)")
     for f in facts:
         say(f"  FACT   {f}")
     for c in chosen:
@@ -1887,7 +1959,7 @@ def cmd_status(args):
     budget, source = effective_budget(store, unit, store.config)
     if budget:
         words = sum(count_words(f.read_text(encoding='utf-8', errors='replace'))
-                    for f in tracked_drafts(store, unit))
+                    for f in tracked_drafts(store, unit, counted_only=True))
         say(f"budget    {words} / {budget} words  ({source})")
     facts, chosen = unit_findings(store)
     say("")
@@ -2145,7 +2217,11 @@ def build_parser():
     s.add_argument("what"); s.set_defaults(fn=cmd_trade)
 
     s = sub.add_parser("artifact", help="track a draft against this unit")
-    s.add_argument("path"); s.set_defaults(fn=cmd_artifact)
+    s.add_argument("path")
+    s.add_argument("--excluded", action="store_true",
+                   help="searched by the walk, not counted toward the limit "
+                        "(a supplement, an appendix the venue excludes)")
+    s.set_defaults(fn=cmd_artifact)
 
     s = sub.add_parser("cite", help="resolve an identifier, or record a source "
                                      "no index carries")

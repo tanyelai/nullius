@@ -279,7 +279,7 @@ the rule and can disagree with it in one place.
 | **P1** | ledger and CLI: `start`, `accept`, `claim`, `note`, `falsify`, `status`, `doctor` | **done** |
 | **P2** | the blocking gates: citation resolved, not retracted, read-depth cap, independence cap, untraded overrun | **done**, and pinned by tests |
 | **P3** | the literature spine: multi-index search and ranking, Crossref, arXiv, Europe PMC, Unpaywall, preprint hunting, the verbatim quote check | **done**; snowballing and citation-context are open |
-| **P4** | the venue completeness walk, the gap kinds, the extension detector | open. The calibration engine is the part most likely to be wrong on first contact |
+| **P4** | the gap kinds, the extension detector, and honouring an artifact's own scope boundary | the walk is **done**; the rest open |
 | **P5** | a `stable` release branch, worked examples for two or three fields, public | open |
 
 ## What this is not

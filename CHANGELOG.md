@@ -5,6 +5,33 @@ and the CLI surface may change; when they do, the change is listed here with wha
 
 ## 0.1.0
 
+### Found by running it against a real proposal
+
+A 26-page study plan, 14,000 words, naming sixteen arXiv papers. Three defects, one
+of them in the tool's single most important job:
+
+- **a bare identifier is a citation, and the guard did not know it.** The document
+  carries not one `\cite`; every reference is written as `arXiv:2310.15337` in running
+  prose. `nullius check` reported it **clean**. Bare arXiv ids, DOIs and doi.org links
+  are now resolved and gated exactly like a citekey, which matters more than the keyed
+  form: no bibliography file ever sees a bare identifier, so nothing else would have
+  caught an invented one. Fifteen of the sixteen resolved; the sixteenth found the next
+  bug.
+- **punctuation in a title was still breaking resolution.** The escaping blacklisted a
+  handful of operator characters, so the next one nobody thought of still returned HTTP
+  400: a question mark, in *"Are Language Models Consequentialist or Deontological Moral
+  Reasoners?"*. It whitelists now, and falls back to the plain search endpoint when the
+  structured filter refuses, because one route is not a route.
+- **tracking a draft and counting it were one list.** Adding the positioning file so the
+  walk could find its Related Work section pushed the paper over the venue's word limit,
+  although that file is not part of the submission. `--excluded` separates the two:
+  searched by the walk, outside the limit. Venue files already had a line for what the
+  limit excludes; the code did not.
+
+And one in the test suite itself, which is worse than a bug in the tool: `set -o pipefail`
+made every `grep` assertion against a command that intentionally exits non-zero report a
+false failure. A harness that lies is worse than no harness.
+
 ### Found by reviewing the first cut
 
 Seven defects, each fixed and pinned by a test:
