@@ -5,7 +5,8 @@ and the CLI surface may change; when they do, the change is listed here with wha
 
 ## 0.2.0
 
-**[evals/](evals/)** runs six scenarios end to end, one per use case, each on a different AI
+**[evals/](evals/)** runs seven scenarios end to end, one per use case plus the path where the
+index refuses to answer, each on a different AI
 subject picked at random: speculative decoding, machine unlearning evaluation, mixture-of-experts
 routing, watermark robustness, reviewing that proposal, and influence functions at scale. Every
 scenario states what must be refused and what must be allowed, because a gate tested in one
@@ -22,7 +23,7 @@ Everything on the roadmap is built. What changed in this release beyond the feat
 under 0.1.0 is recorded in the entries below; what is worth reading first is new.
 
 **[algorithms/](algorithms/)** collects every mechanism with the measurement that killed
-the naive version of it: the query that matched 101,007 works against the one that matched 31,
+the naive version of it: the query that matched 15,277 works against the one that matched 811,
 the citation walk that offered a 1962 statistics paper as the canon of a much younger
 field, the guard that
 called a document clean while it named sixteen unverified papers and then again while it
@@ -148,10 +149,9 @@ thing in this repository so far.
   most-cited work
   sharing any term with the query. Relevance gates now; citations per year order what
   got through.
-- **full-text search dilutes.** The same intent matched 101,007 works through OpenAlex's
-  `search` and 31 through title and abstract, and only the second set was about the
-  subject. Title and abstract is the route now, with the loose one kept as a fallback
-  for when it returns almost nothing.
+- **full-text search dilutes.** The same intent matched 15,277 works through OpenAlex's
+  `search` and 811 through title and abstract, and only the second set was about the
+  subject. Title and abstract is the route now, and the loose one is opt-in.
 - **`all:a b c` ORs its terms**, so arXiv answered a four-word question with 2,060,445
   matches, and that figure then became the headline number that is supposed to make a
   thin search undeniable. Terms are ANDed, and per-index counts are reported separately

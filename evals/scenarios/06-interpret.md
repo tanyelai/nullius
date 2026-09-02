@@ -16,7 +16,9 @@ approximations hold.
 
 - Closing with **no decisive observation named**.
 - `reading` before there is anything to read against.
-- `decisive` recorded silently once `mine-unpublished` results already exist.
+- `decisive` recorded silently once a `mine-unpublished` result has arrived **inside this
+  unit**. A result that predates the unit is reported rather than refused, because whether it
+  is the subject of this interpretation is not something a timestamp can decide.
 
 ## Must allow
 

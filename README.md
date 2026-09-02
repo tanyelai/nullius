@@ -8,10 +8,11 @@ unread paper, the unsearched literature and the unbounded critique into states a
 **cannot finish in**.
 
 > [!NOTE]
-> **Status: installable.** The ledger, the gates and citation
-> resolution work and are covered by [`tests/smoke.sh`](tests/smoke.sh). Snowballing,
-> the venue completeness walk and the review agents' calibration engine are not built
-> yet. See [Roadmap](#roadmap).
+> **Status: installable, and everything on the roadmap is built.** 239 assertions in
+> [`tests/smoke.sh`](tests/smoke.sh), offline and in both directions, plus seven
+> end-to-end [scenarios](evals/) against live indexes. What remains is calibration, and
+> [algorithms/](algorithms/) says where each mechanism is weakest, including that none of
+> them has been evaluated against a control.
 >
 > The argument is in **[WHY.md](WHY.md)**: what goes wrong, why better instructions do
 > not fix it, and what a harness has to constrain instead. Read that first if you want
@@ -80,15 +81,19 @@ lands in the project's own `.nullius/config.json`, which is meant to be committe
 
 ```bash
 ./.nullius/bin/nullius start intro-rewrite write "sharpen the framing" \
-    --venue MICCAI --words 800 --artifact paper/intro.tex
+    --artifact paper/intro.tex
 ./.nullius/bin/nullius accept "does the intro state what the method cannot do"
 
-./.nullius/bin/nullius cite 10.1016/j.media.2017.07.005   # resolves, or refuses
-./.nullius/bin/nullius note litjens2017 --depth abstract
-./.nullius/bin/nullius claim "deep learning dominates the field" \
+./.nullius/bin/nullius cite 2005.11401              # resolves, or refuses
+./.nullius/bin/nullius note lewis2020 --depth abstract
+./.nullius/bin/nullius claim "retrieval helps on knowledge-heavy tasks" \
     --warrant authors-claim --status single-result --strength reports \
-    --source litjens2017
+    --source lewis2020
 ```
+
+Add `--venue <name>` once you have written `.nullius/venues/<name>.md` from the real call or
+author guidelines. Until that file exists the tool will not require anything of the draft,
+which is deliberate: it may not ask for what it cannot cite a line for.
 
 That last command is the shape of the whole tool. Ask for `--strength mechanism` on a
 source you only read to `abstract` and it refuses; ask for `--status established` on two
@@ -117,6 +122,7 @@ knows the vocabulary: the gate that fires at startup carries it.
 | `findings` | what this unit has found so far |
 | `resolve` | close a finding, with what changed |
 | `verdict` | the recommendation this critique adds up to |
+| `point` | a reviewer's point, and what you did about it |
 | `kills` | the observation that would end this idea |
 | `cost` | what this idea would take to run |
 | `trade` | price an addition made over budget |
@@ -132,10 +138,12 @@ knows the vocabulary: the gate that fires at startup carries it.
 | `snowball` | walk the citation graph from what you kept |
 | `screen` | include or exclude retrieved works |
 | `walk` | every required section, present/thin/absent |
+| `frontier` | close a walk by decision, with a reason |
 | `scope` | what the draft itself rules out, and why |
 | `section` | say what an absent required section is |
 | `coverage` | the counts, and what is unscreened |
 | `check` | run the write guards over a draft |
+| `report` | what the ledger holds, for a person to read |
 | `status` | why the stop gate is refusing |
 | `done` | close the unit |
 | `doctor` | is this project still set up correctly |
@@ -458,10 +466,11 @@ Written as schemas rather than prose where the mechanism has any structure, one 
 and open at the end of each on where it is still weak. If one is wrong, the measurement is the
 thing to attack.
 
-[evals/](evals/) runs six scenarios, one per use case, each on a different AI subject and each
-against live indexes. It is not a benchmark and six runs are not calibration; it measures
-whether each path completes and whether the gates fire on real material rather than only on the
-fixtures. Two defects came out of the first pass, both recorded in the scenarios that found
+[evals/](evals/) runs seven scenarios against live indexes: one per use case, each on a
+different AI subject, plus the path where the index refuses to answer at all. It is not a
+benchmark and seven runs are not calibration; it measures whether each path completes and
+whether the gates fire on real material rather than only on the fixtures. Two defects came out
+of the first pass, both recorded under `## Found by running this` in the scenario that found
 them.
 
 [examples/](examples/) has three worked fields: clinical machine learning, language model

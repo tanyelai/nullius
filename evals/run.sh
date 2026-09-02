@@ -233,9 +233,10 @@ P
   expect_fact "never recorded what was actually observed" "closing with the prediction made and nothing observed"
   expect allow  "recording what was observed"  nl reading "0.31, which is below the line, so the approximation did not hold"
   expect allow  "and then it closes"  bash -c "printf '%s' '{\"cwd\":\"$PWD\"}' | python3 '$N' _hook stop"
-  nl claim "our run shows a gap" --warrant mine-unpublished --status single-result --strength reports >/dev/null 2>&1
   nl start ip2 interpret "what did we see" --force >/dev/null
-  expect refuse "naming the number silently after results exist"  nl decisive "anything above 0.5"
+  nl claim "a result that arrives inside this unit" --warrant mine-unpublished \
+     --status single-result --strength reports >/dev/null 2>&1
+  expect refuse "naming the number silently once a result arrives inside the unit"  nl decisive "anything above 0.5"
   expect allow  "unless it is labelled exploratory"  nl decisive "anything above 0.5" --post-hoc
   expect allow  "and the label crosses a context boundary"  bash -c "printf '%s' '{\"cwd\":\"$PWD\"}' | python3 '$N' _hook session-start | grep -q 'framed after the results\\|post-hoc'"
   ;;

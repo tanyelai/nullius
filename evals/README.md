@@ -18,7 +18,7 @@ passing something it should refuse.
 
 ## What this cannot measure
 
-It is not a benchmark and six runs are not calibration. In particular it says **nothing** about
+It is not a benchmark and seven runs are not calibration. In particular it says **nothing** about
 whether the severity classes are right, whether a critique the tool permits is a good critique,
 or whether a researcher using this ends up with better work than one who does not. Those need a
 control, human labels and an agreement measure. None of that exists here, and
