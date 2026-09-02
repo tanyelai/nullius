@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 480" width="1100" height="480" role="img" aria-label="Two independent caps on a claim. How far the source was read caps what the claim may assert: an abstract supports reports only, a skim adds holds, the method section adds mechanism, and replication adds generalises. Independently, how many independent author sets stand behind a claim caps how settled it may be called: folklore, single-result and emerging need one, while contested, established and textbook each need two. Neither cap substitutes for the other, and there is no terminal assumed warrant.">
+  <style>
+    .plate{fill:#F4F6F8} .hair{stroke:#C9D3DB;stroke-width:1}
+    .rung{stroke:#5A6B7C;stroke-width:2;stroke-linecap:round}
+    .gate{stroke:#B3413E;stroke-width:1.4;stroke-dasharray:5 4}
+    .axis{stroke:#A9B7C2;stroke-width:1.2}
+    .rl {fill:#39485A;font:400 12.5px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+    .rlg{fill:#16202B;font:500 12.5px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+    .ch {fill:#16202B;font:500 12.5px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+    .h  {fill:#16202B;font:600 15.5px ui-sans-serif,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+    .c  {fill:#39485A;font:400 13.5px ui-sans-serif,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+    .mr {fill:#B3413E;font:500 12px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+    .eb {fill:#8496A6;font:500 11px ui-sans-serif,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;letter-spacing:.09em}
+    .k  {fill:#16202B;font:600 21px ui-sans-serif,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  </style>
+  <rect class="plate" width="1100" height="480"/>
+  <text class="eb" x="44" y="42">WHAT A CLAIM IS ALLOWED TO SAY</text>
+  <text class="k"  x="44" y="72">Two caps, and neither one covers for the other</text>
+
+  <text class="h" x="44" y="126">how far you read</text>
+  <text class="c" x="44" y="148">caps what the claim may assert</text>
+  <line class="axis" x1="240" y1="196" x2="640" y2="196"/>
+  <text class="rl" x="240" y="218" text-anchor="end">abstract</text>
+  <circle cx="268" cy="214" r="5" fill="#16202B"/>
+  <circle cx="368" cy="214" r="4" fill="none" stroke="#CBD5DD" stroke-width="1.2"/>
+  <circle cx="472" cy="214" r="4" fill="none" stroke="#CBD5DD" stroke-width="1.2"/>
+  <circle cx="586" cy="214" r="4" fill="none" stroke="#CBD5DD" stroke-width="1.2"/>
+  <text class="rl" x="240" y="254" text-anchor="end">skim</text>
+  <circle cx="268" cy="250" r="5" fill="#16202B"/>
+  <circle cx="368" cy="250" r="5" fill="#16202B"/>
+  <circle cx="472" cy="250" r="4" fill="none" stroke="#CBD5DD" stroke-width="1.2"/>
+  <circle cx="586" cy="250" r="4" fill="none" stroke="#CBD5DD" stroke-width="1.2"/>
+  <text class="rl" x="240" y="290" text-anchor="end">method</text>
+  <circle cx="268" cy="286" r="5" fill="#16202B"/>
+  <circle cx="368" cy="286" r="5" fill="#16202B"/>
+  <circle cx="472" cy="286" r="5" fill="#16202B"/>
+  <circle cx="586" cy="286" r="4" fill="none" stroke="#CBD5DD" stroke-width="1.2"/>
+  <text class="rl" x="240" y="326" text-anchor="end">replicated</text>
+  <circle cx="268" cy="322" r="5" fill="#16202B"/>
+  <circle cx="368" cy="322" r="5" fill="#16202B"/>
+  <circle cx="472" cy="322" r="5" fill="#16202B"/>
+  <circle cx="586" cy="322" r="5" fill="#16202B"/>
+  <text class="ch" x="268" y="184" text-anchor="middle">reports</text>
+  <text class="ch" x="368" y="184" text-anchor="middle">holds</text>
+  <text class="ch" x="472" y="184" text-anchor="middle">mechanism</text>
+  <text class="ch" x="586" y="184" text-anchor="middle">generalises</text>
+  <line class="rung" x1="742" y1="172" x2="762" y2="172"/>
+  <text class="rlg" x="774" y="176">textbook</text>
+  <line class="rung" x1="742" y1="202" x2="762" y2="202"/>
+  <text class="rlg" x="774" y="206">established</text>
+  <line class="rung" x1="742" y1="232" x2="762" y2="232"/>
+  <text class="rlg" x="774" y="236">contested</text>
+  <line class="rung" x1="742" y1="262" x2="762" y2="262"/>
+  <text class="rl" x="774" y="266">emerging</text>
+  <line class="rung" x1="742" y1="292" x2="762" y2="292"/>
+  <text class="rl" x="774" y="296">single-result</text>
+  <line class="rung" x1="742" y1="322" x2="762" y2="322"/>
+  <text class="rl" x="774" y="326">folklore</text>
+  <text class="c" x="240" y="360">filled is allowed. The staircase is the cap, and it is checked on the claim, not on the prose.</text>
+
+  <text class="h" x="700" y="126">how many independent author sets</text>
+  <text class="c" x="700" y="148">caps how settled you may call it</text>
+  <line class="gate" x1="700" y1="247" x2="838" y2="247"/>
+  <text class="c" x="1050" y="251" font-size="12.5" fill="#B3413E" text-anchor="end">two author sets, from here up</text>
+  <line class="hair" x1="44" y1="392" x2="1056" y2="392"/>
+  <text class="eb" x="44" y="420">AND ONE WORD THAT EXISTS ONLY TO BE REFUSED</text>
+  <text class="c"  x="44" y="446">The warrant vocabulary carries</text>
+  <text class="mr" x="248" y="446">assumed</text>
+  <text class="c"  x="316" y="446">so that recording it fails with a reason: an assumption is an open question wearing a citation's clothes.</text>
+</svg>

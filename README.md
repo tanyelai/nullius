@@ -18,6 +18,11 @@ unread paper, the unsearched literature and the unbounded critique into states a
 > not fix it, and what a harness has to constrain instead. Read that first if you want
 > to know whether this is for you.
 
+![Where nullius intervenes in a session: it tells you what is open at SessionStart and after
+compaction, refuses a write to a draft that cites nothing resolvable, and refuses to end the
+turn while a fact says otherwise. A fact blocks; a threshold somebody chose is reported
+instead.](assets/gates.svg)
+
 ---
 
 ## Install
@@ -90,6 +95,12 @@ lands in the project's own `.nullius/config.json`, which is meant to be committe
     --warrant authors-claim --status single-result --strength reports \
     --source lewis2020
 ```
+
+![Two independent caps on a claim. How far the source was read caps what the claim may
+assert: an abstract supports reports, a skim adds holds, the method section adds mechanism,
+replication adds generalises. Separately, how many independent author sets stand behind it
+caps how settled it may be called, and contested, established and textbook each need two.
+](assets/claim-caps.svg)
 
 Add `--venue <name>` once you have written `.nullius/venues/<name>.md` from the real call or
 author guidelines. Until that file exists the tool will not require anything of the draft,
@@ -232,6 +243,11 @@ counts on them.
 
 ## When a draft is only getting longer
 
+![Three refusals on a critique loop that would otherwise never close: an ask with no
+terminating answer, a finding that cites none of the four admissible referents, and a draft
+that grew for three turns with nothing that generates work closed. Fatal and material findings
+still keep the loop open.](assets/critique.svg)
+
 Growth is not the signal. A draft that grew while four material findings were fixed is a
 draft being worked on. Growth **with nothing closed** is the other thing:
 
@@ -250,6 +266,10 @@ It is a **chosen threshold**, not a fact: three turns and a quarter of growth ar
 somebody picked. So it reports to you and never ends a turn.
 
 ## Handing it to someone
+
+![A real search reported as a funnel: 12,549 matched at OpenAlex, 74 retrieved through one
+vocabulary of three, all 74 screened, 3 included, and the 71 discards attributed to two named
+rules rather than seventy-one separate judgements.](assets/funnel.svg)
 
 `nullius report` writes what the ledger holds as markdown a person reads: every claim with its
 warrant, its status and what it may assert; every source with how far it was actually read; the

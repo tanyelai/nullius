@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 560" width="1100" height="560" role="img" aria-label="A real search reported as a funnel. OpenAlex matched 12,549 works, arXiv 2,867 and Europe PMC 2,406. The query retrieved 74 through one vocabulary of the three suggested. All 74 were screened, 71 of them by two named rules and 3 one by one. Three were included, four per cent of what was retrieved. The citation walk has not run. The two rules were: exclude 26 for having no citation count yet, and exclude the remaining 45 as not about evaluation.">
+  <style>
+    .plate{fill:#F4F6F8} .hair{stroke:#DCE3E9;stroke-width:1}
+    .st {fill:#5A6B7C;font:400 13px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+    .num{fill:#16202B;font:600 21px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+    .c  {fill:#39485A;font:400 13.5px ui-sans-serif,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+    .g  {fill:#8496A6;font:400 12px ui-sans-serif,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+    .h  {fill:#16202B;font:600 15px ui-sans-serif,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+    .mr {fill:#B3413E;font:500 12.5px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+    .m  {fill:#5A6B7C;font:400 12.5px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+    .eb {fill:#8496A6;font:500 11px ui-sans-serif,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;letter-spacing:.09em}
+    .k  {fill:#16202B;font:600 21px ui-sans-serif,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  </style>
+  <rect class="plate" width="1100" height="560"/>
+  <text class="eb" x="44" y="42">WHAT A SEARCH ACTUALLY DID</text>
+  <text class="k"  x="44" y="72">The funnel, not the survivors</text>
+  <text class="c"  x="44" y="102">A search that retrieved 74 and kept 3 looks identical to one that retrieved 3, until the discards are named.</text>
+  <line class="hair" x1="44" y1="130" x2="1056" y2="130"/>
+  <text class="st" x="44" y="168">matched</text>
+  <text class="num" x="300" y="168" text-anchor="end">12,549</text>
+  <text class="c" x="326" y="168">at openalex, plus 2,867 at arXiv and 2,406 at Europe PMC</text>
+  <text class="g" x="326" y="186">what the index says exists</text>
+  <line class="hair" x1="44" y1="200" x2="1056" y2="200"/>
+  <text class="st" x="44" y="222">retrieved</text>
+  <text class="num" x="300" y="222" text-anchor="end">74</text>
+  <text class="c" x="326" y="222">one vocabulary, of the three the tool suggested</text>
+  <text class="g" x="326" y="240">what the limit let through</text>
+  <line class="hair" x1="44" y1="254" x2="1056" y2="254"/>
+  <text class="st" x="44" y="276">screened</text>
+  <text class="num" x="300" y="276" text-anchor="end">74</text>
+  <text class="c" x="326" y="276">0 unscreened</text>
+  <text class="g" x="326" y="294">every retrieved row got a decision</text>
+  <line class="hair" x1="44" y1="308" x2="1056" y2="308"/>
+  <text class="st" x="44" y="330">included</text>
+  <text class="num" x="300" y="330" text-anchor="end">3</text>
+  <text class="c" x="326" y="330">4% of what was retrieved</text>
+  <text class="g" x="326" y="348">what survived the criteria</text>
+  <line class="hair" x1="44" y1="362" x2="1056" y2="362"/>
+  <text class="st" x="44" y="384">walked</text>
+  <text class="num" x="300" y="384" text-anchor="end">0</text>
+  <text class="c" x="326" y="384">of 3 kept works on the graph</text>
+  <text class="g" x="326" y="402">the citation walk has not run yet</text>
+  <line class="hair" x1="44" y1="416" x2="1056" y2="416"/>
+  <text class="eb" x="44" y="450">AND THE DISCARDING WAS TWO RULES, NOT SEVENTY-ONE JUDGEMENTS</text>
+  <text class="mr" x="44"  y="480">exclude 26</text>
+  <text class="m"  x="150" y="480">cited_by&lt;1</text>
+  <text class="c"  x="300" y="480">no citations yet, deprioritised for this pass</text>
+  <text class="mr" x="44"  y="506">exclude 45</text>
+  <text class="m"  x="150" y="506">all-remaining</text>
+  <text class="c"  x="300" y="506">not about evaluation</text>
+  <text class="g"  x="44"  y="536">Numbers from a real run, 2026-09-02. A rule is one thing a reader can disagree with; seventy-one judgements are seventy-one.</text>
+</svg>

@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 600" width="1100" height="600" role="img" aria-label="Why the critique stops. An ask with no terminating answer, such as what is missing or polish, is refused before a critique starts. A finding must cite a required section, missing evidence, a contradiction or a stated scope boundary; anything citing none of those is enhancement and is refused. After three turns in which the draft grew by a quarter and no finding that generates work closed, the answer is a verdict on the venue scale rather than another pass. It still says what is missing: fatal and material findings generate work and keep the loop open, a defensible finding closes permanently, and taste is recorded and generates nothing.">
+  <style>
+    .plate{fill:#F4F6F8} .hair{stroke:#C9D3DB;stroke-width:1}
+    .spine{stroke:#5A6B7C;stroke-width:1.5}
+    .stop{stroke:#B3413E;stroke-width:3.5;stroke-linecap:round}
+    .arc{stroke:#5A6B7C;stroke-width:1.4;fill:none;stroke-dasharray:6 4}
+    .tickr{stroke:#B3413E;stroke-width:1.5;stroke-linecap:round}
+    .tick{stroke:#A9B7C2;stroke-width:1.5;stroke-linecap:round}
+    .h{fill:#16202B;font:600 15px ui-sans-serif,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+    .c{fill:#39485A;font:400 13px ui-sans-serif,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+    .m{fill:#5A6B7C;font:400 12.5px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+    .mr{fill:#B3413E;font:500 12.5px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+    .nd{fill:#16202B;font:500 13px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+    .eb{fill:#8496A6;font:500 11px ui-sans-serif,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;letter-spacing:.09em}
+    .k{fill:#16202B;font:600 21px ui-sans-serif,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  </style>
+  <rect class="plate" width="1100" height="600"/>
+  <text class="eb" x="44" y="42">WHY IT STOPS, AND WHY IT STILL REPORTS</text>
+  <text class="k"  x="44" y="72">Three refusals on a loop that would otherwise never close</text>
+
+  <path class="arc" d="M600 176 C600 116, 330 116, 330 176"/>
+  <polygon points="330,182 325,170 335,170" fill="#5A6B7C"/>
+  <text class="c" x="465" y="112" text-anchor="middle">another pass, only while a gap that generates work is still open</text>
+
+  <line class="spine" x1="44" y1="200" x2="1046" y2="200"/>
+  <polygon points="1056,200 1044,194.5 1044,205.5" fill="#5A6B7C"/>
+  <circle cx="110" cy="200" r="4" fill="#5A6B7C"/><text class="nd" x="110" y="226" text-anchor="middle">an ask</text>
+  <circle cx="330" cy="200" r="4" fill="#5A6B7C"/><text class="nd" x="330" y="226" text-anchor="middle">a critique</text>
+  <circle cx="600" cy="200" r="4" fill="#5A6B7C"/><text class="nd" x="600" y="226" text-anchor="middle">findings</text>
+  <circle cx="900" cy="200" r="4" fill="#5A6B7C"/><text class="nd" x="900" y="226" text-anchor="middle">a verdict</text>
+
+  <line class="stop" x1="215" y1="180" x2="215" y2="220"/>
+  <line class="stop" x1="465" y1="180" x2="465" y2="220"/>
+  <line class="stop" x1="760" y1="180" x2="760" y2="220"/>
+
+  <text class="h" x="60" y="278">the ask has no answer</text>
+  <line class="tickr" x1="60" y1="298" x2="72" y2="298"/><text class="m" x="82" y="302">what is missing</text>
+  <line class="tickr" x1="60" y1="322" x2="72" y2="322"/><text class="m" x="82" y="326">make it better</text>
+  <line class="tickr" x1="60" y1="346" x2="72" y2="346"/><text class="m" x="82" y="350">polish</text>
+  <text class="c" x="60" y="380">an open tap, not a critique</text>
+
+  <text class="h" x="400" y="278">the finding cites nothing</text>
+  <line class="tick" x1="400" y1="298" x2="412" y2="298"/><text class="c" x="422" y="302">a required section</text>
+  <line class="tick" x1="400" y1="322" x2="412" y2="322"/><text class="c" x="422" y="326">a claim whose evidence is absent</text>
+  <line class="tick" x1="400" y1="346" x2="412" y2="346"/><text class="c" x="422" y="350">two places that contradict</text>
+  <line class="tick" x1="400" y1="370" x2="412" y2="370"/><text class="c" x="422" y="374">a boundary the draft itself set</text>
+  <text class="c" x="400" y="408">anything citing none of the four is</text>
+  <text class="mr" x="400" y="430">enhancement</text>
+  <text class="c" x="400" y="452">which is true of every text ever written</text>
+
+  <text class="h" x="760" y="278">it is only getting longer</text>
+  <line class="tickr" x1="760" y1="298" x2="772" y2="298"/><text class="c" x="782" y="302">three turns</text>
+  <line class="tickr" x1="760" y1="322" x2="772" y2="322"/><text class="c" x="782" y="326">a quarter more words</text>
+  <line class="tickr" x1="760" y1="346" x2="772" y2="346"/><text class="c" x="782" y="350">nothing that generates work closed</text>
+  <text class="c" x="760" y="384">growth is not the signal.</text>
+  <text class="c" x="760" y="406">growth with nothing closed is</text>
+
+  <line class="hair" x1="44" y1="486" x2="1056" y2="486"/>
+  <text class="eb" x="44" y="514">AND IT STILL SAYS WHAT IS MISSING</text>
+  <text class="mr" x="44"  y="544">fatal · material</text>
+  <text class="c"  x="220" y="544">generate work, so the loop stays open until they are shut</text>
+  <text class="m"  x="44"  y="570">defensible</text>
+  <text class="c"  x="220" y="570">closes permanently, so the same objection cannot come back next pass</text>
+  <text class="m"  x="640" y="570">taste</text>
+  <text class="c"  x="720" y="570">recorded, generates nothing</text>
+</svg>

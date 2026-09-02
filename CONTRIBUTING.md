@@ -61,6 +61,31 @@ mechanism as a schema, and where it is still weak. An entry with no weakness lis
 been used enough. The measurement is what makes it arguable, and a mechanism nobody can argue
 with cannot be improved.
 
+## The figures are hand-written SVG
+
+`assets/*.svg` are plain text you can edit in any editor. No build step, no toolchain, no
+generated binary in the diff: a change to a figure shows up as a line you can read.
+
+To see what you changed, on macOS:
+
+```bash
+qlmanage -t -s 1400 -o /tmp assets/gates.svg && open /tmp/gates.svg.png
+```
+
+Two rules keep the set coherent. The colours carry meaning rather than decoration: oxblood
+marks what the tool **refuses**, slate marks what it merely tells you, and a figure that
+spends oxblood on something that does not block is lying in the same way a wrong number
+would. And the machine's own vocabulary is set in mono while what it means is set in sans, so
+`exit 2` and *the turn does not end* never read as the same kind of statement.
+
+Each plate carries its own light ground on purpose. They are figures, the way a paper's
+figures are, and one that inverted with the reader's theme would need two files that drift
+apart. A figure also needs a real `role="img"` and `aria-label` saying what it shows, because
+a reader who cannot see it is owed the content and not the word "diagram".
+
+If a figure states a number, that number comes from a run. `assets/funnel.svg` reports a real
+search, and if you change it, run one.
+
 ## Commits
 
 Say what changed and why it was wrong before. A commit message is the only place the

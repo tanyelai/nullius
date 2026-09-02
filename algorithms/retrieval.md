@@ -78,6 +78,8 @@ should not poison the number.
 
 ## Report the funnel, not the survivors
 
+![A real search as a funnel: 12,549 matched, 74 retrieved, 74 screened, 3 included, with the 71 discards attributed to two named rules.](../assets/funnel.svg)
+
 **Naive.** Report what you found: 6 works included.
 
 **Why it is thin.** A search that retrieved 40 and discarded 34 looks identical to one that

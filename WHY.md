@@ -201,6 +201,8 @@ years        2024-2026   most-cited ancestor of the seed set unread
 
 ## 5 · Warrant, capped by read depth
 
+![How far the source was read caps what a claim may assert, and how many independent author sets stand behind it caps how settled it may be called. The two caps are checked separately.](assets/claim-caps.svg)
+
 Every claim carries a warrant class saying what settles it. The class that matters most is
 the one nobody tracks: `authors-claim`, meaning *the authors assert this*, recorded
 separately from what their tables show.
@@ -245,6 +247,8 @@ your behalf: a live disagreement rendered as `contested` keeps a door open that 
 summary would have quietly shut.
 
 ## 7 · Missing, or merely more
+
+![Three refusals on a critique loop: an ask with no terminating answer, a finding citing none of the four admissible referents, and growth with nothing closed. Fatal and material findings keep the loop open.](assets/critique.svg)
 
 Back to the asymmetry. The resolution is that *“something is missing”* is three different
 claims wearing one word, and they differ in whether they can point at something enumerable.
@@ -338,6 +342,8 @@ that work has not been done, so it does not refuse. Saying which is which is not
 It is the difference between a gate you trust and one you learn to route around.
 
 ## 9 · Where it touches a session
+
+![The four hook points and what each one refuses, and the two channels out of the stop gate: a fact blocks, a chosen threshold is reported.](assets/gates.svg)
 
 No wrapper, no proxy, no prompt prepended. Shell scripts on hook events, one ledger on disk,
 and agents that get a clean context window.
