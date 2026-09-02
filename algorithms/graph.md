@@ -56,6 +56,50 @@ its standard textbook at 2/7, and its other founding paper.
 point at a work than the literature at large does. That needs a base rate nobody has cheaply.
 Era proximity is a proxy, and it will misjudge a field whose canon genuinely is old.
 
+## The budget follows the measurement
+
+**Naive.** Pick a depth and a breadth. `--depth 2 --limit 10`.
+
+**Why it is wrong.** Both numbers depend on what the literature turns out to look like, and
+you do not know that before you walk it. A field that closes in two hops and one that is still
+opening after four get the same treatment.
+
+**Instead**, walk while each hop is mostly new, and say which of two things stopped it:
+
+```
+while hop ≤ max_hops and |reached| < max_works:
+    walk one hop
+    saturation ← seen / (new + seen)
+    if saturation ≥ target:   stop, "converged"
+    if agreement == 0 after 2 hops: stop, "depth is not the missing thing"
+stop, "budget spent"
+```
+
+Measured on one real walk: saturation ran 0%, 12%, 33%, 69% across four hops and stopped on
+the fourth against a target of 60%. That curve is the thing worth reading.
+
+**Converged and ran out are different claims**, and reporting the second as the first is
+exactly the failure of pulling three papers and calling it the literature. The stop reason is
+printed either way.
+
+## Agreement means *your* seeds agree
+
+**Measured.** A walk from one seed on attention kernels reported *Deep Residual Learning*,
+*Microsoft COCO* and *ImageNet* as the works its seeds most agreed on, and drifted into image
+classification over four hops.
+
+The multiplicity count was including the walk's **own** picks as seeds. Agreement among an
+expansion and itself is not evidence about a field; it is circular, and it compounds each hop.
+
+```
+yours ← the seeds you screened in or resolved
+agreement(w) = |seeds reaching w ∩ yours|        ← not all seeds
+```
+
+**And below three seeds it cannot triangulate at all.** With one seed everything it cites is
+reached exactly once, so the ranking falls through to a tie-break and the walk wanders. The
+tool says so rather than reporting the neighbourhood's favourites as a canon.
+
 ## Saturation is the read-enough signal
 
 ```

@@ -111,6 +111,8 @@ Run them as `./.nullius/bin/nullius <cmd>` from the project root.
     lit "<query>" --vocabulary <name> [--index openalex|arxiv|europepmc]
     snowball [citekey] [--back|--forward|--both]   the citation graph, from what you kept
     frontier "<title>" "<why not walk it>"  close a walk by decision, visibly
+    snowball --until-saturated             the budget follows the measurement, and it
+                                           says which of convergence or the cap stopped it
     screen <search-id> <include|exclude> "<reason>" --index N
     screen <search-id> exclude "<reason>" --below-citations 1     in bulk, by rule
     walk                                   every required section, present/thin/absent
@@ -131,6 +133,9 @@ DEFAULT_CONFIG = {
     "indexes": ["openalex", "crossref", "arxiv", "europepmc"],
     "snowball_depth": 1,
     "snowball_ancestor_gap": 12,
+    "saturation_target": 0.6,
+    "snowball_max_hops": 6,
+    "snowball_max_works": 400,
     "recent_years": 3,
     "snowball_limit": 10,
     "snowball_seeds": 5,
@@ -346,7 +351,7 @@ def say(msg):
 
 
 def now():
-    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
 
 
 def today():
@@ -1419,6 +1424,12 @@ def unit_findings(store):
             facts.append(f"named what would change the conclusion and never "
                          f"recorded what was actually observed. `nullius reading "
                          f"\"<what the number was>\"`.")
+        if (unit.get("decisive") or {}).get("prior_results") \
+                and not (unit.get("decisive") or {}).get("post_hoc"):
+            chosen.append(
+                f"{unit['decisive']['prior_results']} own result(s) predate this "
+                f"unit, so the ordering is only verified against what arrived after "
+                f"it opened. Whether those are the subject is yours to say.")
         if (unit.get("decisive") or {}).get("post_hoc"):
             chosen.append("this interpretation was framed after the results were "
                           "in. That is exploratory, which is legitimate, and it "
@@ -1860,10 +1871,19 @@ def cmd_decisive(args):
         die("your own unpublished results are already in the ledger, so this is "
             "being named after the fact. That is legitimate and common, and it is "
             "a different kind of claim. Say so: --post-hoc.")
+    prior = [c for c in store.claims()
+             if c.get("warrant") == "mine-unpublished"
+             and (c.get("created") or "") < started]
     unit["decisive"] = {"text": args.text, "when": now(),
-                        "post_hoc": bool(args.post_hoc or have_results)}
+                        "post_hoc": bool(args.post_hoc or have_results),
+                        "prior_results": len(prior)}
     store.save_unit(unit)
     say("nullius: recorded" + (" as post-hoc" if unit["decisive"]["post_hoc"] else ""))
+    if prior and not unit["decisive"]["post_hoc"]:
+        say(f"  {len(prior)} of your own unpublished result(s) predate this unit. If "
+            f"any of them is what this interprets, the ordering is not what it looks "
+            f"like, and only you can say. Opening the unit before looking is what "
+            f"makes this checkable.")
     if unit["decisive"]["post_hoc"]:
         say("  exploratory, and it travels with the conclusion. What is not "
             "allowed is presenting it as confirmatory later.")
@@ -2856,12 +2876,19 @@ def cmd_snowball(args):
                   else ([("back", "cited_by")] if args.back else []) +
                        ([("forward", "cites")] if args.forward else []))
 
+    # Agreement means the seeds YOU chose agree. Counting the walk's own picks as
+    # seeds measures whether an expansion is consistent with itself, which it always
+    # is, and it walked a search about attention kernels into image classification.
+    yours = {w for w, _, _, _ in seeds}
     seed_years = sorted(y for _, _, _, y in seeds if y)
     era = seed_years[len(seed_years) // 2] if seed_years else None
     oldest_seed = seed_years[0] if seed_years else None
-    reached, all_rows = {}, []
+    reached, all_rows, trail = {}, [], []
     frontier = list(seeds)
-    for hop in range(1, depth + 1):
+    adaptive = args.until_saturated
+    hops = cfg["snowball_max_hops"] if adaptive else depth
+    stop_reason = None
+    for hop in range(1, hops + 1):
         say(f"hop {hop}: {len(frontier)} seed(s)")
         hop_rows, seen_before, new_here = [], 0, 0
         refused = 0
@@ -2892,7 +2919,31 @@ def cmd_snowball(args):
         sat = (seen_before / total * 100) if total else 0
         say(f"  {new_here} new, {seen_before} already reached"
             + (f", {sat:.0f}% of this hop was known" if total else ""))
-        if hop >= depth:
+        shared_now = sum(1 for r in reached.values()
+                         if len(set(r["by"]) & yours) > 1)
+        trail.append({"hop": hop, "new": new_here, "seen": seen_before,
+                      "saturation": round(sat / 100, 3), "shared": shared_now,
+                      "reached": len(reached)})
+        if adaptive:
+            # The budget follows the measurement rather than a number picked in
+            # advance. A hop that is mostly new says the literature is wider than
+            # what has been seen; a hop that is mostly known says it is closing.
+            if total and sat / 100 >= cfg["saturation_target"]:
+                stop_reason = (f"saturated: {sat:.0f}% of the last hop was already "
+                               f"reached, against a target of "
+                               f"{cfg['saturation_target']:.0%}")
+                break
+            if len(reached) >= cfg["snowball_max_works"]:
+                stop_reason = (f"budget spent: {len(reached)} works reached, at the "
+                               f"cap of {cfg['snowball_max_works']}. This is not "
+                               f"convergence, and the two are different claims")
+                break
+            if hop >= hops:
+                stop_reason = (f"budget spent: {hops} hops, the cap. Saturation was "
+                               f"{sat:.0f}%, so the literature was still opening "
+                               f"up when this stopped")
+                break
+        elif hop >= depth:
             break
         # Follow what the field points at repeatedly, not everything: the next
         # seeds are the works most of this hop's seeds already agree on.
@@ -2902,7 +2953,7 @@ def cmd_snowball(args):
         # a different literature. Multiplicity first, then nearness to the seeds' era.
         def frontier_key(r):
             gap = abs((r.get("year") or era or 0) - era) if era else 0
-            return (len(r["by"]), -gap)
+            return (len(set(r["by"]) & yours), -gap)
 
         ranked = sorted(reached.values(), key=frontier_key, reverse=True)
         frontier = [(openalex_short(r["openalex"]), r["title"], r.get("doi"),
@@ -2910,6 +2961,12 @@ def cmd_snowball(args):
                     for r in ranked
                     if openalex_short(r["openalex"]) not in state][
                         :args.seeds or cfg["snowball_seeds"]]
+        if adaptive and shared_now == 0 and hop >= 2:
+            stop_reason = ("nothing is reached from more than one seed after two "
+                           "hops. Depth is not the missing thing here: either the "
+                           "seed set does not share a literature, or it is too "
+                           "small to triangulate. More seeds, or more vocabularies")
+            break
         if not frontier:
             if refused:
                 say(f"  {refused} call(s) were refused by the index, so this hop "
@@ -2920,6 +2977,13 @@ def cmd_snowball(args):
             break
 
     store.write_json("snowball.json", state)
+    if adaptive:
+        say("")
+        say("  hop   new   known   saturation   reached from >1 seed")
+        for t in trail:
+            say(f"  {t['hop']:>3} {t['new']:>5} {t['seen']:>7} "
+                f"{t['saturation']:>11.0%} {t['shared']:>16}")
+        say(f"  stopped, {stop_reason or 'the graph closed'}")
     if not all_rows:
         return
     search = {
@@ -2931,17 +2995,24 @@ def cmd_snowball(args):
         "vocabulary": "snowball", "indexes": ["openalex"], "unreachable": [],
         "matched_total": {}, "when": now(), "found": len(reached),
         "retrieved": len(reached), "depth": depth,
-        "seeds": len(seeds), "era": era,
+        "seeds": len(seeds), "era": era, "trail": trail,
+        "stop_reason": stop_reason,
         "results": [dict({k: v for k, v in r.items() if k != "by"},
-                         seeds_reaching=len(r["by"]))
+                         seeds_reaching=len(set(r["by"]) & yours))
                     for r in sorted(reached.values(),
-                                    key=lambda r: (len(r["by"]),
+                                    key=lambda r: (len(set(r["by"]) & yours),
                                                    r.get("cited_by") or 0),
                                     reverse=True)]}
     store.save_search(search)
 
     shared = [r for r in search["results"] if r["seeds_reaching"] > 1]
     gap = cfg["snowball_ancestor_gap"]
+    if len(seeds) < 3:
+        say("")
+        say(f"  {len(seeds)} seed(s). Multiplicity cannot triangulate below three: "
+            f"with one seed everything it cites is reached once, and a walk that "
+            f"keeps going on that signal drifts into whatever the neighbourhood "
+            f"cites most. Screen more in, or pass --refs with more resolved.")
     if shared:
         say("")
         say(f"reached from more than one of {len(seeds)} seeds, which no query "
@@ -3528,6 +3599,9 @@ def build_parser():
                         "was screened in")
     s.add_argument("--depth", type=int,
                    help="how many hops; each hop follows the works most seeds agree on")
+    s.add_argument("--until-saturated", action="store_true", dest="until_saturated",
+                   help="keep walking while each hop is mostly new, and say whether "
+                        "it stopped because it converged or because it ran out")
     s.add_argument("--no-context", action="store_true", dest="no_context",
                    help="skip the Semantic Scholar lookup")
     s.set_defaults(fn=cmd_snowball)

@@ -452,10 +452,10 @@ expect_exit 0 "record the observation" python3 "$NULLIUS" reading "0.71 at layer
 expect_hook stop 0 "then it closes" "$CWD_JSON"
 
 # naming the number after the results is exploratory, which is allowed and labelled
-python3 "$NULLIUS" claim "our pilot shows a split" --warrant mine-unpublished \
-  --status single-result --strength reports >/dev/null 2>&1
 expect_exit 0 "open a second one" python3 "$NULLIUS" start ip2 interpret "what did we see" --force
-expect_exit 1 "decisive refuses silently after results exist" \
+python3 "$NULLIUS" claim "a result that arrives inside the unit" --warrant mine-unpublished \
+  --status single-result --strength reports >/dev/null 2>&1
+expect_exit 1 "decisive refuses silently once a result arrives inside the unit" \
   python3 "$NULLIUS" decisive "anything above 0.6"
 expect_exit 0 "unless it is labelled exploratory" \
   python3 "$NULLIUS" decisive "anything above 0.6" --post-hoc
@@ -803,10 +803,15 @@ pathlib.Path(".nullius/claims.jsonl").write_text(json.dumps(
 PYIN
 expect_exit 0 "a result from before the unit does not force post-hoc" \
   bash -c "python3 \"$NULLIUS\" start ia interpret 'new' --force >/dev/null; python3 \"$NULLIUS\" decisive 'above 0.5'"
-python3 "$NULLIUS" claim "this unit's run" --warrant mine-unpublished --status single-result \
-  --strength reports >/dev/null 2>&1
-expect_exit 1 "a result recorded inside the unit still does" \
-  bash -c "python3 \"$NULLIUS\" start ib interpret 'newer' --force >/dev/null; python3 \"$NULLIUS\" decisive 'above 0.7'"
+expect_grep "predate this unit" "but it says the ordering is unverified for them" \
+  python3 "$NULLIUS" status
+python3 "$NULLIUS" start ib interpret 'newer' --force >/dev/null
+python3 "$NULLIUS" claim "recorded while this unit is open" --warrant mine-unpublished \
+  --status single-result --strength reports >/dev/null 2>&1
+expect_exit 1 "a result that arrived inside the unit does force post-hoc" \
+  python3 "$NULLIUS" decisive "above 0.7"
+expect_exit 0 "and is allowed once labelled" \
+  python3 "$NULLIUS" decisive "above 0.7" --post-hoc
 
 # C. a limitation discharged on one draft silenced the same words on an unrelated one.
 printf '# A\n## In plain words\nwords enough here to be a section with a real body.\n' > cd1.md

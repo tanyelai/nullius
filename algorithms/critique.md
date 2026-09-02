@@ -90,6 +90,23 @@ over the last 3 samples:
 
 A chosen threshold, so it reports and never ends a turn.
 
+## Every reviewer point, enumerated
+
+**Naive.** Write the response letter.
+
+**Why it is wrong.** A response written straight through concedes the easy points and quietly
+skips the hard one, and nobody notices until the second round.
+
+```
+for each point the reviewers made:
+    record it before writing any of the reply
+    settle it: changed | rebutted | declined
+    rebutted and declined need a reason
+```
+
+The gate refuses a point nobody looked at. What you do about one is yours, and the count of
+declined points travels with the reply, because that is the half a reviewer reads hardest.
+
 ## Post-hoc is allowed, and labelled
 
 Naming the number that would change your conclusion after seeing the results is legitimate and
