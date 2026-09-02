@@ -2,6 +2,8 @@
 
 ## Multiplicity is the signal, not the edge
 
+![How the walk chooses where to go and when to stop: the next hop is led by the works most of your own seeds agree on, tie-broken by nearness to their era rather than by citation count, and the walk stops when a hop is 60% already-seen, when the 400-work budget is spent, or when nothing new is left.](../assets/walk.svg)
+
 **Naive.** Follow references from a good paper, then follow theirs.
 
 **Why that is not enough.** Following edges gives reachability. What tells you what a field is

@@ -198,6 +198,8 @@ direction of error worth being careful about.
 
 ## Closing the frontier
 
+![How the walk chooses where to go and when to stop: the next hop is led by the works most of your own seeds agree on, tie-broken by nearness to their era rather than by citation count, and the walk stops when a hop is 60% already-seen, when the 400-work budget is spent, or when nothing new is left.](assets/walk.svg)
+
 A query finds what shares your words. The citation graph finds what the field itself linked,
 and it is the only thing a claim that the frontier is closed can rest on.
 

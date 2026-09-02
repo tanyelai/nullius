@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 500" width="1100" height="500" role="img" aria-label="How the citation walk decides where to go and when to stop. The next hop is led by the works that most of the seeds you chose agree on, tie-broken by nearness to the seeds era, not by citation count: a work reached by one seed with forty-one thousand citations from 1962 is an ancestor of everything rather than this field's shared reference. The walk stops when sixty per cent of a hop was already reached, when four hundred works are reached at the cap, which is a budget and not convergence, or when nothing new is left to walk from. A hop whose calls the index refused reports itself incomplete, which is a fourth outcome and not one of the three.">
+  <style>
+    .plate{fill:#F4F6F8} .hair{stroke:#C9D3DB;stroke-width:1}
+    .ed{stroke:#5A6B7C;stroke-width:1.3} .edf{stroke:#CBD5DD;stroke-width:1.3}
+    .h{fill:#16202B;font:600 15px ui-sans-serif,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+    .c{fill:#39485A;font:400 13.5px ui-sans-serif,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+    .cg{fill:#8496A6;font:400 13.5px ui-sans-serif,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+    .m{fill:#B3413E;font:500 12.5px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+    .g{fill:#8496A6;font:400 12px ui-sans-serif,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+    .eb{fill:#8496A6;font:500 11px ui-sans-serif,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;letter-spacing:.09em}
+    .k{fill:#16202B;font:600 21px ui-sans-serif,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  </style>
+  <rect class="plate" width="1100" height="500"/>
+  <text class="eb" x="44" y="42">GOING WIDE, AND KNOWING WHEN TO STOP</text>
+  <text class="k"  x="44" y="72">Agreement means your seeds agree</text>
+
+  <line class="hair" x1="580" y1="110" x2="580" y2="400"/>
+
+  <text class="h" x="44" y="140">what leads the next hop</text>
+  <text class="g" x="44" y="162">your seeds on the left, what they reach on the right</text>
+  <line class="ed" x1="117" y1="196" x2="333" y2="186"/>
+  <line class="ed" x1="117" y1="238" x2="333" y2="186"/>
+  <line class="ed" x1="117" y1="280" x2="333" y2="186"/>
+  <line class="ed" x1="117" y1="196" x2="333" y2="238"/>
+  <line class="ed" x1="117" y1="238" x2="333" y2="238"/>
+  <line class="edf" x1="117" y1="280" x2="333" y2="296"/>
+  <circle cx="110" cy="196" r="5.5" fill="#16202B"/>
+  <circle cx="110" cy="238" r="5.5" fill="#16202B"/>
+  <circle cx="110" cy="280" r="5.5" fill="#16202B"/>
+  <circle cx="340" cy="186" r="5.5" fill="#16202B"/>
+  <text class="c" x="356" y="190">reached by 3 of your 3 seeds</text>
+  <circle cx="340" cy="238" r="5.5" fill="#16202B"/>
+  <text class="c" x="356" y="242">reached by 2</text>
+  <circle cx="340" cy="296" r="5.5" fill="none" stroke="#A9B7C2" stroke-width="1.4"/>
+  <text class="cg" x="356" y="294">reached by 1</text>
+  <text class="g" x="356" y="312">cited 41,000, published 1962</text>
+  <text class="c" x="44" y="356">Multiplicity first, then nearness to the seeds' era.</text>
+  <text class="c" x="44" y="378">Not citation count: a work every field cites is an</text>
+  <text class="c" x="44" y="400">ancestor of everything, not this field's reference.</text>
+
+  <text class="h" x="620" y="140">and when it stops</text>
+  <text class="g" x="620" y="162">the budget follows the measurement, not a number picked in advance</text>
+  <text class="m" x="620" y="196">saturated</text>
+  <text class="c" x="620" y="218">60% of a hop was already reached,</text>
+  <text class="c" x="620" y="236">against a target of 60%</text>
+  <text class="m" x="620" y="276">budget spent</text>
+  <text class="c" x="620" y="298">400 works reached, at the cap. This is not</text>
+  <text class="c" x="620" y="316">convergence, and the two are different claims</text>
+  <text class="m" x="620" y="356">graph closed</text>
+  <text class="c" x="620" y="378">nothing new to walk from</text>
+  <line class="hair" x1="620" y1="400" x2="1056" y2="400"/>
+  <text class="g" x="620" y="428">A hop whose calls the index refused reports itself</text>
+  <text class="g" x="620" y="446">incomplete. That is a fourth outcome, and saying</text>
+  <text class="g" x="620" y="464">the graph closed instead would be the lie.</text>
+</svg>
