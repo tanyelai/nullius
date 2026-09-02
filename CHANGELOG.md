@@ -3,6 +3,50 @@
 Versions follow [semantic versioning](https://semver.org). Until `1.0.0` the ledger format
 and the CLI surface may change; when they do, the change is listed here with what it breaks.
 
+## 0.3.0
+
+**A release channel.** The marketplace entry was a relative source, which serves whatever the
+default branch holds, so every commit to `main` was a publish and the `stable` branch
+guaranteed nothing. The plugin is now pinned to `ref: stable`, and that branch moves only when
+a release is dispatched and a maintainer approves it. Two rules on the branch, verified by
+attempting both, refuse a force-push and a deletion with no bypass for anyone.
+
+This matters more than the plumbing suggests. Claude Code resolves a plugin's version from
+`plugin.json` and skips the update when the string has not changed, so with an unpinned source
+two people both on `0.2.0` could be running different trees with no way to tell. A version that
+does not identify the content is the kind of claim this tool refuses in a draft.
+
+**One gate, in one file.** [`tests/preflight.sh`](tests/preflight.sh) runs the suite, the
+official `claude plugin validate --strict` on both manifests, and the structural checks; CI
+runs that same file rather than a second list, so local and CI cannot drift apart on what
+passing means. Every check in it comes from a defect this repo actually shipped.
+
+It found two on its first run. Four em dashes in `algorithms/README.md` and two in
+`bin/nullius`, while the hand-run `grep` used to check for them had been reporting a clean tree
+for a week: BSD grep was silently failing to match the multibyte alternation. The pair in
+`bin/nullius` are the dash-folding table, which has to contain those codepoints, so they are
+escapes now, which leaves the check with no exception and therefore no hole.
+
+**A working fallback left no trace.** A rate limit that ended in an error row was always
+visible. One the Semantic Scholar fallback absorbed produced ordinary-looking rows while the
+walk's log header carried a literal `"indexes": ["openalex"], "unreachable": []` written before
+any fallback existed. Eighteen rows arrived through Semantic Scholar and the log said OpenAlex
+answered, which `coverage` then reported as the funnel's provenance. The header is derived from
+what answered now, the refusal travels as data rather than as prose inside an error string, and
+a substitution prints once for the run. It survived because eval 07 required exactly this and
+checked the wrong handle: provenance on the walk's rows, and the header on `lit`'s log.
+
+**Five figures**, in [assets/](assets/): where the harness intervenes and the two channels out
+of the stop gate, the two independent caps on a claim, a real search as a funnel, the three
+refusals that let a critique close, and what leads a citation walk. Hand-written SVG, 40 KB for
+the set, and the funnel reports a real run rather than an illustrative shape.
+
+**The README stopped restating WHY.md.** Measured before cutting: the section named after
+WHY.md's "why more instructions do not fix it" shared 86% of its six-word sequences with it,
+"where this came from" 74%, "what this is not" 70%. 545 lines to 337. The thirty-six-row command
+table, which had already gone stale, is five rows grouped by what you are doing, and `--help`
+is the reference.
+
 ## 0.2.0
 
 **[evals/](evals/)** runs seven scenarios end to end, one per use case plus the path where the
