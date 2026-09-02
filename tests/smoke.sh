@@ -763,6 +763,65 @@ while IFS= read -r line; do
   case "$line" in OK*) ok ;; NO*) bad "scope heading: ${line#NO }" ;; esac
 done <<< "$pure4"
 
+# ----------------------------------- gates that fought each other ----------
+# Found by asking whether nullius's own decisions can conflict. All three did.
+mkdir -p conflict && cd conflict
+python3 "$NULLIUS" init >/dev/null 2>&1
+CJ="{\"cwd\":\"$PWD\"}"
+
+# A. every work you include from a walk demanded another walk, with no way to stop:
+# an unbounded obligation, in the tool built to refuse unbounded obligations.
+python3 "$NULLIUS" start sv survey q >/dev/null
+python3 "$NULLIUS" accept "closed" >/dev/null
+python3 "$NULLIUS" close "at coverage:0" >/dev/null
+python3 - <<'PYIN'
+import json, pathlib
+pathlib.Path(".nullius/searches").mkdir(parents=True, exist_ok=True)
+pathlib.Path(".nullius/searches/w.json").write_text(json.dumps({
+    "id": "w", "query": "q", "vocabulary": "v", "when": "n", "found": 1, "retrieved": 1,
+    "results": [{"title": "reached by the walk", "year": 2021, "cited_by": 4,
+                 "openalex": "https://openalex.org/W9", "screened": "include",
+                 "reason": "close"}]}, indent=2))
+PYIN
+expect_grep "never been walked" "a kept work demands a walk" python3 "$NULLIUS" status
+expect_exit 1 "and a frontier closed with no reason is refused" \
+  python3 "$NULLIUS" frontier "reached"
+expect_exit 0 "closing it by decision, with one" \
+  python3 "$NULLIUS" frontier "reached" "one hop out and off topic"
+out="$(python3 "$NULLIUS" status 2>&1)"
+printf '%s\n' "$out" | grep -q "never been walked" && bad "still demanded after the decision" || ok
+expect_grep "closed by decision" "and the decision is still shown" python3 "$NULLIUS" status
+
+# B. one own-data claim made long ago forced every later interpretation to call
+# itself exploratory, however new its question.
+python3 - <<'PYIN'
+import json, pathlib
+pathlib.Path(".nullius/claims.jsonl").write_text(json.dumps(
+    {"id": "c001", "text": "last year", "warrant": "mine-unpublished",
+     "status": "single-result", "strength": "reports", "sources": [],
+     "locator": "", "created": "2020-01-01T00:00:00Z"}) + "\n")
+PYIN
+expect_exit 0 "a result from before the unit does not force post-hoc" \
+  bash -c "python3 \"$NULLIUS\" start ia interpret 'new' --force >/dev/null; python3 \"$NULLIUS\" decisive 'above 0.5'"
+python3 "$NULLIUS" claim "this unit's run" --warrant mine-unpublished --status single-result \
+  --strength reports >/dev/null 2>&1
+expect_exit 1 "a result recorded inside the unit still does" \
+  bash -c "python3 \"$NULLIUS\" start ib interpret 'newer' --force >/dev/null; python3 \"$NULLIUS\" decisive 'above 0.7'"
+
+# C. a limitation discharged on one draft silenced the same words on an unrelated one.
+printf '# A\n## In plain words\nwords enough here to be a section with a real body.\n' > cd1.md
+printf '# B\n## In plain words\na different paper entirely, with its own body of words.\n' > cd2.md
+python3 "$NULLIUS" start ca critique "A" --artifact cd1.md --force >/dev/null
+expect_exit 0 "discharge a limitation on draft A" \
+  python3 "$NULLIUS" finding defensible evidential "the sample is one site" --at "cd1.md:3"
+python3 "$NULLIUS" start cb critique "B" --artifact cd2.md --force >/dev/null
+expect_exit 0 "the same words are a live finding on draft B" \
+  python3 "$NULLIUS" finding material evidential "the sample is one site" --at "cd2.md:3"
+python3 "$NULLIUS" start cc critique "A again" --artifact cd1.md --force >/dev/null
+expect_exit 1 "and still discharged on draft A" \
+  python3 "$NULLIUS" finding material evidential "the sample is one site" --at "cd1.md:3"
+cd ..
+
 echo
 echo "  $pass passed, $fail failed"
 [ "$fail" -eq 0 ]

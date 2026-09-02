@@ -101,6 +101,7 @@ Run them as `./.nullius/bin/nullius <cmd>` from the project root.
 
     lit "<query>" --vocabulary <name> [--index openalex|arxiv|europepmc]
     snowball [citekey] [--back|--forward|--both]   the citation graph, from what you kept
+    frontier "<title>" "<why not walk it>"  close a walk by decision, visibly
     screen <search-id> <include|exclude> "<reason>" --index N
     screen <search-id> exclude "<reason>" --below-citations 1     in bulk, by rule
     walk                                   every required section, present/thin/absent
@@ -1472,12 +1473,22 @@ def unit_findings(store):
 
     if unit.get("kind") == "survey":
         state = snowball_state(store)
-        unwalked = []
+        stops = frontier_stops(store)
+        unwalked, stopped = [], 0
         for sr in store.searches():
             for r in sr.get("results", []):
-                if r.get("screened") == "include" and r.get("openalex") and \
-                        openalex_short(r["openalex"]) not in state:
+                if r.get("screened") == "include" and r.get("openalex"):
+                    wid = openalex_short(r["openalex"])
+                    if wid in state:
+                        continue
+                    if wid in stops:
+                        stopped += 1
+                        continue
                     unwalked.append(r.get("title", "")[:52])
+        if stopped:
+            chosen.append(f"{stopped} work(s) you kept were closed by decision "
+                          f"rather than walked. `nullius frontier` lists them with "
+                          f"the reason.")
         offgraph = [r.get("title", "")[:52] for sr in store.searches()
                     for r in sr.get("results", [])
                     if r.get("screened") == "include" and not r.get("openalex")]
@@ -1492,7 +1503,9 @@ def unit_findings(store):
                 "      " + "\n      ".join(sorted(set(unwalked))[:6])
                 + "\n    `nullius snowball`. A query finds what shares your words; "
                   "the citation graph finds what the field itself linked, and it "
-                  "is the only thing a closed frontier can rest on.")
+                  "is the only thing a closed frontier can rest on. If a walk is "
+                  "not worth it, say so: `nullius frontier \"<title>\" "
+                  "\"<why>\"`.")
 
         unscreened = sum(1 for s in store.searches()
                          for w in s.get("results", [])
@@ -1780,11 +1793,21 @@ def venue_scale(store, unit):
     return words or DEFAULT_SCALE
 
 
-def discharged_findings(store):
+def discharged_findings(store, artifacts=None):
+    """Scoped to the draft it was discharged about. A limitation of one study is not
+    a limitation of every study, and a global list would silence a real finding on an
+    unrelated paper because somebody once used the same words."""
     f = store.p("discharged.md")
     if not f.is_file():
         return []
-    return re.findall(r"^## (.+)$", f.read_text(encoding="utf-8"), re.M)
+    out = []
+    for block in re.split(r"^## ", f.read_text(encoding="utf-8"), flags=re.M)[1:]:
+        text = block.splitlines()[0].strip()
+        m = re.search(r"^- draft: (.+)$", block, re.M)
+        draft = m.group(1).strip() if m else None
+        if artifacts is None or draft is None or draft in artifacts:
+            out.append(text)
+    return out
 
 
 def cmd_decisive(args):
@@ -1793,7 +1816,12 @@ def cmd_decisive(args):
     ordering rather than a judgement about the person."""
     store = Store(require_root())
     unit = store.unit or die("no open unit.")
-    have_results = any(c.get("warrant") == "mine-unpublished" for c in store.claims())
+    # Scoped to this unit. Judged against the whole project, one own-data claim made
+    # a year ago would force every later interpretation to call itself exploratory.
+    started = unit.get("started") or ""
+    have_results = any(c.get("warrant") == "mine-unpublished"
+                       and (c.get("created") or "") >= started
+                       for c in store.claims())
     if have_results and not args.post_hoc:
         die("your own unpublished results are already in the ledger, so this is "
             "being named after the fact. That is legitimate and common, and it is "
@@ -1840,6 +1868,7 @@ def cmd_finding(args):
             f"textual test can tell the two apart, which is why you are being "
             f"asked rather than filtered.\n")
         sys.exit(1)
+    tracked = [os.path.relpath(f, store.root) for f in tracked_drafts(store, unit)]
     norm = norm_title(args.text)
     if scope and args.referent != "scope":
         terms = {w for w in norm.split() if len(w) > 4}
@@ -1849,7 +1878,7 @@ def cmd_finding(args):
                 say(f"  note: shares {', '.join(sorted(shared))} with the boundary "
                     f"row at {scope['file']}:{r['line']}. A lead, not a verdict.")
                 break
-    for old in discharged_findings(store):
+    for old in discharged_findings(store, tracked):
         o = norm_title(old)
         if o and (o in norm or norm in o):
             die(f"this was discharged already:\n  \"{old}\"\nA defensible finding "
@@ -1867,7 +1896,8 @@ def cmd_finding(args):
             "# Discharged\n\nDefensible findings, closed with one sentence in "
             "Limitations. These do not come back.\n")
         f.write_text(prev.rstrip() + f"\n\n## {args.text}\n\n- at: {args.at}\n"
-                     f"- discharged: {today()}\n", encoding="utf-8")
+                     + "".join(f"- draft: {t}\n" for t in tracked)
+                     + f"- discharged: {today()}\n", encoding="utf-8")
         say("  a property of the study rather than a defect in it. One sentence in "
             "Limitations closes it permanently; it is now in discharged.md and "
             "cannot be raised again.")
@@ -2616,6 +2646,50 @@ def cmd_lit(args):
 
 def snowball_state(store):
     return store.read_json("snowball.json", {})
+
+
+def frontier_stops(store):
+    """Works deliberately not walked. Without this the obligation never ends: every
+    work you include from a walk demands another walk, which yields more to include.
+    A gate with no termination is the failure this tool exists to prevent, and it had
+    it in its own search."""
+    return store.read_json("frontier.json", {})
+
+
+def cmd_frontier(args):
+    store = Store(require_root())
+    stops = frontier_stops(store)
+    if not args.what:
+        if not stops:
+            say("nullius: nothing has been declared closed. `nullius frontier "
+                "<title or id> \"<why>\"`.")
+            return
+        for k, v in stops.items():
+            say(f"  {v.get('title', k)[:56]}")
+            say(f"      not walked: {v['why']}")
+        return
+    if not args.why:
+        die("say why. A frontier closed without a reason is a frontier nobody can "
+            "disagree with, which is the shape this tool refuses everywhere else.")
+    hits = []
+    for sr in store.searches():
+        for r in sr.get("results", []):
+            if r.get("screened") != "include" or not r.get("openalex"):
+                continue
+            if args.what.lower() in (r.get("title") or "").lower() \
+                    or args.what == openalex_short(r["openalex"]):
+                hits.append((openalex_short(r["openalex"]), r.get("title", "")))
+    if args.what.lower() == "all":
+        hits = [(openalex_short(r["openalex"]), r.get("title", ""))
+                for sr in store.searches() for r in sr.get("results", [])
+                if r.get("screened") == "include" and r.get("openalex")]
+    if not hits:
+        die(f"nothing screened in matches '{args.what}'.")
+    for wid, title in hits:
+        stops[wid] = {"title": title, "why": args.why, "when": now()}
+    store.write_json("frontier.json", stops)
+    say(f"nullius: {len(hits)} work(s) closed by decision, and the list still shows "
+        f"them. What the gate refuses is leaving it unlooked-at, not stopping.")
 
 
 def openalex_short(wid):
@@ -3389,6 +3463,10 @@ def build_parser():
 
     s = sub.add_parser("walk", help="every required section, present/thin/absent")
     s.add_argument("--venue"); s.set_defaults(fn=cmd_walk)
+
+    s = sub.add_parser("frontier", help="close a walk by decision, with a reason")
+    s.add_argument("what", nargs="?", help="a title fragment, a work id, or `all`")
+    s.add_argument("why", nargs="?"); s.set_defaults(fn=cmd_frontier)
 
     s = sub.add_parser("scope", help="what the draft itself rules out, and why")
     s.set_defaults(fn=cmd_scope)
