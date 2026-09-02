@@ -426,6 +426,10 @@ expect_exit 0 "record it" python3 "$NULLIUS" kills "if the two axes never separa
 expect_grep "no cost estimate" "and something that says what it would take" \
   python3 "$NULLIUS" status
 expect_exit 0 "record that too" python3 "$NULLIUS" cost "8 checkpoints, one reader, ten days"
+expect_grep "no alternative recorded" "and a sibling it rejected" \
+  python3 "$NULLIUS" status
+expect_exit 0 "record that as well" \
+  python3 "$NULLIUS" considered "the one-axis version" "it cannot separate the two"
 expect_hook stop 0 "and then it can close" "$CWD_JSON"
 
 # the decisions an idea rests on have to survive a dead context window
@@ -851,6 +855,152 @@ expect_exit 0 "a report is written" python3 "$NULLIUS" report --out r.md
 expect_grep "what stands behind each" "and it carries the claims with their warrants" cat r.md
 expect_grep "does not establish" "and says what it does not establish" cat r.md
 printf '%s\n' "$(cat r.md)" | grep -q "typeset\|\\\\documentclass" && bad "the report tried to own a house style" || ok
+
+# ──────────────────────────────────────────────────────────────── the newer gates
+# A second project, outside the first one's root, so accumulated state cannot
+# explain a pass here.
+G="$(mktemp -d)"; trap 'rm -rf "$WORK" "$G"' EXIT
+cd "$G" || exit 1
+G() { python3 "$NULLIUS" "$@"; }
+G init >/dev/null
+G start g idea "is it open" >/dev/null
+G accept "is it" >/dev/null
+GJ="{\"cwd\": \"$G\"}"
+
+# ---- an idea needs an alternative on the record ------------------------------
+expect_grep "no alternative recorded" "an idea unit refuses with no rejected sibling" \
+  python3 "$NULLIUS" done
+expect_exit 0 "considered records one" G considered "the other route" "needs measure theory"
+expect_grep "2 alternative" "and says how many are on the record" \
+  python3 "$NULLIUS" considered "a third route" "already occupied"
+printf '%s' "$(cat "$G/.nullius/decisions.md")" | grep -q "Not taken: the other route" \
+  && ok || bad "considered did not reach decisions.md"
+out="$(python3 "$NULLIUS" done 2>&1)"
+printf '%s\n' "$out" | grep -q "no alternative recorded" \
+  && bad "the alternative gate still fires after one was recorded" || ok
+
+# ---- a fatal finding pins the wording it quotes ------------------------------
+printf 'The tail is heavy, and that is the opening here.\n' > d.md
+G artifact d.md >/dev/null
+expect_exit 0 "a clean draft passes" G check d.md
+G finding fatal evidential 'the draft says "The tail is heavy, and that is the opening here." and the tail is light' --at d.md:1 >/dev/null
+expect_exit 2 "check refuses a draft still carrying quoted-defective wording" \
+  python3 "$NULLIUS" check d.md
+expect_grep "corrected nothing" "and says why leaving the sentence is not a repair" \
+  python3 "$NULLIUS" check d.md
+expect_hook pre-write 2 "the write gate refuses the same wording" \
+  "{\"cwd\": \"$G\", \"tool_input\": {\"file_path\": \"$G/d.md\", \"content\": \"The tail is heavy, and that is the opening here.\"}}"
+printf 'The tail is light, and the opening is elsewhere.\n' > d.md
+expect_exit 0 "and passes once the wording is gone" G check d.md
+printf 'The tail is heavy, and that is the opening here.\n' > d.md
+G resolve 0 "reworded, and the finding is closed" >/dev/null
+expect_exit 0 "a resolved finding stops pinning" G check d.md
+
+# ---- companions are read with the draft -------------------------------------
+printf 'CAPTION = "the tail is heavy, see arXiv:2401.00001"\n' > figs.py
+expect_exit 0 "an undeclared companion is nobody's business" G check d.md
+G artifact d.md --includes figs.py >/dev/null
+expect_grep "d.md <- figs.py" "a declared companion is checked with the draft" \
+  python3 "$NULLIUS" check d.md
+printf 'CAPTION = "the tail is heavy"\n' > figs.py
+expect_exit 0 "and a clean companion passes" G check d.md
+
+# ---- falsifying an idea makes every tracked draft stale ---------------------
+G kills "a proof it cannot hold" >/dev/null
+G cost "three years" >/dev/null
+G close "yes, at d.md:1" >/dev/null
+G falsify "the heavy tail" "it is light" >/dev/null
+expect_grep "has not been checked since" "falsify makes the tracked draft stale" \
+  python3 "$NULLIUS" done
+expect_exit 0 "checking it again clears the mark" G check d.md
+out="$(python3 "$NULLIUS" done 2>&1)"
+printf '%s\n' "$out" | grep -q "has not been checked since" \
+  && bad "the stale mark survived a clean check" || ok
+# it still refuses, on the older gate: an idea unit with nothing searched. That is
+# the gate under test staying out of the way rather than the unit being finishable.
+printf '%s\n' "$out" | grep -q "no search logged" && ok \
+  || bad "the idea unit closed with no search logged"
+
+# ---- a shell heredoc is a write ---------------------------------------------
+G start g2 write "does the shell reach a draft" --force >/dev/null
+expect_hook pre-bash 2 "a heredoc carrying an unresolved identifier is refused" \
+  "{\"cwd\": \"$G\", \"tool_input\": {\"command\": \"cat > e.md <<'EOF'\nsee arXiv:2401.00001\nEOF\"}}"
+expect_hook pre-bash 0 "a heredoc with nothing to catch is allowed" \
+  "{\"cwd\": \"$G\", \"tool_input\": {\"command\": \"cat > e.md <<'EOF'\nplain prose\nEOF\"}}"
+expect_hook pre-bash 0 "a write to a non-draft is not the gate's business" \
+  "{\"cwd\": \"$G\", \"tool_input\": {\"command\": \"cat > e.json <<'EOF'\nsee arXiv:2401.00001\nEOF\"}}"
+expect_grep "nothing else will" "an unreadable redirect is reported, not refused" \
+  bash -c "printf '%s' '{\"cwd\": \"$G\", \"tool_input\": {\"command\": \"python3 gen.py > f.md\"}}' | python3 \"$NULLIUS\" _hook pre-bash"
+
+# ---- an accidental elimination is not an elimination ------------------------
+# The two ways a screen fails without anybody noticing: a candidate dropped on a
+# query that failed, and a zero believed without the full-text sweep.
+G start g3 idea "is the neighbour set empty" --force >/dev/null
+G accept "is it" >/dev/null
+G considered "the other one" "occupied" >/dev/null
+G kills "a counterexample" >/dev/null
+G cost "three years" >/dev/null
+python3 - <<'PYIN'
+import json, pathlib
+d = pathlib.Path(".nullius/searches"); d.mkdir(parents=True, exist_ok=True)
+# a tight query that returned nothing and was never re-run loose
+(d / "2026-07-07-tight.json").write_text(json.dumps({
+    "id": "2026-07-07-tight", "query": "t", "vocabulary": "tight", "when": "now",
+    "found": 0, "retrieved": 0, "loose": False, "results": []}, indent=2))
+# a query the tool itself called a vocabulary failure, with a work excluded on it
+(d / "2026-07-07-vocab.json").write_text(json.dumps({
+    "id": "2026-07-07-vocab", "query": "v", "vocabulary": "vocab", "when": "now",
+    "found": 2, "retrieved": 1, "loose": False, "vocabulary_failed": True,
+    "results": [{"title": "the live neighbour", "year": 2025, "cited_by": 1,
+                 "screened": "exclude", "reason": "looked unrelated"}]}, indent=2))
+PYIN
+expect_grep "tight zero is a statement about the words" \
+  "a zero never re-run over full text is refused" python3 "$NULLIUS" done
+expect_grep "excluded on a query that failed" \
+  "and an exclusion resting on a failed query is not a screen" python3 "$NULLIUS" done
+expect_exit 0 "unknown is available as the honest third answer" \
+  G screen 2026-07-07-vocab unknown "the query failed, so this says nothing" --index 0
+python3 - <<'PYIN'
+import json, pathlib
+p = pathlib.Path(".nullius/searches/2026-07-07-tight.json"); d = json.loads(p.read_text())
+d["loose"] = True; d["retrieved"] = 1
+d["results"] = [{"title": "found over full text", "year": 2025, "cited_by": 1,
+                 "screened": "include", "reason": "the loose sweep reached it"}]
+p.write_text(json.dumps(d, indent=2))
+PYIN
+out="$(python3 "$NULLIUS" done 2>&1)"
+printf '%s\n' "$out" | grep -q "tight zero is a statement" \
+  && bad "the loose gate still fires after the sweep was run" || ok
+printf '%s\n' "$out" | grep -q "excluded on a query that failed" \
+  && bad "the failed-query gate still fires after unknown was recorded" || ok
+
+# ---- an impression is not a reading ----------------------------------------
+# With nothing resolved there is nothing to have read, and the gate stays quiet;
+# it is a reference held at abstract depth that it is about.
+out="$(python3 "$NULLIUS" done 2>&1)"
+printf '%s\n' "$out" | grep -q "read past .abstract" \
+  && bad "the depth gate fired with an empty ledger" || ok
+python3 - <<'PYIN'
+import json, pathlib
+p = pathlib.Path(".nullius/papers"); p.mkdir(parents=True, exist_ok=True)
+pathlib.Path(".nullius/refs.json").write_text(json.dumps(
+    {"near2025": {"title": "the nearest work", "year": 2025, "authors": []}}, indent=2))
+(p / "near2025.md").write_text("---\ncitekey: near2025\nread_depth: abstract\n---\n")
+PYIN
+expect_grep "read past .abstract" "an idea whose only reference is an abstract is refused" \
+  python3 "$NULLIUS" done
+python3 - <<'PYIN'
+import pathlib
+f = pathlib.Path(".nullius/papers/near2025.md")
+f.write_text(f.read_text().replace("read_depth: abstract", "read_depth: skim"))
+PYIN
+out="$(python3 "$NULLIUS" done 2>&1)"
+printf '%s\n' "$out" | grep -q "read past .abstract" \
+  && bad "the depth gate survived a skim-depth note" || ok
+
+# ---- resolved is not read ---------------------------------------------------
+expect_grep "opened at any depth" "coverage separates resolved from read" \
+  bash -c "cd '$WORK' && python3 \"$NULLIUS\" coverage"
 
 echo
 echo "  $pass passed, $fail failed"

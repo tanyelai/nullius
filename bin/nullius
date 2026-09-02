@@ -891,6 +891,36 @@ def author_groups(refs, citekeys):
     return len(sets) if sets else (1 if citekeys else 0)
 
 
+def companion_files(store, unit, rel):
+    """Files whose text reaches the reader through this draft: figure sources, a
+    build template, an include. None of them is a draft by extension, and a caption
+    goes on asserting whatever it said after the prose has stopped saying it."""
+    out = []
+    for c in ((unit or {}).get("companions") or {}).get(rel, []):
+        f = store.root / c
+        if f.is_file():
+            out.append(f)
+    return out
+
+
+def check_artifact(store, unit, path, rel):
+    """The draft and everything that reaches the reader through it. A companion is a
+    shared asset -- one figure file serves several drafts -- so a name in it may
+    belong to another one: identifiers, retractions and pinned wording are facts
+    there, an unresolved name is reported instead of refused."""
+    text = path.read_text(encoding="utf-8", errors="replace")
+    facts = check_draft_text(store, text, rel)
+    chosen = check_attribution(store, text, rel)
+    for c in companion_files(store, unit, rel):
+        crel = os.path.relpath(c, store.root)
+        ctext = c.read_text(encoding="utf-8", errors="replace")
+        label = f"{rel} <- {crel}"
+        soft = []
+        facts += check_draft_text(store, ctext, label, soft_names=soft)
+        chosen += soft + check_attribution(store, ctext, label)
+    return facts, chosen
+
+
 def tracked_drafts(store, unit, counted_only=False):
     cfg = store.config
     excluded = set((unit or {}).get("excluded", []))
@@ -1261,9 +1291,43 @@ def cmd_section(args):
 # "chosen" (a threshold that was picked, so it is reported and marked as such).
 
 
-def check_draft_text(store, text, label):
+def quoted_spans(text, floor=25):
+    """Only spans long enough to be a quotation rather than a term. A short quoted
+    word is vocabulary; a sentence is the thing that was said and was wrong."""
+    out = []
+    for pat in (r'"([^"]{%d,400})"' % floor, r'`([^`]{%d,400})`' % floor):
+        for m in re.finditer(pat, text):
+            q = m.group(1).strip()
+            if q:
+                out.append(q)
+    return out
+
+
+def pinned_strings(store):
+    """A fatal or material finding usually quotes the sentence it condemns, and that
+    quote is the one string a repair has to remove. A draft still carrying it has not
+    been repaired -- which is a lookup rather than a judgement, so it refuses."""
+    unit = store.unit or {}
+    out = []
+    for i, f in enumerate(unit.get("findings") or []):
+        if f.get("resolved") or f.get("severity") not in ("fatal", "material"):
+            continue
+        for q in quoted_spans(f.get("text") or ""):
+            out.append({"text": q, "index": i, "severity": f["severity"]})
+    return out
+
+
+def check_draft_text(store, text, label, soft_names=None):
     cfg, refs = store.config, store.refs
     facts = []
+    for pin in pinned_strings(store):
+        if pin["text"] in text:
+            facts.append(
+                f"{label}: still contains the wording an open {pin['severity']} "
+                f"finding quotes as defective:\n      \"{pin['text'][:100]}\"\n"
+                f"    Remove it, or close finding [{pin['index']}] with "
+                f"`nullius resolve {pin['index']} \"<what changed>\"`. A correction "
+                f"that leaves the sentence standing has corrected nothing.")
     known = resolved_index(refs)
     by_id = {}
     for k, rec in refs.items():
@@ -1286,11 +1350,12 @@ def check_draft_text(store, text, label):
         low = fold_name(name)
         if low in known_names or any(low in n.split() for n in known_names):
             continue
-        facts.append(f"{label}: the text attributes something to `{name}` and no "
-                     f"resolved reference has an author of that name. A name is a "
-                     f"citation -- it is how most prose actually cites -- and it "
-                     f"is the form nothing else checks. `nullius cite` the work, "
-                     f"or drop the attribution.")
+        msg = (f"{label}: the text attributes something to `{name}` and no "
+               f"resolved reference has an author of that name. A name is a "
+               f"citation -- it is how most prose actually cites -- and it "
+               f"is the form nothing else checks. `nullius cite` the work, "
+               f"or drop the attribution.")
+        (facts if soft_names is None else soft_names).append(msg)
     for key in sorted(cited_keys(text, cfg)):
         rec = refs.get(key)
         if rec is None:
@@ -1446,10 +1511,24 @@ def unit_findings(store):
                      f"\"<the answer, with its locator>\"`.")
 
     for f in tracked_drafts(store, unit):
-        text = f.read_text(encoding="utf-8", errors="replace")
         rel = os.path.relpath(f, store.root)
-        facts += check_draft_text(store, text, rel)
-        chosen += check_attribution(store, text, rel)
+        a_facts, a_chosen = check_artifact(store, unit, f, rel)
+        facts += a_facts
+        chosen += a_chosen
+
+    # A draft written before an idea died may still assert it, and words do not
+    # change themselves. The comparison is two timestamps, so it refuses.
+    inval = unit.get("invalidated_at")
+    if inval:
+        checked = unit.get("checked") or {}
+        for f in tracked_drafts(store, unit):
+            rel = os.path.relpath(f, store.root)
+            if checked.get(rel, "") < inval:
+                facts.append(
+                    f"{rel} has not been checked since "
+                    f"\"{(unit.get('invalidated_by') or 'an idea')[:70]}\" was "
+                    f"falsified. Re-read it against what died and run "
+                    f"`nullius check {rel}`.")
 
     if unit.get("kind") == "idea":
         # The vocabulary has always said an idea unit needs these three. Until now it
@@ -1475,6 +1554,67 @@ def unit_findings(store):
             facts.append("no cost estimate. `nullius cost \"<data, compute, access, "
                          "approvals, calendar>\"` -- the ideas that die late are the "
                          "ones nobody priced early.")
+        # A zero from a title-and-abstract query is not a zero. Full text reaches
+        # work that shares no vocabulary with the query, which is the neighbour a
+        # tight zero is most likely to be hiding.
+        searches = store.searches()
+        loose_vocabs = {sr.get("vocabulary") for sr in searches if sr.get("loose")}
+        untested = [sr for sr in searches
+                    if not sr.get("loose") and not sr.get("retrieved")
+                    and sr.get("vocabulary") not in loose_vocabs]
+        if untested:
+            facts.append(
+                f"{len(untested)} search(es) returned nothing over title and "
+                f"abstract and were never re-run over full text: "
+                f"{', '.join(sr['id'] for sr in untested[:3])}. A tight zero is a "
+                f"statement about the words, not the literature. `nullius lit "
+                f"\"<query>\" --loose`, and screen what it finds.")
+
+        # An exclusion resting on a query the tool itself called a vocabulary failure
+        # reads later as though the literature was checked.
+        bad = []
+        for sr in searches:
+            if not sr.get("vocabulary_failed"):
+                continue
+            n = sum(1 for r in sr.get("results", []) if r.get("screened") == "exclude")
+            if n:
+                bad.append((sr["id"], n))
+        if bad:
+            facts.append(
+                "excluded on a query that failed: "
+                + "; ".join(f"{n} work(s) in {sid}" for sid, n in bad[:3])
+                + ". The tool reported those searches as a finding about the "
+                  "vocabulary rather than about the literature, so an exclusion "
+                  "there is not a screen. Re-query, or screen them `unknown`.")
+
+        # Presence, not a count: whether two alternatives are enough is judgement,
+        # whether any was written down is not.
+        # Titles and abstracts are not a reading. Presence again, not a count.
+        if store.refs and not [k for k in store.refs
+                               if store.note_depth(k) in ("skim", "method",
+                                                          "replicated")]:
+            facts.append(
+                "nothing has been read past `abstract`. An idea called open on "
+                "titles and abstracts is an impression, and the nearest work is "
+                "exactly the one an abstract will not settle. `nullius fulltext "
+                "<key>`, then `nullius note <key> --depth skim` or further.")
+        if not unit.get("considered"):
+            facts.append("no alternative recorded. `nullius considered \"<the other "
+                         "option>\" \"<why not that one>\"` -- an idea with no "
+                         "rejected sibling is a preference rather than a choice, "
+                         "and the reasoning is the first thing lost when somebody "
+                         "asks why this one and not the obvious other.")
+
+    if unit.get("kind") in ("idea", "survey", "read"):
+        refs = store.refs
+        blind = [k for k in refs if not store.note_depth(k)]
+        if refs and blind:
+            chosen.append(
+                f"{len(blind)} of {len(refs)} reference(s) carry no recorded read "
+                f"depth, so the ledger knows they exist and not what they say. "
+                f"`nullius note <key> --depth <abstract|skim|method|replicated>`. "
+                f"Whether that is enough for what the draft claims is yours to "
+                f"say, and it is worth saying in the draft.")
 
     if unit.get("kind") == "interpret":
         if not unit.get("decisive"):
@@ -2143,6 +2283,18 @@ def cmd_artifact(args):
     rel = os.path.relpath(Path(args.path).resolve(), store.root)
     if rel not in unit["artifacts"]:
         unit["artifacts"].append(rel)
+    comps = unit.setdefault("companions", {})
+    added = []
+    for c in (args.includes or []):
+        for one in str(c).split(","):
+            one = one.strip()
+            if not one:
+                continue
+            cp = os.path.relpath(Path(one).resolve(), store.root)
+            if cp not in comps.setdefault(rel, []):
+                comps[rel].append(cp)
+                added.append(cp)
+        comps[rel] = sorted(comps.get(rel, []))
     excluded = set(unit.get("excluded", []))
     if args.excluded:
         excluded.add(rel)
@@ -2157,6 +2309,10 @@ def cmd_artifact(args):
             "exclusion is the venue's rather than yours.")
     else:
         say(f"nullius: tracking {rel}")
+    if added:
+        say(f"  reaching the reader through it: {', '.join(added)}")
+        say("  checked with the draft whatever their extension. A figure caption is "
+            "read by whoever reads the figure.")
 
 
 def merge_records(primary, secondary):
@@ -2623,6 +2779,26 @@ def cmd_thread(args):
         "those it is a note to self, and a note to self is what you already had.")
 
 
+def cmd_considered(args):
+    """decisions.md existed from the first release and nothing ever wrote to it,
+    which is the exact shape of failure this tool exists to replace: a file that
+    says the reasoning matters, and no way to put the reasoning in it."""
+    store = Store(require_root())
+    unit = store.unit or die("no open unit.")
+    unit.setdefault("considered", []).append(
+        {"option": args.option, "why_not": args.why_not, "when": now()})
+    store.save_unit(unit)
+    f = store.p("decisions.md")
+    prev = f.read_text(encoding="utf-8") if f.is_file() else (
+        "# Decisions\n\nMethodological choices, with the alternative that was "
+        "rejected.\n")
+    f.write_text(prev.rstrip() + f"\n\n## Not taken: {args.option}\n\n"
+                 f"- **why not:** {args.why_not}\n- **unit:** {unit['slug']}\n"
+                 f"- **when:** {today()}\n", encoding="utf-8")
+    say(f"nullius: recorded. {len(unit['considered'])} alternative(s) on the record "
+        f"for '{unit['slug']}'.")
+
+
 def cmd_falsify(args):
     store = Store(require_root())
     f = store.p("falsified.md")
@@ -2630,6 +2806,14 @@ def cmd_falsify(args):
     f.write_text(prev.rstrip() + f"\n\n## {args.idea}\n\n- **killed by:** "
                  f"{args.why}\n- **when:** {today()}\n", encoding="utf-8")
     say("nullius: recorded. This is now injected before a write on that thread.")
+    unit = store.unit
+    if unit is not None and tracked_drafts(store, unit):
+        unit["invalidated_at"] = now()
+        unit["invalidated_by"] = args.idea
+        store.save_unit(unit)
+        say("  every tracked draft is now stale: a draft written while that idea "
+            "was alive may still assert it. `nullius check` each one before "
+            "finishing.")
 
 
 def impact(rec):
@@ -2777,6 +2961,11 @@ def cmd_lit(args):
         "when": now(), "matched_total": matched,
         "found": min([v for v in matched.values() if v] or [0]),
         "retrieved": len(ordered), "results": ordered,
+        # Whether the query worked is a property of the search, and a later gate
+        # cannot recover it from the results. A thin count means the words were
+        # wrong; that is not a finding about the literature.
+        "loose": bool(args.loose),
+        "vocabulary_failed": bool(route_note),
     }
     store.save_search(search)
 
@@ -3153,6 +3342,13 @@ def cmd_snowball(args):
     say(f"  logged as {search['id']}; screen it like any other search")
 
 
+def unknown_decision(d):
+    """`unknown` is the honest third answer. Excluding on a query that failed reads
+    later as though the literature was checked, and that is how a live neighbour gets
+    dropped by a screen nobody doubts afterwards."""
+    return d == "unknown"
+
+
 def cmd_screen(args):
     store = Store(require_root())
     f = store.p("searches", f"{args.search}.json")
@@ -3270,6 +3466,18 @@ def cmd_coverage(args):
             + ("  (a proxy for coverage, not a measure of it)"))
     say(f"groups       {groups:<6} across {len(refs)} resolved reference(s)"
         + ("" if groups > 1 or len(refs) < 2 else "  shared authors, not independent"))
+    # Resolved is not read. Without this row the funnel reports forty references
+    # and says nothing about whether any of them was opened.
+    if refs:
+        depths = {}
+        for k in refs:
+            depths[store.note_depth(k) or "not opened"] = \
+                depths.get(store.note_depth(k) or "not opened", 0) + 1
+        order = ["replicated", "method", "skim", "abstract", "not opened"]
+        shown = ", ".join(f"{depths[d]} {d}" for d in order if d in depths)
+        say(f"read         {len(refs) - depths.get('not opened', 0):<6} "
+            f"of {len(refs)} reference(s) opened at any depth")
+        say(f"               {shown}")
     if years:
         say(f"years        {min(years)}-{max(years)}")
 
@@ -3292,8 +3500,8 @@ def cmd_check(args):
         die(f"{args.path} is not a file.")
     text = path.read_text(encoding="utf-8", errors="replace")
     rel = os.path.relpath(path, store.root)
-    facts = check_draft_text(store, text, rel)
-    chosen = check_attribution(store, text, rel)
+    unit = store.unit
+    facts, chosen = check_artifact(store, unit, path, rel)
     words = count_words(text)
     cfg = store.config
     say(f"{rel}: {words} words, {len(cited_keys(text, cfg))} citation key(s), "
@@ -3305,6 +3513,9 @@ def cmd_check(args):
         say(f"  chosen {c}")
     if not facts and not chosen:
         say("  clean.")
+    if not facts and unit is not None and rel in (unit.get("artifacts") or []):
+        unit.setdefault("checked", {})[rel] = now()
+        store.save_unit(unit)
     sys.exit(2 if facts else 0)
 
 
@@ -3681,6 +3892,65 @@ def hook_pre_write(payload):
     return 0
 
 
+def shell_writes(cmd, cfg):
+    """(path, body-or-None) for every draft a shell command writes. A quoted heredoc
+    carries its own body inside the command line, so that one is checkable exactly
+    like a Write; a redirect from a program is not, and gets said out loud.
+
+    The groups are named because the two orders are the same regex concatenated the
+    other way round, and a numbered backreference silently points at the path when
+    that happens."""
+    out, seen = [], set()
+    TAG = (r"<<-?\s*(?P<q>['\"]?)(?P<tag>[A-Za-z_][A-Za-z0-9_]*)(?P=q)")
+    PATH = r">>?\s*(?P<path>[^\s;|&<>]+)"
+    for pat in (PATH + r"\s*" + TAG, TAG + r"\s*" + PATH):
+        for m in re.finditer(pat, cmd):
+            path = m.group("path").strip("'\"")
+            if not is_draft(path, cfg) or path in seen:
+                continue
+            seen.add(path)
+            rest = cmd[m.end():]
+            end = re.search(r"^\s*%s\s*$" % re.escape(m.group("tag")), rest, re.M)
+            out.append((path, rest[:end.start()] if end else None))
+    for m in re.finditer(r"(?:>>?|\btee\s+(?:-a\s+)?)\s*([^\s;|&<>]+)", cmd):
+        path = m.group(1).strip("'\"")
+        if is_draft(path, cfg) and path not in seen:
+            seen.add(path)
+            out.append((path, None))
+    return out
+
+
+def hook_pre_bash(payload):
+    """The write guards hook Write and Edit. A shell heredoc reaches the same file and
+    used to reach it unseen, which made the main gate optional -- and a gate you can
+    step around by choosing another tool is not a gate."""
+    root = find_root(payload.get("cwd"))
+    if root is None:
+        return 0
+    store = Store(root)
+    cfg = store.config
+    cmd = (payload.get("tool_input") or {}).get("command") or ""
+    if not cmd:
+        return 0
+    facts, unseen = [], []
+    for target, body in shell_writes(cmd, cfg):
+        if body is None:
+            unseen.append(target)
+        else:
+            facts += check_draft_text(store, body, target)
+    if facts and cfg["mode"] in ("certain", "block"):
+        sys.stderr.write("nullius refuses this write:\n  - "
+                         + "\n  - ".join(facts) + "\n")
+        return 2
+    if unseen:
+        emit_context(
+            "nullius: this command writes " + ", ".join(unseen) + " through the "
+            "shell and the guards could not read the content off the command line. "
+            "Run `nullius check` on it before finishing, because nothing else "
+            "will.")
+    return 0
+
+
 def emit_context(text):
     sys.stdout.write(json.dumps({"hookSpecificOutput": {
         "hookEventName": "PreToolUse", "additionalContext": text}}) + "\n")
@@ -3721,7 +3991,7 @@ def hook_stop(payload):
 def cmd_hook(args):
     payload = hook_payload()
     fn = {"session-start": hook_session_start, "pre-write": hook_pre_write,
-          "stop": hook_stop}.get(args.event)
+          "pre-bash": hook_pre_bash, "stop": hook_stop}.get(args.event)
     if fn is None:
         return 0
     try:
@@ -3812,6 +4082,10 @@ def build_parser():
 
     s = sub.add_parser("artifact", help="track a draft against this unit")
     s.add_argument("path")
+    s.add_argument("--includes", action="append", default=[],
+                   help="a file whose text reaches the reader through this draft "
+                        "(figure sources, a template). Checked with it, whatever "
+                        "its extension. Repeatable, or comma-separated.")
     s.add_argument("--excluded", action="store_true",
                    help="searched by the walk, not counted toward the limit "
                         "(a supplement, an appendix the venue excludes)")
@@ -3851,6 +4125,10 @@ def build_parser():
     s = sub.add_parser("thread", help="open or list a research thread")
     s.add_argument("slug", nargs="?"); s.set_defaults(fn=cmd_thread)
 
+    s = sub.add_parser("considered", help="an option not taken, and why not")
+    s.add_argument("option"); s.add_argument("why_not")
+    s.set_defaults(fn=cmd_considered)
+
     s = sub.add_parser("falsify", help="record an idea that died, and why")
     s.add_argument("idea"); s.add_argument("why"); s.set_defaults(fn=cmd_falsify)
 
@@ -3884,7 +4162,7 @@ def build_parser():
 
     s = sub.add_parser("screen", help="include or exclude retrieved works")
     s.add_argument("search")
-    s.add_argument("decision", choices=["include", "exclude"])
+    s.add_argument("decision", choices=["include", "exclude", "unknown"])
     s.add_argument("reason")
     s.add_argument("--index", type=int)
     s.add_argument("--below-citations", type=int, dest="below_citations",
