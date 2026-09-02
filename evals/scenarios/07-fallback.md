@@ -20,7 +20,12 @@ exercised is a fallback that fails when it is needed.
 2. The output says openalex was unreachable and which index answered instead.
 3. `snowball` with OpenAlex forced to refuse still walks, through Semantic Scholar, and every
    row carries `(semanticscholar)` in its provenance.
-4. The search log records `indexes`, `unreachable` and per-index `matched`.
+4. The search log records `indexes`, `unreachable` and per-index `matched` -- checked on the
+   **walk's own** log, not only on `lit`'s, because those are two writers and only one of them
+   was ever derived from what answered.
+5. A healthy walk, in its own ledger, records `openalex` and an empty `unreachable`. A second
+   walk from the same seed reaches nothing new and writes no log at all, so this leg needs a
+   fresh ledger or it silently reads the forced run's log.
 
 ## Must not happen
 

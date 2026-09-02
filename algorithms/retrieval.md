@@ -131,17 +131,39 @@ snowball: openalex → RateLimited → semanticscholar by DOI, and label every r
           no DOI on the seed → no fallback route, and say that too
 ```
 
+**The case that nearly escaped.** A substitution that *fails* leaves an error row, so it was
+always visible. A substitution that *works* leaves rows that look ordinary, and the walk's log
+header was a literal `"indexes": ["openalex"], "unreachable": []` written before any fallback
+existed. So the one path that mattered was the one that said nothing: eighteen rows arrived
+through Semantic Scholar while the header recorded that OpenAlex answered and nothing was
+unreachable, and `coverage` reads that header. The header is now derived from what answered,
+the refusal travels as data rather than as prose inside an error string, and the run prints the
+substitution instead of leaving it per-row.
+
+It survived because the eval that required it checked the wrong handle: provenance on the
+walk's **rows**, and the header on `lit`'s log. Two correct checks, and the defect lived in the
+gap between them.
+
 **Testable on purpose.** `NULLIUS_FORCE_RATELIMIT=openalex` forces the path, because a
 fallback nobody has exercised is a fallback that fails when it is needed. Covered by
-[eval 07](../evals/scenarios/07-fallback.md).
+[eval 07](../evals/scenarios/07-fallback.md), in both directions: forced, the walk log must
+name Semantic Scholar and OpenAlex; healthy, it must claim neither.
 
 ## A rate limit is a wait, not a wall
 
-**Measured, by deserving it.** Enough calls and the index answers HTTP 429. The tool reported
-it as unreachable and the walk as closed, which reads as *the work is not there*.
+**Measured, by deserving it.** Enough calls and the index answers HTTP 429. Before any of this
+existed the tool called that an unreachable index and the walk closed, which reads as *the work
+is not there* when what happened was *ask again in a minute*.
 
-429 and 503 retry with backoff, honour `Retry-After`, and say what they are. A hop whose calls
-were refused reports itself incomplete rather than empty.
+**Three layers, and the order matters.** A 429 or 503 retries with backoff and honours
+`Retry-After`, because most of them clear on their own. What outlives the retries takes the
+fallback route above. Only when there is no route left does a hop report itself **incomplete
+rather than empty**, and that is a different sentence from *the graph closed here*. The tool
+says whichever one is true and never the other.
+
+**Weak.** A seed with no DOI has no third layer at all, because Semantic Scholar is addressed
+by DOI. For those the honest report is the only report, and how often that bites depends on how
+much of your ledger came from arXiv.
 
 ## Considered and declined: predicting what is worth reading
 

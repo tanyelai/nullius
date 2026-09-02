@@ -2875,24 +2875,27 @@ def walk_one(cfg, wid, directions, limit, seed_title, doi, want_context):
                 counts[name] = None
                 rows.append({"_error": f"{name}: openalex is rate limiting and this "
                                        f"seed has no DOI, so nothing else can walk "
-                                       f"from it"})
+                                       f"from it",
+                             "_refused": ["openalex"]})
                 continue
             try:
                 got = s2_graph(doi, name, limit)
             except RuntimeError as e2:
                 counts[name] = None
                 rows.append({"_error": f"{name}: openalex rate limited, "
-                                       f"semanticscholar {e2}"})
+                                       f"semanticscholar {e2}",
+                             "_refused": ["openalex", "semanticscholar"]})
                 continue
             counts[name] = len(got)
             for r in got:
+                r["_fellback"] = "openalex"
                 r["via"] = f"{name} from {seed_title[:40]} (semanticscholar)"
                 r["openalex"] = r["doi"] and f"doi:{r['doi']}" or None
             rows += [r for r in got if r["openalex"]]
             continue
         except RuntimeError as e:
             counts[name] = None
-            rows.append({"_error": f"{name}: {e}"})
+            rows.append({"_error": f"{name}: {e}", "_refused": ["openalex"]})
             continue
         hits = (res or {}).get("results") or []
         counts[name] = ((res or {}).get("meta") or {}).get("count", len(hits))
@@ -2975,6 +2978,7 @@ def cmd_snowball(args):
     era = seed_years[len(seed_years) // 2] if seed_years else None
     oldest_seed = seed_years[0] if seed_years else None
     reached, all_rows, trail = {}, [], []
+    answered, unreachable = {}, set()
     frontier = list(seeds)
     adaptive = args.until_saturated
     hops = cfg["snowball_max_hops"] if adaptive else depth
@@ -2990,7 +2994,13 @@ def cmd_snowball(args):
                 if r.get("_error"):
                     say(f"  {r['_error']}")
                     refused += 1
+                    unreachable.update(r.get("_refused") or ["openalex"])
                     continue
+                fell = r.pop("_fellback", None)
+                if fell:
+                    unreachable.add(fell)
+                src = r.get("index") or "openalex"
+                answered[src] = answered.get(src, 0) + 1
                 key = openalex_short(r["openalex"])
                 if key in reached:
                     seen_before += 1
@@ -3083,8 +3093,9 @@ def cmd_snowball(args):
         "id": f"{today()}-snowball-d{depth}-{len(seeds)}seeds",
         "query": (f"snowball from {seeds[0][1]}" if len(seeds) == 1
                   else f"snowball from {len(seeds)} seeds, depth {depth}"),
-        "vocabulary": "snowball", "indexes": ["openalex"], "unreachable": [],
-        "matched_total": {}, "when": now(), "found": len(reached),
+        "vocabulary": "snowball", "indexes": sorted(answered) or ["openalex"],
+        "unreachable": sorted(unreachable), "matched_total": dict(answered),
+        "when": now(), "found": len(reached),
         "retrieved": len(reached), "depth": depth,
         "seeds": len(seeds), "era": era, "trail": trail,
         "stop_reason": stop_reason,
@@ -3129,6 +3140,13 @@ def cmd_snowball(args):
         say("nothing was reached from more than one seed. Either the seed set is "
             "too small to triangulate, or these works do not share a literature, "
             "and the second would be the more interesting finding.")
+    if unreachable:
+        # The walk still returned rows, so without this line the only visible
+        # trace of a substitution is per-row, and nobody reads a walk row by row.
+        routed = ", ".join(sorted(answered)) or "nothing"
+        say(f"  {', '.join(sorted(unreachable))} refused at least one call, so this "
+            f"walk came through {routed}. It is not the set openalex would have "
+            f"returned, and every row carries the index it came from.")
     say(f"  logged as {search['id']}; screen it like any other search")
 
 

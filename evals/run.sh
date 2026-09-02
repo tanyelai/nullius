@@ -260,8 +260,37 @@ P
     pass=$((pass+1)); log "- [x] recorded · every row says it came from the fallback"
   else fail=$((fail+1)); log "- [ ] **untraceable** · rows do not name the fallback index"; fi
   if python3 -c "import json,glob,sys; d=json.load(open(glob.glob('.nullius/searches/*fb*.json')[0])); sys.exit(0 if d['unreachable'] and d['indexes'] else 1)" 2>/dev/null; then
-    pass=$((pass+1)); log "- [x] recorded · the log carries indexes and unreachable"
-  else fail=$((fail+1)); log "- [ ] **not logged** · the search log lost the provenance"; fi
+    pass=$((pass+1)); log "- [x] recorded · the lit log carries indexes and unreachable"
+  else fail=$((fail+1)); log "- [ ] **not logged** · the lit log lost the provenance"; fi
+  # The walk log is a different handle from the walk rows. Checking provenance on
+  # the rows and the header on the *lit* log leaves exactly one gap, and that gap
+  # is where a hardcoded {"indexes": ["openalex"]} survived the fallback landing.
+  if python3 -c "
+import json,glob,sys
+d=json.load(open(glob.glob('.nullius/searches/*snowball*.json')[0]))
+sys.exit(0 if d['indexes']==['semanticscholar'] and d['unreachable']==['openalex']
+         and d['matched_total'].get('semanticscholar') else 1)" 2>/dev/null; then
+    pass=$((pass+1)); log "- [x] recorded · the walk log names what answered and what refused"
+  else fail=$((fail+1)); log "- [ ] **not logged** · the walk log still claims openalex answered"; fi
+  if printf '%s' "$wout" | grep -q "refused at least one call, so this walk came through"; then
+    pass=$((pass+1)); log "- [x] recorded · and the run says so on screen, not only in the log"
+  else fail=$((fail+1)); log "- [ ] **silent** · the substitution never reached the screen"; fi
+  # The other direction: a healthy index must not be reported as refused. This
+  # needs its own ledger. A second walk from the same seed reaches nothing new,
+  # writes no log at all, and would leave the forced run's log to be read as the
+  # healthy one, which is a passing assertion that measured nothing.
+  mkdir -p "$WORK/healthy" && cd "$WORK/healthy"
+  python3 "$N" init --field "natural language processing" >/dev/null
+  python3 "$N" cite 10.1145/3626772.3657834 --first >/dev/null 2>&1
+  python3 "$N" snowball --refs --both --limit 5 --no-context >/dev/null 2>&1
+  if python3 -c "
+import json,glob,sys
+g=glob.glob('.nullius/searches/*snowball*.json')
+if not g: sys.exit(1)
+d=json.load(open(g[0]))
+sys.exit(0 if d['unreachable']==[] and d['indexes']==['openalex'] else 1)" 2>/dev/null; then
+    pass=$((pass+1)); log "- [x] refused · a healthy walk claims no fallback and no refusal"
+  else fail=$((fail+1)); log "- [ ] **false refusal** · a healthy walk reported a substitution"; fi
   ;;
 *) echo "no scenario $S"; exit 1 ;;
 esac
