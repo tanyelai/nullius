@@ -131,6 +131,25 @@ somewhere in the history of the current one.
 Re-releasing a moved tag is refused rather than warned about, because an installed user
 resolves the same version string and never learns anything changed.
 
+## Who can do what
+
+Worth stating plainly, because a gate nobody can name is a gate nobody relies on.
+
+| | |
+|---|---|
+| open a pull request | anyone, from a fork |
+| merge into `main` | a pull request whose `preflight` check passed. The maintainer holds an admin bypass and can push directly; contributors cannot |
+| move `stable` | nothing except the release workflow |
+| force-push or delete `stable` | nobody, including the owner. The ruleset carries no bypass, and both refusals were verified by attempting them |
+| dispatch a release | write access to the repository |
+| approve a release | the required reviewers on the `release` environment, and administrators can no longer bypass that gate |
+
+The last row is the one that took a second pass. GitHub environments allow administrators to
+skip protection rules by default, so a second admin could have released without an approval
+while the setting read as protected. It is off now, which is the same lesson as the `stable`
+ruleset carrying no bypass: a guard with an exemption for the person most likely to be in a
+hurry is decorative.
+
 ## Commits
 
 Say what changed and why it was wrong before. A commit message is the only place the
