@@ -28,6 +28,12 @@ fi
 if command -v claude >/dev/null 2>&1; then
   run "manifest: plugin"      claude plugin validate .claude-plugin/plugin.json --strict
   run "manifest: marketplace" claude plugin validate .claude-plugin/marketplace.json --strict
+  # First-party check that plugin.json and the marketplace entry agree about the
+  # version. -f drops its clean-tree and tag-exists checks, which belong to a
+  # release rather than to a working tree somebody is still editing; what survives
+  # is the agreement check, and that one has teeth: a conflicting version in the
+  # marketplace entry exits 1 and says which side wins at install time.
+  run "manifest: the two agree on the version" claude plugin tag . --dry-run -f
 else
   echo "  skip  claude is not on PATH, so the structural checks below stand alone"
 fi

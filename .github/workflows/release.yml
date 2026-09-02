@@ -37,6 +37,12 @@ jobs:
             echo "'$VERSION' is not a semver release. Pass 0.3.0, not v0.3.0 and not a range."
             exit 1; }
 
+      # Installed here too, so the release runs the same manifest checks CI does
+      # rather than silently skipping them at the one moment they matter most.
+      - name: the official manifest validator, if it installs
+        continue-on-error: true
+        run: npm install -g @anthropic-ai/claude-code
+
       - name: the gate, again, on the commit being released
         run: bash tests/preflight.sh
 
