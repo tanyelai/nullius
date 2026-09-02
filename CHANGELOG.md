@@ -8,7 +8,8 @@ and the CLI surface may change; when they do, the change is listed here with wha
 **[evals/](evals/)** runs seven scenarios end to end, one per use case plus the path where the
 index refuses to answer, each on a different AI
 subject picked at random: speculative decoding, machine unlearning evaluation, mixture-of-experts
-routing, watermark robustness, reviewing that proposal, and influence functions at scale. Every
+routing, watermark robustness, reviewing the proposal scenario 04 wrote, and influence
+functions at scale. Every
 scenario states what must be refused and what must be allowed, because a gate tested in one
 direction is not tested.
 
@@ -19,8 +20,8 @@ pinned by a test. And `close` answered the acceptance question without saying th
 refused, which three scenarios were written wrongly against before the ambiguity was the
 explanation.
 
-Everything on the roadmap is built. What changed in this release beyond the features listed
-under 0.1.0 is recorded in the entries below; what is worth reading first is new.
+Nothing designed for this release is left stubbed. What changed beyond the features listed
+under 0.1.0 is in the entries below; what is worth reading first is new.
 
 **[algorithms/](algorithms/)** collects every mechanism with the measurement that killed
 the naive version of it: the query that matched 15,277 works against the one that matched 811,
