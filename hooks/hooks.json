@@ -1,5 +1,5 @@
 {
-  "description": "nullius gates. Local state only -- a hook that makes a network call hangs a session, so resolution happens in `nullius cite` and the gates check what it wrote.",
+  "description": "nullius gates. Local state only -- a hook that makes a network call hangs a session, so resolution happens in `nullius cite` and the gates check what it wrote. Bash is matched alongside Write|Edit: a shell heredoc reaches a draft too, and a gate you can step around by choosing another tool is not a gate.",
   "hooks": {
     "SessionStart": [
       { "hooks": [ { "type": "command", "shell": "bash",
@@ -11,7 +11,9 @@
     ],
     "PreToolUse": [
       { "matcher": "Write|Edit", "hooks": [ { "type": "command", "shell": "bash",
-        "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/bin/nullius\" _hook pre-write" } ] }
+        "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/bin/nullius\" _hook pre-write" } ] },
+      { "matcher": "Bash", "hooks": [ { "type": "command", "shell": "bash",
+        "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/bin/nullius\" _hook pre-bash" } ] }
     ],
     "Stop": [
       { "hooks": [ { "type": "command", "shell": "bash",

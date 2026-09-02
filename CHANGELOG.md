@@ -3,6 +3,44 @@
 Versions follow [semantic versioning](https://semver.org). Until `1.0.0` the ledger format
 and the CLI surface may change; when they do, the change is listed here with what it breaks.
 
+## 0.4.0
+
+**Seven gates, against two defect classes the first six did not cover.**
+
+The first is a correction that does not travel. A claim is falsified in the ledger and the
+sentence it condemned stays in the draft, because words do not change themselves. The same
+wording survives wherever else the draft says it, and `check` reports clean throughout when
+that elsewhere is a file it was never pointed at: figure sources, a template, anything whose
+text reaches the reader without carrying a draft's extension.
+
+The second is a screen that fails quietly. A query returns nothing and the nothing is read as
+a statement about the literature rather than about the words; a work is excluded on a search
+the tool itself called a vocabulary failure; an idea is called open on titles and abstracts.
+
+- **Pinned wording.** A `fatal` or `material` finding usually quotes the sentence it condemns.
+  That quote is now pinned, and the draft does not pass while it still contains it.
+- **Companions.** `artifact <draft> --includes <path>` declares files whose text reaches the
+  reader through the draft. Checked with it whatever the extension. A name in a shared asset
+  may belong to another draft, so an unresolved name there is reported rather than refused.
+- **Staleness.** `falsify` marks every tracked draft unchecked, and the unit does not close
+  until each has been read again.
+- **The shell.** `PreToolUse` matches `Bash` as well as `Write|Edit`. A quoted heredoc carries
+  its own body and is checked exactly like a write; a redirect a program fills cannot be, and
+  is reported instead of refused.
+- **`considered`.** `decisions.md` shipped from the first release and nothing ever wrote to it.
+  Now there is a command, and an `idea` unit does not close without an alternative on the
+  record.
+- **A tight zero is not a zero.** A query that returned nothing over title and abstract and was
+  never re-run with `--loose` is refused as evidence. Full text reaches work that shares no
+  vocabulary with the query, which is exactly the neighbour a tight zero hides.
+- **A failed vocabulary is not a screen.** Works excluded on a search the tool itself called a
+  finding about the vocabulary are refused. `screen ... unknown` is the third answer.
+- **An impression is not a reading.** An `idea` unit where nothing was read past `abstract` is
+  refused, and `coverage` now separates resolved from opened.
+
+Nothing in the ledger format changed, so a `0.3.0` project keeps working; units opened before
+this release will meet the new gates when they next try to close.
+
 ## 0.3.0
 
 **A release channel.** The marketplace entry was a relative source, which serves whatever the

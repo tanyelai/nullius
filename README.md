@@ -133,11 +133,11 @@ that fires at startup hands the session the whole vocabulary.
 |---|---|
 | opening work | `start` · `accept` · `status` · `done` |
 | reading a literature | `lit` · `snowball` · `screen` · `coverage` |
-| recording what you know | `cite` · `note` · `claim` · `falsify` |
+| recording what you know | `cite` · `note` · `claim` · `considered` · `falsify` |
 | critiquing something | `finding` · `resolve` · `verdict` |
 | handing it to someone | `report` |
 
-That is a third of them. `nullius --help` lists all thirty-six with their flags, `--help` on
+That is a third of them. `nullius --help` lists all thirty-seven with their flags, `--help` on
 any one spells out that command's, and `/nullius` carries the rest of the vocabulary. The
 reference lives there rather than here, because a table kept by hand goes stale and this one
 had already started to.
@@ -224,6 +224,31 @@ Where Semantic Scholar has parsed a citing paper's full text it also returns the
 which the citation appears, and whether the citation was influential. Those are **sparse**:
 present for some papers and not others, so the tool shows them when they exist and never
 counts on them.
+
+## What a correction has to reach
+
+A claim dies in the ledger and goes on standing in the draft, because words do not change
+themselves. Four gates close that gap, and each one exists because it was missed:
+
+| The gate | What it refuses |
+|---|---|
+| **pinned wording** | a `fatal` or `material` finding quotes the sentence it condemns, and that quote is pinned. The draft does not pass `check` while it still contains it. Removing the finding is not the same as removing the sentence |
+| **companions** | `artifact draft.md --includes figures.py` says which files reach the reader *through* the draft. They are checked with it whatever their extension, because a figure caption goes on asserting what the prose has stopped asserting |
+| **staleness** | `falsify` marks every tracked draft unchecked. The unit does not close until each has been read against what died |
+| **the shell** | `Bash` is matched as well as `Write|Edit`. A quoted heredoc carries its own body, so it is checked exactly like a write; a redirect from a program cannot be, and is said out loud instead. A gate you can step around by choosing another tool is not a gate |
+
+## What an opinion has to rest on
+
+Three more, against the two ways a screen quietly fails:
+
+| The gate | What it refuses |
+|---|---|
+| **a tight zero** | a query that returned nothing over title and abstract, never re-run with `--loose`. The words were wrong is not the same as the literature is empty |
+| **a failed vocabulary** | works excluded on a search the tool itself reported as a finding about the vocabulary. `screen ... unknown` is the honest third answer, and it reads later as what it was |
+| **an impression** | an `idea` unit where nothing was read past `abstract`. The nearest work is precisely the one an abstract will not settle |
+
+And an `idea` unit does not close with no `considered` on the record: an idea with no rejected
+sibling is a preference rather than a choice, and the reasoning is the first thing lost.
 
 ## When a draft is only getting longer
 
