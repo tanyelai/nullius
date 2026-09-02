@@ -127,9 +127,15 @@ DEFAULT_CONFIG = {
     "extension_window": 3,
     "extension_growth": 1.25,
     "section_thin_words": 80,
-    "scope_headings": ["what this study does not do", "what this paper does not do",
-                       "out of scope", "scope boundary", "non-goals",
-                       "what this study does not claim", "outside the scope"],
+    # Patterns, not phrases. A real draft headed "What this does not do" shares no
+    # substring with "what this study does not do", and one word lost the boundary.
+    "scope_headings": [
+        r"what (this|it|the \w+) ?\w* (does|will|do|shall) not (do|cover|claim|address|attempt)",
+        r"what (this|the) \w+ does not",
+        r"(out|outside) of scope", r"not in scope", r"scope boundar",
+        r"non.?goals", r"limitations of scope", r"deliberately (not|out)",
+        r"what (is|was) (deliberately )?(left )?out",
+    ],
     "rank_floor_citations": 1,
     "budget_overrun_ratio": 1.5,
     "cite_patterns": [
@@ -893,11 +899,11 @@ def parse_scope(text, cfg):
     what the artifact does not itself rule out. So the boundary is read from the
     draft rather than kept beside it, where a reviewer would never see it."""
     heads = headings_of(text)
-    want = [norm_title(h) for h in cfg.get("scope_headings", [])]
+    pats = cfg.get("scope_headings", [])
     body, start_line = None, 0
     for i, (level, title, off) in enumerate(heads):
         h = norm_title(title)
-        if not any(w and (w in h or h in w) for w in want):
+        if not any(re.search(w, h) for w in pats):
             continue
         end = len(text)
         for level2, _, off2 in heads[i + 1:]:
@@ -1751,6 +1757,11 @@ def cmd_close(args):
     unit["accept_answer"] = args.answer
     store.save_unit(unit)
     say("nullius: acceptance closed.")
+    # Closing the question is not finishing the unit, and nothing said so. Someone
+    # who answers it and stops has no reason to expect the stop gate still refuses.
+    facts, _ = unit_findings(store)
+    if facts:
+        say(f"  {len(facts)} thing(s) still refuse the stop. `nullius status`.")
 
 
 def venue_scale(store, unit):

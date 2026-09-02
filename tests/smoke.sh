@@ -743,6 +743,26 @@ while IFS= read -r line; do
   case "$line" in OK*) ok ;; NO*) bad "frontier ranking: ${line#NO }" ;; esac
 done <<< "$pure3"
 
+# a boundary heading is a pattern, not a phrase. "What this does not do" shares no
+# substring with "what this study does not do", and one word lost the whole boundary.
+pure4="$(python3 - "$NULLIUS" <<'PYIN'
+import sys, io, re
+ns = {}
+exec(compile(io.open(sys.argv[1], encoding="utf-8").read().split("def main()")[0],
+             "n", "exec"), ns)
+pats = ns["DEFAULT_CONFIG"]["scope_headings"]
+hit = lambda h: any(re.search(p, ns["norm_title"](h)) for p in pats)
+cases = [("What this does not do", True), ("What this study does not do", True),
+         ("What the project will not cover", True), ("Out of scope", True),
+         ("Non-goals", True), ("Scope boundary", True), ("Deliberately not done", True),
+         ("Method", False), ("Limitations", False), ("Results", False)]
+print("\n".join(f"{'OK' if hit(h) == want else 'NO'} {h!r} -> {want}" for h, want in cases))
+PYIN
+)"
+while IFS= read -r line; do
+  case "$line" in OK*) ok ;; NO*) bad "scope heading: ${line#NO }" ;; esac
+done <<< "$pure4"
+
 echo
 echo "  $pass passed, $fail failed"
 [ "$fail" -eq 0 ]

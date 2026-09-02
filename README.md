@@ -443,6 +443,12 @@ Written as schemas rather than prose where the mechanism has any structure, one 
 and open at the end of each on where it is still weak. If one is wrong, the measurement is the
 thing to attack.
 
+[evals/](evals/) runs six scenarios, one per use case, each on a different AI subject and each
+against live indexes. It is not a benchmark and six runs are not calibration; it measures
+whether each path completes and whether the gates fire on real material rather than only on the
+fixtures. Two defects came out of the first pass, both recorded in the scenarios that found
+them.
+
 [examples/](examples/) has three worked fields: clinical machine learning, language model
 evaluation, and quantitative social science. The `field.md` files are real and you
 should argue with them; the venue files are skeletons, because a checklist invented for a real

@@ -5,6 +5,19 @@ and the CLI surface may change; when they do, the change is listed here with wha
 
 ## 0.2.0
 
+**[evals/](evals/)** runs six scenarios end to end, one per use case, each on a different AI
+subject picked at random: speculative decoding, machine unlearning evaluation, mixture-of-experts
+routing, watermark robustness, reviewing that proposal, and influence functions at scale. Every
+scenario states what must be refused and what must be allowed, because a gate tested in one
+direction is not tested.
+
+It found two defects on its first pass. Scope headings were matched as phrases, so a draft headed
+*What this does not do* declared a boundary the tool never saw, and a finding that boundary should
+have stopped went through: one word, and the whole mechanism was inert. They are patterns now,
+pinned by a test. And `close` answered the acceptance question without saying that the stop still
+refused, which three scenarios were written wrongly against before the ambiguity was the
+explanation.
+
 Everything on the roadmap is built. What changed in this release beyond the features listed
 under 0.1.0 is recorded in the entries below; what is worth reading first is new.
 
