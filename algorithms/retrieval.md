@@ -76,6 +76,29 @@ were exactly the preprints enrichment had missed.
 Per-index totals are reported separately, never as one maximum: one index answering nonsense
 should not poison the number.
 
+## Report the funnel, not the survivors
+
+**Naive.** Report what you found: 6 works included.
+
+**Why it is thin.** A search that retrieved 40 and discarded 34 looks identical to one that
+retrieved 6, and they are not the same search. What killed the difference is the number that
+says how hard you looked.
+
+```
+matched      per index, never one maximum
+retrieved    40   across N searches and M vocabularies
+screened     40   0 unscreened
+  by rule    34   exclude 17  cited_by<1        "no citations yet"
+                  exclude 17  all-remaining     "an application, not a method"
+  one by one  6
+included      6   15% of what was retrieved
+walked        1   of 1 kept on the graph, 5 off it
+saturation   69%  on the last hop (a proxy for coverage, not a measure of it)
+```
+
+The rules are printed because a criterion applied uniformly is one thing a reader can
+disagree with, and forty individual judgements are forty.
+
 ## One index is not a route
 
 **Naive.** Pick the best index and use it.

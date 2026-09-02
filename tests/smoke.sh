@@ -827,6 +827,31 @@ expect_exit 1 "and still discharged on draft A" \
   python3 "$NULLIUS" finding material evidential "the sample is one site" --at "cd1.md:3"
 cd ..
 
+# the funnel, and a report a person can read
+python3 - <<'PYIN'
+import json, pathlib
+pathlib.Path(".nullius/searches/2026-06-06-f.json").write_text(json.dumps({
+    "id": "2026-06-06-f", "query": "f", "vocabulary": "funnel", "when": "now",
+    "found": 900, "retrieved": 3, "matched_total": {"openalex": 900},
+    "results": [
+        {"title": "kept", "year": 2024, "cited_by": 30, "screened": "include",
+         "reason": "on topic"},
+        {"title": "dropped a", "year": 2026, "cited_by": 0, "screened": "exclude",
+         "reason": "no citations yet", "by_rule": "cited_by<1"},
+        {"title": "dropped b", "year": 2026, "cited_by": 0, "screened": "exclude",
+         "reason": "no citations yet", "by_rule": "cited_by<1"}],
+    "rules": [{"rule": "cited_by<1", "decision": "exclude", "reason": "no citations yet",
+               "applied_to": 2, "when": "now"}]}, indent=2))
+PYIN
+expect_grep "the criteria that did the work" "coverage names the rules that did the killing" \
+  python3 "$NULLIUS" coverage
+expect_grep "of what was retrieved" "and what survived them, as a share" \
+  python3 "$NULLIUS" coverage
+expect_exit 0 "a report is written" python3 "$NULLIUS" report --out r.md
+expect_grep "what stands behind each" "and it carries the claims with their warrants" cat r.md
+expect_grep "does not establish" "and says what it does not establish" cat r.md
+printf '%s\n' "$(cat r.md)" | grep -q "typeset\|\\\\documentclass" && bad "the report tried to own a house style" || ok
+
 echo
 echo "  $pass passed, $fail failed"
 [ "$fail" -eq 0 ]

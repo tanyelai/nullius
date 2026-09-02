@@ -117,7 +117,7 @@ Run them as `./.nullius/bin/nullius <cmd>` from the project root.
     screen <search-id> exclude "<reason>" --below-citations 1     in bulk, by rule
     walk                                   every required section, present/thin/absent
     section "<name>" <planned|elsewhere|n/a> "<why>"
-    coverage        check <path>        doctor
+    coverage        check <path>        doctor        report [--out PATH]
 
 Three vocabularies minimum on a survey: yours, the field's own terms taken from the first
 hits, and one adjacent field that studies the same thing under another name. Silence is a
@@ -3191,6 +3191,9 @@ def cmd_screen(args):
 
 
 def cmd_coverage(args):
+    """The funnel. Retrieved and included are two numbers; what killed the difference
+    is the third, and without it a search that discarded 227 works looks the same as
+    one that never retrieved them."""
     store = Store(require_root())
     cfg = store.config
     searches = store.searches()
@@ -3202,35 +3205,61 @@ def cmd_coverage(args):
         for k, v in (sr.get("matched_total") or {}).items():
             if v:
                 per_index[k] = max(per_index.get(k, 0), v)
-    results = [r for s in searches for r in s.get("results", [])]
-    screened = sum(1 for r in results if r["screened"] is not None)
-    included = sum(1 for r in results if r["screened"] == "include")
-    vocabs = {s.get("vocabulary") for s in searches if s.get("vocabulary")}
+    results = [r for sr in searches for r in sr.get("results", [])]
+    screened = [r for r in results if r["screened"] is not None]
+    included = [r for r in results if r["screened"] == "include"]
+    by_rule = [r for r in screened if r.get("by_rule")]
+    vocabs = {sr.get("vocabulary") for sr in searches if sr.get("vocabulary")}
     years = [r["year"] for r in results if r.get("year")]
     refs = store.refs
     groups = author_groups(refs, list(refs.keys()))
     want = cfg["vocabularies_suggested"]
 
     say("matched      " + (", ".join(f"{k} {v}" for k, v in sorted(per_index.items()))
-                            or "not recorded"))
-    say(f"retrieved    {len(results):<6} screened {screened:<5} included {included}"
-        f"  unscreened {len(results) - screened}")
-    say(f"vocabularies {len(vocabs):<6} of {want} suggested"
-        + ("" if len(vocabs) >= want else
-           "  -- try the field's terms, not yours"))
+                           or "not recorded"))
+    say(f"retrieved    {len(results):<6} across {len(searches)} search(es) and "
+        f"{len(vocabs)} vocabular{'y' if len(vocabs) == 1 else 'ies'}"
+        + ("" if len(vocabs) >= want else f", of {want} suggested"))
+    say(f"screened     {len(screened):<6} {len(results) - len(screened)} unscreened")
+    rules = [(rl, sr["id"]) for sr in searches for rl in (sr.get("rules") or [])]
+    if rules:
+        say(f"  by rule    {len(by_rule):<6} the criteria that did the work:")
+        for rl, sid in rules:
+            say(f"               {rl['decision']:<8} {rl['applied_to']:>4}  "
+                f"{rl['rule']}  \"{rl['reason'][:44]}\"")
+    if len(screened) - len(by_rule):
+        say(f"  one by one {len(screened) - len(by_rule)}")
+    say(f"included     {len(included):<6} "
+        + (f"{len(included) / len(results):.0%} of what was retrieved"
+           if results else ""))
+
+    state = snowball_state(store)
+    stops = frontier_stops(store)
+    on_graph = [r for r in included if r.get("openalex")]
+    walked = [r for r in on_graph if openalex_short(r["openalex"]) in state]
+    stopped = [r for r in on_graph if openalex_short(r["openalex"]) in stops]
+    say(f"walked       {len(walked):<6} of {len(on_graph)} kept work(s) on the graph"
+        + (f", {len(stopped)} closed by decision" if stopped else "")
+        + (f", {len(included) - len(on_graph)} off it" if len(included) > len(on_graph)
+           else ""))
+    trails = [t for sr in searches for t in (sr.get("trail") or [])]
+    if trails:
+        last = trails[-1]
+        say(f"saturation   {last['saturation']:.0%}   on the last hop walked"
+            + ("  (a proxy for coverage, not a measure of it)"))
     say(f"groups       {groups:<6} across {len(refs)} resolved reference(s)"
-        + ("" if groups > 1 or len(refs) < 2 else
-           "  -- shared authors, not independent"))
+        + ("" if groups > 1 or len(refs) < 2 else "  shared authors, not independent"))
     if years:
         say(f"years        {min(years)}-{max(years)}")
-    unscreened = [(s["id"], i, r) for s in searches
-                  for i, r in enumerate(s.get("results", []))
+
+    unscreened = [(sr["id"], i, r) for sr in searches
+                  for i, r in enumerate(sr.get("results", []))
                   if r["screened"] is None]
     if unscreened:
         say("")
         say("unscreened:")
         for sid, i, r in unscreened[:20]:
-            say(f"  {sid} [{i}]  {r['year']}  {(r['title'] or '')[:58]}")
+            say(f"  {sid} [{i}]  {r['year']}  {(r['title'] or '')[:52]}")
         if len(unscreened) > 20:
             say(f"  ... and {len(unscreened) - 20} more")
 
@@ -3256,6 +3285,141 @@ def cmd_check(args):
     if not facts and not chosen:
         say("  clean.")
     sys.exit(2 if facts else 0)
+
+
+def cmd_report(args):
+    """What the ledger knows, as something a person reads. Not a typeset document:
+    the tool has no business owning a house style, and the venue owns the format.
+    What it does own is the epistemic state, and that is the half a collaborator
+    cannot reconstruct from the draft."""
+    store = Store(require_root())
+    cfg = store.config
+    unit = store.unit
+    out = []
+    w = out.append
+    w(f"# {store.root.name}: what the ledger holds")
+    w("")
+    w(f"Generated {today()}. Field: {cfg.get('field') or 'unset'}.")
+    w("")
+    w("This is the state of the evidence, not the argument. The argument is the "
+      "draft; this is what stands behind it and what does not.")
+    w("")
+
+    if unit:
+        w("## The open unit")
+        w("")
+        w(f"**{unit['slug']}** ({unit['kind']}) - {unit['question']}")
+        w("")
+        w(f"- accepts on: {unit.get('accept') or 'NOT DECLARED'}")
+        if unit.get("accept_answer"):
+            w(f"- answered: {unit['accept_answer']}")
+        for k, label in (("kills", "what would end it"), ("cost", "what it takes"),
+                         ("trade", "trade taken")):
+            if unit.get(k):
+                w(f"- {label}: {unit[k]}")
+        if unit.get("decisive"):
+            d = unit["decisive"]
+            w(f"- decisive: {d['text']}"
+              + ("  **(post-hoc, exploratory)**" if d.get("post_hoc") else ""))
+        if unit.get("reading"):
+            w(f"- observed: {unit['reading']['text']}")
+        w("")
+
+    claims = store.claims()
+    if claims:
+        w("## Claims, and what stands behind each")
+        w("")
+        w("| claim | warrant | status | asserts | sources | locator |")
+        w("|---|---|---|---|---|---|")
+        for c in claims:
+            w(f"| {c['text'][:64]} | `{c['warrant']}` | `{c['status']}` | "
+              f"`{c.get('strength', '')}` | {', '.join(c.get('sources') or []) or '-'} "
+              f"| {c.get('locator') or '-'} |")
+        w("")
+        weak = [c for c in claims if c["status"] in ("single-result", "folklore")
+                or c["warrant"] == "authors-claim"]
+        if weak:
+            w(f"{len(weak)} of these may not be written as a bare assertion. They are "
+              f"attributed and situated in the prose, or they are not used.")
+            w("")
+
+    refs = store.refs
+    if refs:
+        w("## What was read, and how far")
+        w("")
+        w("| key | year | read to | peer reviewed | source |")
+        w("|---|---|---|---|---|")
+        for k, rec in sorted(refs.items()):
+            w(f"| {k} | {rec.get('year') or '-'} | "
+              f"`{store.note_depth(k) or 'no note'}` | "
+              f"{'yes' if rec.get('peer_reviewed') else 'no'} | {rec.get('index')} |")
+        w("")
+
+    searches = store.searches()
+    if searches:
+        results = [r for sr in searches for r in sr.get("results", [])]
+        inc = [r for r in results if r.get("screened") == "include"]
+        rules = [rl for sr in searches for rl in (sr.get("rules") or [])]
+        w("## The search, as a funnel")
+        w("")
+        w(f"- {len(searches)} search(es) across "
+          f"{len({sr.get('vocabulary') for sr in searches})} vocabular(ies)")
+        if results:
+            w(f"- {len(results)} retrieved, {len(inc)} kept "
+              f"({len(inc) / len(results):.0%})")
+        for rl in rules:
+            w(f"- rule: `{rl['rule']}` {rl['decision']}d {rl['applied_to']}, "
+              f"because {rl['reason']}")
+        w("")
+        w("What a rule excluded, a reader can disagree with in one place. That is why "
+          "it is a rule rather than forty judgements.")
+        w("")
+
+    disp = store.read_json("sections.json", {})
+    if disp:
+        w("## Required sections that are absent, and why")
+        w("")
+        for key, d in disp.items():
+            w(f"- **{d['section']}** ({d['venue']}): {d['as']} - {d['why']}")
+        w("")
+
+    discharged = discharged_findings(store)
+    if discharged:
+        w("## Discharged, and closed")
+        w("")
+        for t in discharged:
+            w(f"- {t}")
+        w("")
+        w("Each of these is a property of the study rather than a defect in it, "
+          "carried by one sentence in Limitations. They do not come back.")
+        w("")
+
+    if unit:
+        facts, chosen = unit_findings(store)
+        if facts or chosen:
+            w("## What is not settled")
+            w("")
+            for f in facts:
+                w(f"- **refuses the stop:** {f.splitlines()[0]}")
+            for c in chosen:
+                w(f"- reported, a chosen threshold: {c.splitlines()[0]}")
+            w("")
+
+    w("## What this report does not establish")
+    w("")
+    w("- Coverage. Saturation is a proxy and the indexes are uneven by field; *no "
+      "such result was found* is a statement about the searches logged here.")
+    w("- Quality. Nothing above says a claim is right, only what stands behind it.")
+    w("- Independence, where a record carried no author identifiers and the "
+      "comparison fell back to names.")
+
+    text = "\n".join(out) + "\n"
+    dest = Path(args.out) if args.out else store.root / "nullius-report.md"
+    dest.write_text(text, encoding="utf-8")
+    say(f"nullius: {os.path.relpath(dest, store.root)}, {len(text.split())} words")
+    say("  markdown on purpose. Typesetting is the venue's business and the house "
+        "style is yours; this is the half a collaborator cannot reconstruct from "
+        "the draft.")
 
 
 def cmd_status(args):
@@ -3727,6 +3891,9 @@ def build_parser():
 
     s = sub.add_parser("check", help="run the write guards over a draft")
     s.add_argument("path"); s.set_defaults(fn=cmd_check)
+
+    s = sub.add_parser("report", help="what the ledger holds, for a person to read")
+    s.add_argument("--out"); s.set_defaults(fn=cmd_report)
 
     s = sub.add_parser("status", help="why the stop gate is refusing")
     s.set_defaults(fn=cmd_status)

@@ -241,6 +241,21 @@ has run. The detector compares the two over a window of three turns.
 It is a **chosen threshold**, not a fact: three turns and a quarter of growth are numbers
 somebody picked. So it reports to you and never ends a turn.
 
+## Handing it to someone
+
+`nullius report` writes what the ledger holds as markdown a person reads: every claim with its
+warrant, its status and what it may assert; every source with how far it was actually read; the
+search as a funnel with the rules that did the discarding; what was dispositioned and what was
+discharged; and what is still refusing the stop.
+
+It is **markdown on purpose, and there is no typesetting here.** The venue owns the format, the
+house style is yours, and a template shipped with a tool becomes a house style that is not
+either. What the tool owns is the epistemic state, and that is the half a collaborator cannot
+reconstruct from the draft. Feed the markdown to whatever build you already have.
+
+The report closes on what it does not establish, which is most things: not coverage, not
+quality, and not independence where a record carried no author identifiers.
+
 ## The problem
 
 An AI assistant is a good research collaborator right up to the point where nothing can check
