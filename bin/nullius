@@ -47,7 +47,11 @@ STATUSES = ["folklore", "single-result", "emerging", "contested",
 STATUS_NEEDS_GROUPS = {"established": 2, "textbook": 2, "contested": 2}
 
 UNIT_KINDS = ["read", "survey", "idea", "explain", "interpret", "critique",
-              "write", "referee"]
+              "write", "referee", "respond"]
+
+# What you may do about a reviewer's point. Declining is a real answer and the one
+# that needs a reason, because it is the one the reviewer will read hardest.
+POINT_DISPOSITIONS = ["changed", "rebutted", "declined"]
 
 # Not everything worth citing has a DOI. A documentation page, a lecture note, a
 # blog post and a book chapter are all legitimate sources; what differs is how
@@ -66,7 +70,7 @@ VOCABULARY = """## nullius: the commands
 Run them as `./.nullius/bin/nullius <cmd>` from the project root.
 
     start <slug> <kind> "<question>" [--venue V] [--words N] [--artifact PATH]
-        kind: read survey idea explain interpret critique write referee
+        kind: read survey idea explain interpret critique write referee respond
         idea    also needs: kills "<what would end it>" and cost "<what it takes>",
                 plus a search with something screened in. All three are enforced.
         survey  needs every retrieved work screened. Enforced.
@@ -76,7 +80,12 @@ Run them as `./.nullius/bin/nullius <cmd>` from the project root.
         critique / referee  need a verdict, and every finding needs a referent and a
                 locator. Zero fatal and zero material means the verdict is the
                 positive end of the scale. Enforced.
+        respond  every reviewer point recorded and each one changed, rebutted or
+                declined, with a reason on the last two. Enforced.
         read and explain shape what `accept` should say; they are not gated.
+
+    point "<what the reviewer said>" --reviewer R1        point (lists them)
+    point <changed|rebutted|declined> --settle N --why "<what>"
 
     decisive "<what would change the conclusion>" [--post-hoc]    reading "<what it was>"
     scope                                  what the draft itself rules out, and why
@@ -1471,6 +1480,31 @@ def unit_findings(store):
                               f"recommendation of `{verdict}`. Consistent only if "
                               f"the author can address them without a re-review.")
 
+    if unit.get("kind") == "respond":
+        points = unit.get("points") or []
+        if not points:
+            facts.append("a response unit with no reviewer points recorded. "
+                         "`nullius point \"<what they said>\" --reviewer R1` for "
+                         "each one, before writing any of the reply: a response "
+                         "written straight through concedes the easy points and "
+                         "skips the hard one.")
+        else:
+            open_pts = [i for i, pt in enumerate(points) if not pt.get("as")]
+            if open_pts:
+                facts.append(
+                    f"{len(open_pts)} reviewer point(s) with nothing said about "
+                    f"them:\n      "
+                    + "\n      ".join(f"[{i}] {points[i]['text'][:56]}"
+                                       for i in open_pts)
+                    + "\n    Each is `changed`, `rebutted` or `declined`. What you "
+                      "do is yours; what the gate refuses is a point nobody looked "
+                      "at.")
+            declined = [pt for pt in points if pt.get("as") == "declined"]
+            if declined:
+                chosen.append(f"{len(declined)} point(s) declined. That is a real "
+                              f"answer and it is the one the reviewer reads "
+                              f"hardest, so the reason travels with the reply.")
+
     if unit.get("kind") == "survey":
         state = snowball_state(store)
         stops = frontier_stops(store)
@@ -1948,6 +1982,47 @@ def cmd_verdict(args):
     unit["verdict"] = {"recommendation": args.recommendation, "when": now()}
     store.save_unit(unit)
     say(f"nullius: {args.recommendation}")
+
+
+def cmd_point(args):
+    """A reviewer's points, enumerated. The failure this addresses is not laziness: it
+    is that a response written straight through concedes the easy points and quietly
+    skips the hard one, and nobody notices until the second round."""
+    store = Store(require_root())
+    unit = store.unit or die("no open unit.")
+    points = unit.setdefault("points", [])
+    if args.settle is None:
+        if not args.text:
+            if not points:
+                say("nullius: no points recorded. `nullius point \"<what the "
+                    "reviewer said>\" --reviewer R1`.")
+                return
+            for i, pt in enumerate(points):
+                state = pt.get("as") or "OPEN"
+                say(f"  [{i}] {state:<9} {pt.get('reviewer') or '-':<4} "
+                    f"{pt['text'][:56]}")
+                if pt.get("why"):
+                    say(f"       {pt['why'][:70]}")
+            return
+        points.append({"text": args.text, "reviewer": args.reviewer,
+                       "as": None, "why": None, "when": now()})
+        store.save_unit(unit)
+        say(f"nullius: point [{len(points) - 1}] recorded, open")
+        return
+    if not 0 <= args.settle < len(points):
+        die(f"index out of range (0..{len(points) - 1}).")
+    if args.text not in POINT_DISPOSITIONS:
+        die(f"a point is {', '.join(POINT_DISPOSITIONS)}. `changed` means the draft "
+            f"moved, `rebutted` means it did not and here is why, `declined` means "
+            f"you are not doing it.")
+    if args.text in ("rebutted", "declined") and not args.why:
+        die(f"`{args.text}` needs a reason. It is the half of the response a "
+            f"reviewer reads hardest, and a bare refusal reads as not having "
+            f"understood the point.")
+    points[args.settle]["as"] = args.text
+    points[args.settle]["why"] = args.why or ""
+    store.save_unit(unit)
+    say(f"nullius: [{args.settle}] {args.text}")
 
 
 def cmd_kills(args):
@@ -3372,6 +3447,12 @@ def build_parser():
 
     s = sub.add_parser("verdict", help="the recommendation this critique adds up to")
     s.add_argument("recommendation"); s.set_defaults(fn=cmd_verdict)
+
+    s = sub.add_parser("point", help="a reviewer's point, and what you did about it")
+    s.add_argument("text", nargs="?",
+                   help="the point, or one of changed|rebutted|declined with --settle")
+    s.add_argument("--reviewer"); s.add_argument("--settle", type=int)
+    s.add_argument("--why"); s.set_defaults(fn=cmd_point)
 
     s = sub.add_parser("kills", help="the observation that would end this idea")
     s.add_argument("text"); s.set_defaults(fn=cmd_kills)
