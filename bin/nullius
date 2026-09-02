@@ -817,7 +817,10 @@ def bare_identifiers(text, cfg):
     return out
 
 
-DASHES = dict.fromkeys(map(ord, "‐‑‒–—―−"), "-")
+DASHES = dict.fromkeys(map(ord, "\u2010\u2011\u2012\u2013\u2014\u2015\u2212"), "-")
+# Written as escapes rather than the characters themselves: an index spelling a surname
+# with U+2010 against a draft spelling it with a hyphen is the false positive this folds
+# away, and the repo forbids those characters everywhere they are prose rather than data.
 APOSTROPHES = dict.fromkeys(map(ord, "‘’ʼ´"), "'")
 
 

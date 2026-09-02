@@ -1,0 +1,101 @@
+name: release
+
+# Nothing releases on a push. A release happens when a maintainer dispatches this
+# workflow and then approves the `release` environment. Moving `stable` is the only
+# way anything reaches an installed user, and this is the only thing that moves it.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "the version to release, exactly as it stands in plugin.json (e.g. 0.3.0)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+# The input reaches the shell as an environment variable rather than as a ${{ }}
+# expansion inside a run block. An expansion is pasted into the script before the
+# shell sees it, so a crafted input becomes code; an environment variable is data.
+env:
+  VERSION: ${{ inputs.version }}
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    environment: release
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: the version is a version
+        run: |
+          set -euo pipefail
+          printf '%s' "$VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$' || {
+            echo "'$VERSION' is not a semver release. Pass 0.3.0, not v0.3.0 and not a range."
+            exit 1; }
+
+      - name: the gate, again, on the commit being released
+        run: bash tests/preflight.sh
+
+      - name: the tree already says this version
+        run: |
+          set -euo pipefail
+          have="$(python3 -c 'import json;print(json.load(open(".claude-plugin/plugin.json"))["version"])')"
+          if [ "$VERSION" != "$have" ]; then
+            echo "plugin.json says $have and you asked to release $VERSION."
+            echo "The bump belongs in a reviewable commit on main, not in this workflow."
+            exit 1
+          fi
+
+      - name: the changelog explains it
+        run: |
+          set -euo pipefail
+          grep -qE "^## \[?${VERSION}" CHANGELOG.md || {
+            echo "CHANGELOG.md has no section for $VERSION."
+            echo "A version somebody can install and cannot read about is not a release."
+            exit 1; }
+
+      - name: this version was not already released
+        run: |
+          set -euo pipefail
+          if git rev-parse -q --verify "refs/tags/v${VERSION}" >/dev/null; then
+            echo "v${VERSION} is already a tag. Bump the version rather than moving a tag:"
+            echo "an installed user resolves the same version string and never sees the change."
+            exit 1
+          fi
+
+      - name: stable moves forward, never sideways
+        run: |
+          set -euo pipefail
+          if git rev-parse -q --verify refs/remotes/origin/stable >/dev/null; then
+            git merge-base --is-ancestor origin/stable HEAD || {
+              echo "origin/stable is not an ancestor of main, so this would rewrite the channel"
+              echo "rather than advance it. Land the divergence on main first."
+              exit 1; }
+          fi
+
+      - name: tag, then move the channel
+        run: |
+          set -euo pipefail
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "v${VERSION}" -m "nullius v${VERSION}"
+          git push origin "v${VERSION}"
+          git push origin "HEAD:refs/heads/stable"
+
+      - name: the notes are the changelog section, not a summary of it
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          python3 - > notes.md <<'PY'
+          import io, os, re
+          v = os.environ["VERSION"]
+          t = io.open("CHANGELOG.md", encoding="utf-8").read()
+          m = re.search(rf"^## \[?{re.escape(v)}\]?.*?\n(.*?)(?=^## |\Z)", t, re.S | re.M)
+          print((m.group(1) if m else "").strip())
+          PY
+          gh release create "v${VERSION}" --title "nullius v${VERSION}" --notes-file notes.md

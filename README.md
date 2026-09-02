@@ -66,6 +66,13 @@ Create `.claude/settings.json` in your research folder with exactly this:
 Restart Claude Code and ask it to set up nullius in the folder, as above.
 </details>
 
+**What you get is the `stable` channel.** The marketplace entry pins the plugin to that
+branch, which moves only when a release is cut and approved, so work landing on `main` never
+reaches an installed session. Updates arrive when the version in
+[`plugin.json`](.claude-plugin/plugin.json) changes, which is once per release, and
+[CHANGELOG.md](CHANGELOG.md) says what changed. The releases are
+[tagged](https://github.com/tanyelai/nullius/releases).
+
 **Requirements:** Claude Code, and Python 3.8 or newer, which macOS and every Linux
 already have. There is nothing to `pip install`. If you want the tool to be able to read
 PDFs it finds, install [poppler](https://poppler.freedesktop.org/) as well; without it you

@@ -19,10 +19,10 @@ most real use; the others will fill in as they get tested.
 
 An entry needs four parts, in this order:
 
-1. **Naive** — the reasonable thing that was tried first.
-2. **Measured** — what happened, with the number. Not "returned noise": *matched 15,277 works
+1. **Naive.** The reasonable thing that was tried first.
+2. **Measured.** What happened, with the number. Not "returned noise": *matched 15,277 works
    and the top one was about healthcare*.
-3. **Instead** — the mechanism, as a schema rather than prose where it has any structure.
-4. **Weak** — where it still fails. An entry with no weakness listed has not been used enough.
+3. **Instead.** The mechanism, as a schema rather than prose where it has any structure.
+4. **Weak.** Where it still fails. An entry with no weakness listed has not been used enough.
 
 If you disagree with one, the measurement is the thing to attack.

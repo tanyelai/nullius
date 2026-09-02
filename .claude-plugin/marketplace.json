@@ -1,10 +1,11 @@
 {
   "name": "tanyelai",
   "owner": { "name": "tanyelai", "url": "https://github.com/tanyelai" },
+  "description": "One plugin: nullius, a harness that turns the unread paper, the unsearched literature and the unbounded critique into states a research session cannot finish in.",
   "plugins": [
     {
       "name": "nullius",
-      "source": "./",
+      "source": { "source": "github", "repo": "tanyelai/nullius", "ref": "stable" },
       "description": "Outcome gates for research work: an unresolved citation cannot reach a draft, a claim cannot exceed its source's read depth, a status cannot exceed what author independence earns, and a critique that has run out of grounded findings must return a verdict rather than a longer list."
     }
   ]

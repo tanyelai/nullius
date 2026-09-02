@@ -86,6 +86,51 @@ a reader who cannot see it is owed the content and not the word "diagram".
 If a figure states a number, that number comes from a run. `assets/funnel.svg` reports a real
 search, and if you change it, run one.
 
+## What passing means, and where it is written
+
+One file: [`tests/preflight.sh`](tests/preflight.sh). Run it before you push.
+
+```bash
+bash tests/preflight.sh
+```
+
+CI runs that same file rather than a second list, so a green run here is a green run there and
+the two cannot drift into disagreeing about what passing means. Every check in it is there
+because this repo shipped that defect once: a stale command table in the README, a dead link, a
+figure with no `aria-label`, a scenario count that no longer matched the number of scenario
+files, an em dash in prose. The dash check in particular replaced a hand-run `grep` that was
+silently matching nothing on macOS and reporting a clean tree for a week.
+
+If you add a check, add it there. If a check is wrong, that is a finding.
+
+## Releases, and why `main` is not one
+
+What an installed user runs is the **`stable`** branch, because the marketplace entry pins the
+plugin to it. `main` is where work lands and it reaches nobody. This matters more than it
+looks: Claude Code resolves a plugin's version from `plugin.json` and skips the update when the
+string is unchanged, so two people both "on 0.2.0" could be running different trees if the
+source were not pinned. A version that does not identify the content is the kind of claim this
+tool exists to refuse.
+
+A release is two things, in this order.
+
+1. **A reviewable commit on `main`** that bumps `version` in
+   [`.claude-plugin/plugin.json`](.claude-plugin/plugin.json) and adds the matching
+   `## <version>` section to [CHANGELOG.md](CHANGELOG.md). The workflow will not author either
+   one, so both are read before they ship rather than after.
+2. **A dispatch of the [release workflow](.github/workflows/release.yml)** with that version,
+   which then waits for a maintainer to approve the `release` environment. Approval is the gate:
+   nothing moves `stable` without it, and nothing else moves `stable` at all.
+
+Then it refuses, in order, if the tree does not pass preflight, if `plugin.json` disagrees with
+the version you asked for, if the changelog has no section for it, if that tag already exists,
+or if `stable` is not an ancestor of what you are releasing. The last one is the interesting
+refusal: it means the channel can only ever move forward, so a user's installed copy is always
+somewhere in the history of the current one.
+
+Re-releasing a moved tag is refused rather than warned about, because an installed user
+resolves the same version string and never learns anything changed.
+
 ## Commits
 
 Say what changed and why it was wrong before. A commit message is the only place the

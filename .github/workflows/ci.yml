@@ -1,0 +1,27 @@
+name: gate
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Optional on purpose. The official validator is the better check when it is
+      # here, and tests/preflight.sh asserts the manifest shape either way, so an
+      # npm outage cannot turn the gate green by removing a check.
+      - name: the official manifest validator, if it installs
+        continue-on-error: true
+        run: npm install -g @anthropic-ai/claude-code
+
+      # The same file a contributor runs locally. Written once, so the two cannot
+      # disagree about what passing means.
+      - name: preflight
+        run: bash tests/preflight.sh
