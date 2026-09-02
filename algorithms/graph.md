@@ -15,6 +15,7 @@ once.
 
 ```
 reached ← {}                                  # work → set of seeds that reached it
+                                              # openalex refusing → semanticscholar by DOI
 for hop in 1..depth:
     for s in frontier:
         for w in index.cited_by(s) ∪ index.cites(s):    # one call each

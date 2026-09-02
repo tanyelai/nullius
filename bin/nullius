@@ -421,6 +421,11 @@ def strip_html(markup):
 
 
 def openalex(path, contact, **params):
+    # A fallback nobody has exercised is a fallback that fails when it is needed, and
+    # a rate limit cannot be summoned on demand. This is the seam that lets the suite
+    # walk the path: NULLIUS_FORCE_RATELIMIT=openalex.
+    if "openalex" in os.environ.get("NULLIUS_FORCE_RATELIMIT", ""):
+        raise RateLimited("api.openalex.org is rate limiting this session (forced)")
     if contact:
         params["mailto"] = contact
     q = urllib.parse.urlencode({k: v for k, v in params.items() if v not in (None, "")})
@@ -462,6 +467,60 @@ def crossref_lookup(doi, contact):
         "oa_url": None, "referenced_works": [], "resolved_at": now(),
         "index": "crossref", "author_ids": "name",
     }
+
+
+def crossref_search(query, limit, contact, counter=None):
+    """The fallback when OpenAlex will not answer. Crossref ORs its terms harder and
+    ranks differently, so the set is not the same set: the search log records which
+    index answered, because a claim about a literature made through one index is not
+    the claim made through another."""
+    params = {"query": query, "rows": limit}
+    if contact:
+        params["mailto"] = contact
+    d = http_json("https://api.crossref.org/works?" + urllib.parse.urlencode(params))
+    msg = (d or {}).get("message") or {}
+    if counter is not None:
+        counter["crossref"] = msg.get("total-results")
+    out = []
+    for it in msg.get("items") or []:
+        year = None
+        for k in ("published", "published-print", "issued"):
+            parts = ((it.get(k) or {}).get("date-parts") or [[None]])[0]
+            if parts and parts[0]:
+                year = parts[0]
+                break
+        out.append({
+            "index": "crossref", "openalex": None,
+            "title": (it.get("title") or [""])[0], "year": year,
+            "doi": (it.get("DOI") or "").lower() or None,
+            "cited_by": it.get("is-referenced-by-count"),
+            "venue": (it.get("container-title") or [None])[0],
+            "oa": False,
+        })
+    return out
+
+
+def s2_graph(doi, direction, limit):
+    """Citations and references with their metadata in one call. The graph fallback:
+    OpenAlex is the only index here with `cites:` and `cited_by:` filters, so without
+    this a rate limit stops a walk dead rather than slowing it."""
+    field = "citations" if direction == "forward" else "references"
+    key = "citingPaper" if direction == "forward" else "citedPaper"
+    d = http_json(f"https://api.semanticscholar.org/graph/v1/paper/DOI:"
+                  f"{urllib.parse.quote(doi, safe='')}/{field}"
+                  f"?limit={limit}&fields=title,year,citationCount,externalIds,venue")
+    out = []
+    for row in (d or {}).get("data") or []:
+        w = row.get(key) or {}
+        ids = w.get("externalIds") or {}
+        out.append({
+            "index": "semanticscholar", "openalex": None,
+            "title": w.get("title") or "", "year": w.get("year"),
+            "doi": (ids.get("DOI") or "").lower() or None,
+            "cited_by": w.get("citationCount"), "venue": w.get("venue"),
+            "screened": None, "reason": None, "influential": None, "context": None,
+        })
+    return out
 
 
 def europepmc_search(query, limit, counter=None):
@@ -2625,6 +2684,18 @@ def cmd_lit(args):
                 })
             matched["openalex"] = ((res or {}).get("meta") or {}).get("count")
             reached.append("openalex")
+        except RateLimited as e:
+            failed.append("openalex (rate limited)")
+            if "crossref" in wanted or True:
+                try:
+                    hits += crossref_search(args.query, args.limit, cfg["contact"],
+                                            counter=matched)
+                    reached.append("crossref")
+                    route_note = ("openalex refused, so this ran through crossref. "
+                                  "A different index is a different set, and the "
+                                  "log records which one answered")
+                except RuntimeError as e2:
+                    failed.append(f"crossref ({e2})")
         except RuntimeError as e:
             failed.append(f"openalex ({e})")
     if "arxiv" in wanted:
@@ -2799,6 +2870,26 @@ def walk_one(cfg, wid, directions, limit, seed_title, doi, want_context):
             res = openalex("works", cfg["contact"], **{
                 "filter": f"{filt}:{wid}", "sort": "cited_by_count:desc",
                 "per-page": limit})
+        except RateLimited:
+            if not doi:
+                counts[name] = None
+                rows.append({"_error": f"{name}: openalex is rate limiting and this "
+                                       f"seed has no DOI, so nothing else can walk "
+                                       f"from it"})
+                continue
+            try:
+                got = s2_graph(doi, name, limit)
+            except RuntimeError as e2:
+                counts[name] = None
+                rows.append({"_error": f"{name}: openalex rate limited, "
+                                       f"semanticscholar {e2}"})
+                continue
+            counts[name] = len(got)
+            for r in got:
+                r["via"] = f"{name} from {seed_title[:40]} (semanticscholar)"
+                r["openalex"] = r["doi"] and f"doi:{r['doi']}" or None
+            rows += [r for r in got if r["openalex"]]
+            continue
         except RuntimeError as e:
             counts[name] = None
             rows.append({"_error": f"{name}: {e}"})
@@ -3584,7 +3675,7 @@ def build_parser():
     s.add_argument("--loose", action="store_true",
                    help="match over full text when title and abstract is thin")
     s.add_argument("--index", action="append",
-                   choices=["openalex", "arxiv", "europepmc"],
+                   choices=["openalex", "arxiv", "europepmc", "crossref"],
                    help="default: whatever .nullius/config.json lists")
     s.set_defaults(fn=cmd_lit)
 

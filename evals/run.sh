@@ -239,6 +239,29 @@ P
   expect allow  "unless it is labelled exploratory"  nl decisive "anything above 0.5" --post-hoc
   expect allow  "and the label crosses a context boundary"  bash -c "printf '%s' '{\"cwd\":\"$PWD\"}' | python3 '$N' _hook session-start | grep -q 'framed after the results\\|post-hoc'"
   ;;
+07) # a rate limit is a delay, not a stop
+  nl init --field "natural language processing" >/dev/null
+  note "## expectations"
+  out="$(NULLIUS_FORCE_RATELIMIT=openalex python3 "$N" lit '"retrieval augmented generation" evaluation' --vocabulary fb --limit 5 2>&1)"
+  say '```'; printf '%s\n' "$out" | head -6 | tee -a "$OUT" >/dev/null; say '```'
+  if printf '%s' "$out" | grep -q "retrieved [1-9]"; then pass=$((pass+1)); log "- [x] allowed · lit still returns works with openalex refusing"
+  else fail=$((fail+1)); log "- [ ] **returned nothing** · lit with openalex refusing"; fi
+  if printf '%s' "$out" | grep -q "openalex (rate limited)"; then pass=$((pass+1)); log "- [x] recorded · the refusal is named, not hidden"
+  else fail=$((fail+1)); log "- [ ] **silent** · the refusal was not named"; fi
+  if printf '%s' "$out" | grep -qi "ran through crossref"; then pass=$((pass+1)); log "- [x] recorded · and which index answered instead"
+  else fail=$((fail+1)); log "- [ ] **silent** · no note about which index answered"; fi
+  nl cite 10.1145/3626772.3657834 --first >/dev/null 2>&1
+  wout="$(NULLIUS_FORCE_RATELIMIT=openalex python3 "$N" snowball --refs --both --limit 5 --no-context 2>&1)"
+  say '```'; printf '%s\n' "$wout" | head -4 | tee -a "$OUT" >/dev/null; say '```'
+  if printf '%s' "$wout" | grep -qE "[1-9][0-9]* new"; then pass=$((pass+1)); log "- [x] allowed · the walk still reaches works"
+  else fail=$((fail+1)); log "- [ ] **stopped** · the walk reached nothing"; fi
+  if grep -q "semanticscholar" .nullius/searches/*snowball*.json 2>/dev/null; then
+    pass=$((pass+1)); log "- [x] recorded · every row says it came from the fallback"
+  else fail=$((fail+1)); log "- [ ] **untraceable** · rows do not name the fallback index"; fi
+  if python3 -c "import json,glob,sys; d=json.load(open(glob.glob('.nullius/searches/*fb*.json')[0])); sys.exit(0 if d['unreachable'] and d['indexes'] else 1)" 2>/dev/null; then
+    pass=$((pass+1)); log "- [x] recorded · the log carries indexes and unreachable"
+  else fail=$((fail+1)); log "- [ ] **not logged** · the search log lost the provenance"; fi
+  ;;
 *) echo "no scenario $S"; exit 1 ;;
 esac
 

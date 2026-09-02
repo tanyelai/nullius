@@ -76,6 +76,42 @@ were exactly the preprints enrichment had missed.
 Per-index totals are reported separately, never as one maximum: one index answering nonsense
 should not poison the number.
 
+## One index is not a route
+
+**Naive.** Pick the best index and use it.
+
+**What happened.** OpenAlex is the only index reachable here with `cites:` and `cited_by:`
+filters, so a rate limit did not slow a citation walk down, it ended one. And a `lit` run
+returned whatever the other two indexes happened to hold.
+
+**Measured**, on the fallbacks, before choosing between them:
+
+| route | answers | shape |
+|---|---|---|
+| Crossref search | yes | relevance-ranked, carries `is-referenced-by-count` |
+| Semantic Scholar `/references` and `/citations` | yes, five rapid calls unthrottled | title, year, citation count in **one** call |
+| OpenCitations | yes, at `api.opencitations.net/index/v1/` | DOI pairs only, so N further lookups per hop |
+| DBLP | timed out | dropped |
+
+So search falls back to Crossref, and the graph falls back to Semantic Scholar. OpenCitations
+is the honest third option and is not wired, because a payload of bare DOIs turns one hop into
+one call plus a lookup per result.
+
+**And the substitution is never silent.** A set retrieved through Crossref is not the set
+OpenAlex would have returned, so the run says which index answered and the search log keeps
+`indexes`, `unreachable` and per-index `matched`. Every walked row carries the index it came
+from. A claim about a literature is a claim through the index that answered.
+
+```
+lit:      openalex → RateLimited → crossref, and say so
+snowball: openalex → RateLimited → semanticscholar by DOI, and label every row
+          no DOI on the seed → no fallback route, and say that too
+```
+
+**Testable on purpose.** `NULLIUS_FORCE_RATELIMIT=openalex` forces the path, because a
+fallback nobody has exercised is a fallback that fails when it is needed. Covered by
+[eval 07](../evals/scenarios/07-fallback.md).
+
 ## A rate limit is a wait, not a wall
 
 **Measured, by deserving it.** Enough calls and the index answers HTTP 429. The tool reported

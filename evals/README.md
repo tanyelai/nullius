@@ -52,3 +52,4 @@ the scenario; re-run it later. The runner records it either way.
 | [04](scenarios/04-propose.md) | write a proposal against a venue's format | watermarking robustness |
 | [05](scenarios/05-critique.md) | review what 04 produced, and stop | the output of 04 |
 | [06](scenarios/06-interpret.md) | interpret a result without moving the goalposts | influence functions at scale |
+| [07](scenarios/07-fallback.md) | keep working when an index refuses | the tool itself |
