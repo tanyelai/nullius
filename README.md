@@ -338,7 +338,20 @@ in `tests/smoke.sh` that fails without it, in **both** directions, because a gat
 passes is not a gate. If a claim in WHY.md or REFERENCES.md is wrong, that is a finding and
 an issue is the right place for it.
 
-Versions are in [CHANGELOG.md](CHANGELOG.md).
+Run the gate before you push. CI runs this same file, so it cannot disagree with you about what
+passing means:
+
+```bash
+bash tests/preflight.sh
+```
+
+**Landing a change, and shipping one, are separate.** A pull request into `main` needs
+`preflight` green, and merging it reaches nobody: what an installed session runs is the
+`stable` branch. That branch moves only when a maintainer dispatches the
+[release workflow](.github/workflows/release.yml) and then approves it, which is also the only
+thing that moves it. The workflow refuses to release a version the tree does not already carry
+or the [changelog](CHANGELOG.md) does not explain, so the bump and its entry land as a
+reviewable commit first.
 
 ## License
 
