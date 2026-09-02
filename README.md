@@ -264,6 +264,31 @@ reconstruct from the draft. Feed the markdown to whatever build you already have
 The report closes on what it does not establish, which is most things: not coverage, not
 quality, and not independence where a record carried no author identifiers.
 
+## Three agents, and why they run blind
+
+The plugin installs three subagents alongside the CLI. Each one starts in a **clean context**,
+which is the feature rather than an implementation detail: a second opinion is worth something
+only if it did not watch you form the first one.
+
+| agent | what it does |
+| --- | --- |
+| `skeptic` | takes one claim through one lens and returns survives, dies, or the observation that would settle it |
+| `librarian` | runs a search protocol and returns records: identifiers, counts, screening decisions. It is forbidden from summarising them |
+| `referee` | reviews a draft as a reviewer at one named venue, against that venue's own written requirements |
+
+Ask for them in plain words: *have the skeptic take apart c003*, or *get the referee to read
+this against the venue file*.
+
+Two of the prohibitions are load-bearing. The `skeptic` is never told whose claim it is, so a
+claim from a famous lab and a claim from you get the same bar; a check that knows the answer
+you are hoping for has already stopped being one. And the `librarian` may not summarise,
+because a summary is exactly where a thin search stops looking thin: six shallow hits become a
+confident paragraph about what the field thinks, and the thinness is no longer visible to
+anybody, including you.
+
+None of the three decides anything. They return findings, and what to do about a finding stays
+yours.
+
 ## The problem
 
 An AI assistant is a good research collaborator right up to the point where nothing can check
