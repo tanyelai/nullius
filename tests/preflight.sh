@@ -91,12 +91,47 @@ for f in glob.glob("**/*",recursive=True):
     for d,n in ((chr(0x2014),"em"),(chr(0x2013),"en")):
         check(d not in t, f"{f}: contains an {n} dash")
 
+soft=[]
 for f in sorted(glob.glob("assets/*.svg")):
     try: xml.dom.minidom.parse(f)
     except Exception as e: bad.append(f"{f}: not well-formed XML: {e}"); continue
     t=io.open(f,encoding="utf-8").read()
     check('role="img"' in t,  f'{f}: no role="img"')
     check('aria-label' in t,  f"{f}: no aria-label, so a reader who cannot see it gets nothing")
+    # A diagram goes stale silently, and a row added to one runs into the next
+    # column with nothing to say so. Sizes come from the file's own stylesheet
+    # rather than a table here, so this cannot drift from the assets.
+    dom=xml.dom.minidom.parse(f); root=dom.documentElement
+    css="".join(c.data for st in dom.getElementsByTagName("style")
+                for c in st.childNodes if c.nodeType==c.TEXT_NODE)
+    face={}
+    for m in re.finditer(r"\.([A-Za-z][\w-]*)\s*\{([^}]*)\}", css):
+        fm=re.search(r"font\s*:[^;]*?([\d.]+)px([^;]*)", m.group(2))
+        if fm:
+            face[m.group(1)]=(float(fm.group(1)),
+                              .60 if "mono" in fm.group(2).lower() else .55)
+    vb=[float(v) for v in (root.getAttribute("viewBox") or "0 0 1e9 1e9").split()]
+    rows=[]
+    for node in dom.getElementsByTagName("text"):
+        cls=(node.getAttribute("class") or "").split()
+        size,a=next((face[c] for c in cls if c in face), (13.5,.55))
+        s_=" ".join(c.data for c in node.childNodes if c.nodeType==c.TEXT_NODE)
+        try: x=float(node.getAttribute("x")); y=float(node.getAttribute("y"))
+        except ValueError: continue
+        w=len(s_)*size*a
+        anchor=node.getAttribute("text-anchor")
+        if anchor=="middle": x-=w/2
+        elif anchor=="end":  x-=w
+        rows.append((y,x,x+w,s_))
+    # Reported, never blocking. Without the actual font the widths are estimates,
+    # and an estimate cannot be a fact -- a check that misfires on a good asset is
+    # switched off within a week, and takes the useful ones with it.
+    for k,(y1,x1,e1,t1) in enumerate(rows):
+        if e1 > vb[2]+2:
+            soft.append(f"{f}: {t1[:40]!r} may run {e1-vb[2]:.0f}px past the canvas")
+        for y2,x2,e2,t2 in rows[k+1:]:
+            if abs(y1-y2)<=7 and x1<e2-2 and x2<e1-2:
+                soft.append(f"{f}: {t1[:30]!r} and {t2[:30]!r} may overlap on one row")
 
 n=len(glob.glob("evals/scenarios/*.md"))
 word={1:"one",2:"two",3:"three",4:"four",5:"five",6:"six",7:"seven",8:"eight",9:"nine",
@@ -108,6 +143,7 @@ for f in ("README.md","CHANGELOG.md","evals/README.md"):
               f"{f}: claims a scenario count that is not {word}, and there are {n} scenario files")
 
 for b in bad: print(f"  FAIL  {b}")
+for w in soft: print(f"  note  {w}")
 sys.exit(1 if bad else 0)
 PY
 if [ $? -eq 0 ]; then ok "structural: manifests, links, anchors, dashes, figures, counts"
