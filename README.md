@@ -21,9 +21,11 @@ unread paper, the unsearched literature and the unbounded critique into states a
 > to know whether this is for you.
 
 ![Where nullius intervenes in a session: it tells you what is open at SessionStart and after
-compaction, refuses a write to a draft that cites nothing resolvable, and refuses to end the
-turn while a fact says otherwise. A fact blocks; a threshold somebody chose is reported
-instead.](assets/gates.svg)
+compaction; refuses a write that cites nothing resolvable, or that still carries wording an
+open finding quotes as defective, whether the write arrives through Write, Edit or a shell
+heredoc, and whether it lands in the draft or in a file the draft speaks through; and refuses
+to end the turn while a fact says otherwise. A fact blocks; a threshold somebody chose is
+reported instead.](assets/gates.svg)
 
 ---
 
