@@ -25,7 +25,7 @@ compaction; refuses a write that cites nothing resolvable, or that still carries
 open finding quotes as defective, whether the write arrives through Write, Edit or a shell
 heredoc, and whether it lands in the draft or in a file the draft speaks through; and refuses
 to end the turn while a fact says otherwise. A fact blocks; a threshold somebody chose is
-reported instead.](assets/gates.svg)
+reported instead.](assets/gates.svg?v=2)
 
 ---
 

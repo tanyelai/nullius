@@ -72,7 +72,12 @@ for f in glob.glob("**/*.md",recursive=True):
     for m in re.finditer(r'!?\[[^\]]*\]\(([^)#][^)]*)\)', io.open(f,encoding="utf-8").read(), re.S):
         t=m.group(1).split('#')[0].strip()
         if t.startswith(("http","mailto")): continue
-        check(os.path.exists(os.path.normpath(os.path.join(os.path.dirname(f),t))),
+        # GitHub proxies README images through camo and keys the cache on the URL
+        # rather than on the bytes, so a changed diagram at an unchanged path goes
+        # on serving the old one. A ?v= bump is the fix, and it is a URL rather
+        # than a path: strip it before asking the filesystem.
+        path=re.split(r"[?#]",t,1)[0]
+        check(os.path.exists(os.path.normpath(os.path.join(os.path.dirname(f),path))),
               f"{f}: dead link {t}")
 
 head={"#"+re.sub(r'[^a-z0-9 -]','',h.lower()).replace(' ','-')
