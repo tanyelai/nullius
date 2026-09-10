@@ -378,6 +378,12 @@ expect_exit 1 "elsewhere has to name where" \
   python3 "$NULLIUS" section "Ethics Statement" elsewhere
 expect_exit 0 "disposition it" \
   python3 "$NULLIUS" section "Ethics Statement" planned "after registration"
+# A write unit that names a venue has said the draft is going out, and a draft
+# that goes out unread is what the gate below refuses. This fixture is about the
+# completeness walk, so it records the read and moves on.
+expect_hook stop 2 "a draft that names a venue does not go out unread" "$CWD_JSON"
+expect_grep "read by nobody" "and says so" python3 "$NULLIUS" status
+expect_exit 0 "record what a reader returned" python3 "$NULLIUS" verdict accept --by referee
 expect_hook stop 0 "and the stop is allowed once every absence has a word about it" "$CWD_JSON"
 [ -f .nullius/sections.json ] && ok || bad "the disposition was not kept at project level"
 expect_grep "chosen" "a thin section is reported, never enforced" python3 "$NULLIUS" status
@@ -1609,6 +1615,68 @@ LONG
   printf '%s\n' "$pass $fail" > "$PW/.tally" )
 read -r p_pass p_fail < "$PW/.tally"
 pass=$((pass + p_pass)); fail=$((fail + p_fail))
+
+# ---- a draft that names where it is going does not go there unread -------
+# A critique unit must produce a verdict; a write unit need never receive one,
+# so a draft could reach the end read by nobody. Every piece existed -- located
+# findings, a venue scale, three agents with clean contexts -- and nothing
+# joined them.
+UW="$WORK/unread"; mkdir -p "$UW"
+( cd "$UW" || exit 1
+  pass=0; fail=0
+  NA() { python3 "$NULLIUS" "$@"; }
+  expect_exit 0 "init" NA init --field t
+  mkdir -p .nullius/venues
+  cat > .nullius/venues/house.md <<'V'
+## Format
+- words: 5000
+## Required sections
+- Method
+## Recommendation scale
+rework / discuss / accept
+V
+  printf '# T\n\n## Method\n\nWe do the thing, at some length, in a way that is described here.\n' > p.md
+
+  # drafting is not shipping
+  expect_exit 0 "a write unit with no venue"  NA start d1 write "draft it" --artifact p.md --words 900
+  expect_exit 0 "accept" NA accept "does it state the method"
+  expect_exit 0 "close"  NA close "at p.md:3"
+  expect_hook stop 0 "drafting with no venue is not going out"  "{\"cwd\":\"$UW\"}"
+
+  # naming a venue is saying it goes out
+  expect_exit 0 "the same draft, aimed somewhere" \
+    NA start d2 write "finish it" --artifact p.md --venue house --force
+  expect_exit 0 "accept" NA accept "does it state the method"
+  expect_exit 0 "close"  NA close "at p.md:3"
+  expect_hook stop 2 "and then it does not go out unread"       "{\"cwd\":\"$UW\"}"
+  expect_grep "read by nobody" "the gate names the draft"        NA status
+  expect_grep "referee" "and points at something that did not write it" NA status --why
+
+  # a verdict satisfies it, and an unnamed reader is reported for what it is
+  expect_exit 1 "a verdict outside the venue's scale" NA verdict looks-fine
+  expect_exit 0 "the session's own verdict"           NA verdict accept
+  expect_hook stop 0 "which finishes the unit"        "{\"cwd\":\"$UW\"}"
+  expect_grep "session's own verdict on its own draft" \
+    "and is reported for exactly what it is"          NA status
+  expect_exit 0 "a named reader"                      NA verdict accept --by referee
+  bash -c "cd '$UW' && python3 \"$NULLIUS\" status | grep -q \"own verdict on its own\"" \
+    && bad "a named reader is still reported as self-review" || ok
+
+  # out unread, on purpose, visibly
+  expect_exit 0 "a third unit, unread" \
+    NA start d3 write "ship it" --artifact p.md --venue house --force
+  expect_exit 0 "accept" NA accept "does it state the method"
+  expect_exit 0 "close"  NA close "at p.md:3"
+  expect_hook stop 2 "unread again"                   "{\"cwd\":\"$UW\"}"
+  expect_exit 1 "and the escape needs a reason"       NA unread --path p.md
+  expect_exit 1 "and a draft it tracks"               NA unread "no time" --path nope.md
+  expect_exit 0 "out unread, by decision"             NA unread "an internal note, nobody else reads it"
+  expect_hook stop 0 "which is allowed"               "{\"cwd\":\"$UW\"}"
+  expect_grep "going out unread by decision" "and travels as a decision, not a gap" NA status
+  expect_grep "an internal note" "with the reason attached" NA unread
+  printf '%s\n' "$pass $fail" > "$UW/.tally" )
+read -r u_pass u_fail < "$UW/.tally"
+pass=$((pass + u_pass)); fail=$((fail + u_fail))
 
 echo
 echo "  $pass passed, $fail failed"

@@ -10,7 +10,7 @@ unread paper, the unsearched literature and the unbounded critique into states a
 > [!NOTE]
 > **Status: installable, and nothing is left stubbed.** The ledger, the gates, multi-index
 > search with fallbacks, the citation walk, the venue walk and the calibration engine all
-> work: 380 assertions in
+> work: 461 assertions in
 > [`tests/smoke.sh`](tests/smoke.sh), offline and in both directions, plus seven
 > end-to-end [scenarios](evals/) against live indexes. What remains is calibration, and
 > [algorithms/](algorithms/) says where each mechanism is weakest, including that none of
@@ -143,10 +143,10 @@ that fires at startup hands the session the whole vocabulary.
 | reading a literature | `lit` · `snowball` · `screen` · `coverage` |
 | recording what you know | `cite` · `note` · `claim` · `considered` · `falsify` |
 | recording what you do not | `needs` · `settled` |
-| critiquing something | `finding` · `resolve` · `verdict` |
+| critiquing something | `finding` · `resolve` · `verdict` · `prose` · `unread` |
 | handing it to someone | `report` · `audit` |
 
-That is a third of them. `nullius --help` lists all forty-one with their flags, `--help` on
+That is a third of them. `nullius --help` lists all forty-three with their flags, `--help` on
 any one spells out that command's, and `/nullius` carries the rest of the vocabulary. The
 reference lives there rather than here, because a table kept by hand goes stale and this one
 had already started to.
@@ -306,6 +306,33 @@ unattended run it is the only unchecked thing left, so it can be settled against
 The passage is checked verbatim against the cached text or the note is refused, and every
 claim records whether its depth came from the source or from the session. That row is the
 one *nullius in verba* did not have.
+
+## A draft does not go out unread
+
+A `critique` unit has always had to produce a verdict. A `write` unit never had to receive
+one, so a draft could reach the end having been read by nobody. That is the oldest gate in
+science and this repository had every piece of it -- located findings, a venue scale, three
+agents that start in a clean context and do not know whose draft it is -- and never joined
+them.
+
+**A write unit that names a venue does not close while a tracked draft has no recommendation
+on it.** Naming a venue is the act of saying this goes out; a unit without one is drafting,
+and drafting is where the work happens.
+
+```bash
+# have something read it that did not write it, then record what came back
+./.nullius/bin/nullius finding material structural "no limitations section" --at p.md:40
+./.nullius/bin/nullius verdict rework --by referee
+```
+
+**The tool never reads the recommendation.** A `rework` closes the unit exactly as an
+`accept` does. It checks that somebody looked, not that they approved, and what to do about a
+finding stays where it always was.
+
+Two things keep it honest in the other direction. A verdict with no `--by` is reported as
+*the session's own verdict on its own draft*, which is the check this whole tool exists to
+say is not one. And `nullius unread "<why>"` sends it out unread on purpose, recorded and
+travelling with the unit, because a gate with no way past it is a gate people route around.
 
 ## Saying a thing once
 

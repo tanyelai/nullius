@@ -57,6 +57,19 @@ was acted on, including the two that turned out to be false statements in the do
   test one function, which writes a 300kB `.pyc` beside it, and `git add -A` put one in
   0.5.1. Untracked, ignored, prevented at the source with `PYTHONDONTWRITEBYTECODE`, and
   preflight now refuses it, since the repository's rule about figures applies to everything.
+- **A draft does not go out unread.** A `critique` unit has always had to produce a verdict
+  and a `write` unit never had to receive one, so a draft could reach the end read by
+  nobody. Every piece of the oldest gate in science was already here -- located findings, a
+  venue scale, three agents that start in a clean context and do not know whose draft it is
+  -- and nothing joined them: the enforced half was arithmetic, the smart half was advice,
+  and section 3 of WHY.md says what happens to advice. A write unit **that names a venue**
+  now does not close while a tracked draft has no recommendation on it. Naming a venue is
+  the act of saying this goes out; a unit without one is drafting, and firing on every write
+  unit would tax thinking. The tool never reads the recommendation -- a `rework` closes the
+  unit exactly as an `accept` does -- so this requires a judgement without depending on one,
+  which is the venue walk one level up. `verdict --by` records who read it, a verdict with
+  no reader named is reported as the session's own verdict on its own draft, and
+  `unread "<why>"` is the way past, recorded and travelling.
 - **`prose`, because the failure is repetition and not length.** A long document with
   nothing repeated is fine; a short one making its point three ways is not, and that is what
   a model does and a person does not. Three signals, all counts: passage pairs sharing most

@@ -1956,6 +1956,44 @@ def unit_findings(store):
                         + ". A word count is a chosen threshold, not a fact about "
                           "whether the section does its job.")
 
+    if unit.get("kind") == "write" and unit.get("venue"):
+        # Only once the draft names where it is going. A write unit with no
+        # venue is drafting, and drafting is where the work happens; a unit that
+        # declares a venue has said this is going out, and that is the observable
+        # that separates the two. Firing on every write unit would make the gate
+        # a tax on thinking, which is how a good gate gets switched off.
+        # A critique unit must produce a verdict and a write unit need never
+        # receive one, so a draft could reach the end having been read by
+        # nobody. That is the oldest gate in science and this tool had every
+        # piece of it -- located findings, a venue scale, three agents with
+        # clean contexts -- and never joined them.
+        drafts = [os.path.relpath(f, store.root)
+                  for f in tracked_drafts(store, unit)]
+        skipped = unit.get("unread") or {}
+        owed = [d for d in drafts if d not in skipped]
+        if owed and not (unit.get("verdict") or {}).get("recommendation"):
+            facts.append(
+                "this draft has been read by nobody: "
+                + ", ".join(owed)
+                + f".\n    Have something read it that did not write it -- the "
+                  f"`referee` agent starts in a clean context and does not know "
+                  f"whose draft it is -- then record what came back: "
+                  f"`nullius finding <severity> <referent> \"<what>\" --at L` "
+                  f"for each, and `nullius verdict <"
+                  f"{'|'.join(venue_scale(store, unit))}> --by <who>`. If it goes "
+                  f"out unread on purpose, say so: `nullius unread \"<why>\"`.")
+        if skipped:
+            chosen.append(
+                f"{len(skipped)} draft(s) going out unread by decision: "
+                + "; ".join(f"{k} ({v['why'][:48]})" for k, v in skipped.items())
+                + ". A decision, recorded, and it travels.")
+        by = (unit.get("verdict") or {}).get("by")
+        if by == "the session" and owed:
+            chosen.append(
+                "the verdict on this draft was recorded with no reader named, so "
+                "it is the session's own verdict on its own draft. That is the "
+                "check this tool exists to say is not one.")
+
     budget, _ = effective_budget(store, unit, cfg)
     counted = tracked_drafts(store, unit, counted_only=True)
     if counted and not budget:
@@ -2416,9 +2454,15 @@ def cmd_verdict(args):
         die(f"this unit's scale is: {', '.join(scale)}. It comes from the venue "
             f"file's Recommendation scale, so the vocabulary is the venue's rather "
             f"than ours.")
-    unit["verdict"] = {"recommendation": args.recommendation, "when": now()}
+    unit["verdict"] = {"recommendation": args.recommendation, "when": now(),
+                       "by": args.by or "the session"}
     store.save_unit(unit)
-    say(f"nullius: {args.recommendation}")
+    say(f"nullius: {args.recommendation}"
+        + (f", read by {args.by}" if args.by else ""))
+    if not args.by:
+        say("  no reader named, so this records the session's own verdict on its "
+            "own draft. `--by referee` or `--by <a person>` when it was somebody "
+            "else, and `report` carries whichever it was.")
 
 
 def cmd_point(args):
@@ -2460,6 +2504,35 @@ def cmd_point(args):
     points[args.settle]["why"] = args.why or ""
     store.save_unit(unit)
     say(f"nullius: [{args.settle}] {args.text}")
+
+
+def cmd_unread(args):
+    """Out unread, on purpose, and visibly. The same move as closing a citation
+    walk by decision: the tool cannot decide that a draft needs no reader, and a
+    gate with no way past it is a gate people route around."""
+    store = Store(require_root())
+    unit = store.unit or die("no open unit.")
+    drafts = [os.path.relpath(f, store.root) for f in tracked_drafts(store, unit)]
+    if not args.why and args.path:
+        die("a draft goes out unread for a reason, and the reason is the whole "
+            "record. `nullius unread \"<why>\" --path <draft>`.")
+    if not args.why:
+        skipped = unit.get("unread") or {}
+        if not skipped:
+            say("nullius: nothing is going out unread.")
+        for k, v in skipped.items():
+            say(f"  {k}: {v['why']}")
+        return
+    target = args.path or (drafts[0] if len(drafts) == 1 else None)
+    if target is None:
+        die(f"which draft? this unit tracks {', '.join(drafts) or 'none'}. "
+            f"`nullius unread \"<why>\" --path <draft>`.")
+    if target not in drafts:
+        die(f"{target} is not tracked by this unit.")
+    unit.setdefault("unread", {})[target] = {"why": args.why, "when": now()}
+    store.save_unit(unit)
+    say(f"nullius: {target} goes out unread. That is on the record and it "
+        f"travels with the unit.")
 
 
 def cmd_kills(args):
@@ -4913,6 +4986,9 @@ def build_parser():
     s.set_defaults(fn=cmd_resolve)
 
     s = sub.add_parser("verdict", help="the recommendation this critique adds up to")
+    s.add_argument("--by", help="who read it. A clean context that did not write "
+                                "the draft is the whole value; the tool records "
+                                "the answer and cannot verify it.")
     s.add_argument("recommendation"); s.set_defaults(fn=cmd_verdict)
 
     s = sub.add_parser("point", help="a reviewer's point, and what you did about it")
@@ -4920,6 +4996,10 @@ def build_parser():
                    help="the point, or one of changed|rebutted|declined with --settle")
     s.add_argument("--reviewer"); s.add_argument("--settle", type=int)
     s.add_argument("--why"); s.set_defaults(fn=cmd_point)
+
+    s = sub.add_parser("unread", help="this draft goes out unread, and why")
+    s.add_argument("why", nargs="?"); s.add_argument("--path")
+    s.set_defaults(fn=cmd_unread)
 
     s = sub.add_parser("kills", help="the observation that would end this idea")
     s.add_argument("text"); s.set_defaults(fn=cmd_kills)
