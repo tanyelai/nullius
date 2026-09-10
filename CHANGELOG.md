@@ -26,6 +26,15 @@ and the CLI surface may change; when they do, the change is listed here with wha
 - **A softer mode is gentler, not quieter.** Any `mode` outside `certain|block` skipped the
   refusal and dropped the reasons with it, so a project in a soft mode heard less than a
   strict one. The facts now go out through `systemMessage` and `additionalContext` instead.
+- **Three directions, not two.** A gate is tested for what it refuses, what it allows, and
+  now for whether it did anything on the allowing path. `expect_hook` fails on a raised gate
+  whatever the exit code, and `expect_hook_out` checks what a hook said. One `NameError`
+  injected into `hook_stop` now turns 25 assertions red instead of almost none.
+- **The channel nothing was watching.** Five assertions covered the state block SessionStart
+  prints and none covered the two things it exists to carry. The invariants directory could
+  have gone missing and the hook would have gone on exiting 0 with a state summary and no
+  rules attached. Both are asserted now, along with the silence cases: a non-draft and a
+  harmless shell command must draw no comment at all.
 - **[algorithms/loops.md](algorithms/loops.md).** What may end a loop, and why an exit the
   model computes is not one.
 - **[evals/control.md](evals/control.md).** The arm this repository has never run: the same

@@ -21,10 +21,21 @@ expect_exit() {
 }
 
 # expect_hook <event> <code> <label> <json>
+# The exit code alone cannot decide this. cmd_hook catches everything and exits 0
+# so a broken gate never wedges a session, which means a crash and a clean pass
+# are the same observation -- and one gate spent a release crashing on every
+# write while this read green. A safety net that turns failures into the success
+# signal stops the success signal being evidence, so the net is checked for here
+# rather than trusted.
 expect_hook() {
   local event="$1" want="$2" label="$3" json="$4"
   local out; out="$(printf '%s' "$json" | python3 "$NULLIUS" _hook "$event" 2>&1)"
   local got=$?
+  if printf '%s\n' "$out" | grep -q 'nullius: gate error'; then
+    bad "$label: the gate raised, and exiting 0 hid it"
+    printf '        %s\n' "$(printf '%s\n' "$out" | grep 'gate error')"
+    return
+  fi
   if [ "$got" = "$want" ]; then ok; else
     bad "$label: wanted exit $want, got $got"; printf '        %s\n' "${out%%$'\n'*}"
   fi
@@ -1117,6 +1128,71 @@ NW="$WORK/needs"; mkdir -p "$NW"
   printf '%s\n' "$pass $fail" > "$NW/.tally" )
 read -r sub_pass sub_fail < "$NW/.tally"
 pass=$((pass + sub_pass)); fail=$((fail + sub_fail))
+
+# ---- the channel nothing was watching --------------------------------------
+# SessionStart is how every epistemic rule and every command name reaches a
+# session. Five assertions covered the state block it prints and none covered
+# the two things it exists to carry, so the invariants directory could have gone
+# missing, or the plugin root could have resolved one level off, and the hook
+# would have gone on exiting 0 with a state summary and no rules attached.
+IW="$WORK/inject"; mkdir -p "$IW"
+( cd "$IW" || exit 1
+  pass=0; fail=0
+  N4() { python3 "$NULLIUS" "$@"; }
+  I_JSON="{\"cwd\":\"$IW\"}"
+  expect_exit 0 "init" N4 init --field t
+  for probe in \
+    "The obligation attaches to the:warrant" \
+    "how settled is this in the field:status" \
+    "Silence is a failed search:scholarship" \
+    "No study is complete:calibration" \
+    "Lead with the answer:voice"
+  do
+    expect_hook_out session-start says "${probe%%:*}" \
+      "session start carries invariants/${probe##*:}.md"  "$I_JSON"
+  done
+  expect_hook_out session-start says "nullius: the commands" \
+    "and the command vocabulary, which is how the session learns any of them" \
+    "$I_JSON"
+  expect_hook_out session-start says "No unit is open" \
+    "and says plainly when nothing is being checked"      "$I_JSON"
+
+  # The other direction. Outside a project the hook must do nothing at all: it
+  # runs in every session the plugin is installed in, most of which are not
+  # research folders.
+  expect_hook_out session-start silent "nullius" \
+    "and says nothing at all outside a project" "{\"cwd\":\"$WORK/../\"}"
+
+  # Two writers, one fact. algorithms/retrieval.md records a defect that lived
+  # exactly here: provenance checked on the rows, the header checked on a
+  # different log, and the bug in the gap between two correct assertions. The
+  # growth signal is checked through `status` above; this is the stop's own
+  # channel, which is the one that actually reaches a turn.
+  python3 -c "open('p.md','w').write('# M\n' + 'word '*3000)"
+  expect_exit 0 "open a write unit" N4 start g write "revise" --artifact p.md
+  expect_exit 0 "accept" N4 accept "is the frame stated"
+  expect_exit 0 "close"  N4 close "in the M section"
+  for n in 4200 5600 7000; do
+    python3 -c "open('p.md','w').write('# M\n' + 'word '*$n)"
+    printf '%s' "$I_JSON" | python3 "$NULLIUS" _hook stop >/dev/null 2>&1
+  done
+  expect_hook stop 0 "the stop is allowed"                "$I_JSON"
+  expect_hook_out stop says "turns, 4201 to 7001 words" \
+    "and the growth signal reaches the turn, not only status"  "$I_JSON"
+  expect_hook_out stop says "systemMessage" \
+    "through the channel that reaches the person"         "$I_JSON"
+
+  # Silence is a result too. A gate firing on something that is none of its
+  # business is how a guard gets switched off.
+  NOT_MINE="{\"cwd\":\"$IW\",\"tool_input\":{\"file_path\":\"$IW/x.py\",\"content\":\"see \\\\cite{ghost1999}\"}}"
+  expect_hook_out pre-write silent "nullius" \
+    "a non-draft draws no comment at all"                 "$NOT_MINE"
+  SH_OK="{\"cwd\":\"$IW\",\"tool_input\":{\"command\":\"ls -la\"}}"
+  expect_hook_out pre-bash silent "nullius" \
+    "and neither does a shell command that writes nothing" "$SH_OK"
+  printf '%s\n' "$pass $fail" > "$IW/.tally" )
+read -r i_pass i_fail < "$IW/.tally"
+pass=$((pass + i_pass)); fail=$((fail + i_fail))
 
 echo
 echo "  $pass passed, $fail failed"
