@@ -1194,6 +1194,69 @@ IW="$WORK/inject"; mkdir -p "$IW"
 read -r i_pass i_fail < "$IW/.tally"
 pass=$((pass + i_pass)); fail=$((fail + i_fail))
 
+cd "$WORK" || exit 1     # earlier sections leave the cwd elsewhere, and the
+                         # fabricated ledger these two need lives here
+
+# ---- neither index had it, which is the answer that matters ----------------
+# merge_records fell through both of its guards into dict(None) when Crossref
+# and OpenAlex both came back empty. That is the answer for every invented DOI,
+# so the one refusal this tool exists to make arrived as a TypeError instead of
+# as the sentence explaining it -- and it shipped in 0.4.0. Nothing caught it
+# because this suite is offline and never resolves, and the live evals only ever
+# resolved identifiers that exist. Both directions, on the network path, was the
+# rule nobody had applied there.
+python3 - "$NULLIUS" <<'MERGE' && ok || bad "merge_records on two empty answers"
+import importlib.machinery, importlib.util, sys
+spec = importlib.util.spec_from_loader(
+    "nl", importlib.machinery.SourceFileLoader("nl", sys.argv[1]))
+nl = importlib.util.module_from_spec(spec); spec.loader.exec_module(nl)
+a = {"title": "a", "index": "crossref", "retracted": True}
+b = {"title": "b", "index": "openalex", "authors": [{"id": "A1", "name": "X"}]}
+assert nl.merge_records(None, None) is None, "two empty answers must be no record"
+assert nl.merge_records(a, None) == a, "one answer is the answer"
+assert nl.merge_records(None, b) == b, "either side"
+m = nl.merge_records(a, b)
+assert m["retracted"] is True, "retraction survives the merge"
+assert m["authors"] == b["authors"], "identified authors win over named ones"
+assert m["index"] == "crossref+openalex", "the merge says who answered"
+MERGE
+
+# ---- auditing a document no ledger ever saw --------------------------------
+# `check` audits a draft against a ledger. The arms in evals/control.md produce
+# drafts that never had one, and scoring one arm from its ledger and another
+# from its text would compare two different things.
+printf 'PRISMA at 10.1234/alpha, and Shared Author reports it.\n' > seen.md
+printf 'Nobodyhere et al. wrote it and there is no identifier here at all.\n' > unseen.md
+expect_exit 1 "audit refuses a file that is not there" python3 "$NULLIUS" audit nope.md
+expect_grep "identifiers named       1" "audit counts what a document names" \
+  python3 "$NULLIUS" audit seen.md
+expect_grep "resolved              1" "and resolves it from the ledger, offline" \
+  python3 "$NULLIUS" audit seen.md
+expect_grep "an author of a resolved work   1" "a credited name with a work behind it" \
+  python3 "$NULLIUS" audit seen.md
+expect_grep "nothing behind them" "and one without" python3 "$NULLIUS" audit unseen.md
+expect_grep "identifiers named       0" "a document naming nothing names nothing" \
+  python3 "$NULLIUS" audit unseen.md
+python3 "$NULLIUS" audit --json seen.md unseen.md > audit.json 2>/dev/null
+python3 - <<'SHAPE' && ok || bad "audit --json is shaped for a comparison"
+import json
+r = json.load(open("audit.json"))
+assert len(r) == 2, "one record per file"
+assert r[0]["identifiers"]["resolved"] == 1
+assert r[0]["identifiers"]["unresolved"] == []
+assert r[1]["names"]["unmatched"] == ["Nobodyhere"]
+assert r[0]["citekeys"]["checked"] is True, "in a project, citekeys are checkable"
+SHAPE
+
+# outside a project it still runs, and says which check it cannot do
+OUTP="$(mktemp -d)"
+printf 'A draft citing \\cite{whoever} and nothing else.\n' > "$OUTP/loose.md"
+expect_grep "not checkable here" "outside a project a citekey has no bibliography" \
+  bash -c "cd '$OUTP' && python3 \"$NULLIUS\" audit loose.md"
+expect_exit 0 "and the audit still runs" \
+  bash -c "cd '$OUTP' && python3 \"$NULLIUS\" audit loose.md"
+rm -rf "$OUTP"
+
 echo
 echo "  $pass passed, $fail failed"
 [ "$fail" -eq 0 ]

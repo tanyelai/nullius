@@ -89,14 +89,48 @@ harness whose most valuable output is often that nothing more is needed.
 
 Report the facts. Say the quality question is open.
 
-## What is missing to run this
+## The instrument
 
-One instrument. The measures above have to be computed on drafts produced **outside** a
-nullius project, because arms A and B write no ledger. `nullius check` audits a draft against
-a ledger that already exists; there is no command that takes a bare file, resolves everything
-it names against the live indexes, and reports the counts.
+The first three measures are computed by `nullius audit`, which exists for this and runs
+outside a project on purpose:
 
-That is a small command and it is the whole distance between this file and an experiment.
-Until it exists, the honest statement about this design stays the one in
-[REFERENCES.md](../REFERENCES.md): the claim that it works is deliberately not cited, because
-it has not been measured.
+```bash
+nullius audit arm-a/draft.md arm-b/draft.md arm-c/draft.md --json
+```
+
+`check` audits a draft against a ledger. Scoring arm C from its ledger and arm A from its
+text would compare two different things, so `audit` reads the artifact and nothing else, and
+every arm is scored the same way.
+
+It reports three buckets rather than two, because an index that refuses is not an index that
+has nothing:
+
+```
+identifiers named       12
+  resolved               9
+  did not resolve        2    arXiv:2599.88888 · 10.9999/not-a-real-doi
+  could not be checked   1    RateLimited
+  RETRACTED              1
+names attributed         8
+  an author of a resolved work   6
+  nothing behind them            2
+```
+
+**Read the rows for what they are.** *Did not resolve* is a fact: those were looked for and
+the indexes did not have them. *Nothing behind them* is a lead, because a name can be cited
+through a bibliography the auditor cannot see. And a resolved identifier exists without being
+the work the sentence claims it is; nothing here reads the sentence.
+
+Writing this command is what turned up the defect in
+[algorithms/provenance.md](../algorithms/provenance.md): the first document it audited
+contained an invented DOI, and the merge of two empty index answers raised instead of
+refusing. That is the first thing this file has established, and it was established before
+any arm was run.
+
+## What is still missing
+
+The remaining six measures. Four of them read a ledger, which arm A does not have, so they
+compare arms B and C only; the last, corrections that reached the draft, needs the session
+instrumented rather than the artifact read. And the runs themselves: nothing here has been
+run, so the honest statement about this design stays the one in
+[REFERENCES.md](../REFERENCES.md), that the claim it works is deliberately not cited.

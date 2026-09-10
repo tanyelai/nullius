@@ -128,6 +128,11 @@ Run them as `./.nullius/bin/nullius <cmd>` from the project root.
     walk                                   every required section, present/thin/absent
     section "<name>" <planned|elsewhere|n/a> "<why>"
     coverage        check <path>        doctor        report [--out PATH]
+    audit <path>... [--json]
+        resolves every identifier a document names, against the live indexes,
+        and needs no project. `check` audits against a ledger; this audits a
+        document that never had one. Three buckets: resolved, did not resolve,
+        and could not be checked, which is not the same finding.
 
 Three vocabularies minimum on a survey: yours, the field's own terms taken from the first
 hits, and one adjacent field that studies the same thing under another name. Silence is a
@@ -389,6 +394,12 @@ def today():
 
 
 # ---------------------------------------------------------------- indexes
+
+
+class Unresolved(RuntimeError):
+    """The indexes answered and none of them had it. Distinct from RateLimited,
+    which is an index that never answered: `it does not exist` and `nobody would
+    tell me` are different findings and only one of them is about the work."""
 
 
 class RateLimited(RuntimeError):
@@ -2371,6 +2382,13 @@ def merge_records(primary, secondary):
         return primary
     if secondary and not primary:
         return secondary
+    if not primary and not secondary:
+        # Neither index had it, which is the answer for every invented DOI and
+        # therefore the most important path in this function. It fell through
+        # both guards into dict(None) and raised, so the one refusal this tool
+        # exists to make arrived as a traceback instead of as the sentence that
+        # explains it. The caller reads None and says so properly.
+        return None
     out = dict(secondary)
     for k, v in primary.items():
         if v not in (None, "", [], False):
@@ -2386,9 +2404,13 @@ def merge_records(primary, secondary):
     return out
 
 
-def resolve_reference(cfg, identifier, first=False):
+def resolve_reference(cfg, identifier, first=False, soft=False):
     """Reach the work by whatever route has it. Returns (record, note) where note
-    is a line worth telling the user, or raises SystemExit through die()."""
+    is a line worth telling the user. Failure exits through die(), unless `soft`,
+    which raises Unresolved instead: `audit` resolves dozens of identifiers in a
+    row and one absence is a row in its report rather than the end of the run."""
+    def gone(msg):
+        raise Unresolved(msg) if soft else die(msg)
     idx = cfg["indexes"]
     kind, value = normalise_identifier(identifier)
     arxiv_meta = None
@@ -2396,7 +2418,7 @@ def resolve_reference(cfg, identifier, first=False):
     if kind == "arxiv":
         arxiv_meta = arxiv_lookup(value)
         if not arxiv_meta:
-            die(f"arXiv has no record of '{value}'.")
+            gone(f"arXiv has no record of '{value}'.")
         if arxiv_meta.get("doi"):
             kind, value = "doi", arxiv_meta["doi"].lower()
         else:
@@ -2462,7 +2484,7 @@ def resolve_reference(cfg, identifier, first=False):
                               for n in arxiv_meta["authors"]]
             rec["author_ids"] = "name"
     if not rec:
-        die(f"'{identifier}' did not resolve against {', '.join(idx)}. A "
+        gone(f"'{identifier}' did not resolve against {', '.join(idx)}. A "
             f"reference that cannot be resolved cannot be cited. If it is a "
             f"page, a book or a chapter rather than an indexed work, record it "
             f"as one:\n  nullius cite <url> --kind <"
@@ -2534,19 +2556,11 @@ def cmd_cite(args):
         say(f"  {note}")
 
 
-def pdf_to_text(url):
+def pdf_bytes_to_text(blob):
     """Opportunistic: poppler's pdftotext if the machine has it. Nothing here
     requires it, and a machine without it simply gets the URLs instead."""
     exe = shutil.which("pdftotext")
-    if not exe:
-        return None
-    try:
-        req = urllib.request.Request(url, headers={"User-Agent": "nullius"})
-        with urllib.request.urlopen(req, timeout=API_TIMEOUT) as r:
-            blob = r.read()
-    except Exception:
-        return None
-    if not blob.startswith(b"%PDF"):
+    if not exe or not blob.startswith(b"%PDF"):
         return None
     with tempfile.TemporaryDirectory() as d:
         f = Path(d) / "in.pdf"
@@ -2558,6 +2572,16 @@ def pdf_to_text(url):
             return None
     text = out.stdout.decode("utf-8", "replace").strip()
     return text or None
+
+
+def pdf_to_text(url):
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "nullius"})
+        with urllib.request.urlopen(req, timeout=API_TIMEOUT) as r:
+            blob = r.read()
+    except Exception:
+        return None
+    return pdf_bytes_to_text(blob)
 
 
 ARXIV_URL_RE = re.compile(r"arxiv\.org/(?:abs|pdf)/(\d{4}\.\d{4,5})", re.I)
@@ -3651,6 +3675,144 @@ def cmd_check(args):
     sys.exit(2 if facts else 0)
 
 
+def loose_config():
+    """The config a command can have when there may be no project. Everything a
+    project would add is optional here; `contact` is not, in the sense that
+    without it Unpaywall refuses and the other indexes drop you into the common
+    pool, so it is read from the user layer whether or not there is a root."""
+    cfg = dict(DEFAULT_CONFIG)
+    u = user_config_path()
+    if u.is_file():
+        try:
+            cfg.update({k: v for k, v in
+                        json.loads(u.read_text(encoding="utf-8")).items()
+                        if v not in ("", None)})
+        except json.JSONDecodeError:
+            pass
+    root = find_root()
+    if root is not None:
+        cfg = Store(root).config
+    return cfg, root
+
+
+def document_text(path):
+    """A draft, or somebody else's PDF. Returns (text, note)."""
+    f = Path(path)
+    if not f.is_file():
+        die(f"no such file: {path}")
+    if f.suffix.lower() == ".pdf":
+        text = pdf_bytes_to_text(f.read_bytes())
+        if text is None:
+            die(f"{path} is a PDF and pdftotext could not read it. Install "
+                f"poppler, or export the text yourself: what cannot be read "
+                f"cannot be audited, and guessing is the thing this refuses.")
+        return text, "read through pdftotext"
+    return f.read_text(encoding="utf-8", errors="replace"), None
+
+
+def cmd_audit(args):
+    """Resolve everything a document names, against the live indexes, and count
+    what came back. Deliberately runs outside a project.
+
+    `check` audits a draft against a ledger that already exists, which is the
+    right check for your own work and the wrong one for a comparison: the arms
+    in evals/control.md produce drafts that no ledger ever saw, and scoring one
+    arm from its ledger and another from its text measures two different things.
+    This scores every arm the same way, from the artifact alone.
+
+    Three buckets, not two. An index that refuses is not an index that has
+    nothing, and reporting the second as the first is how `I could not find it`
+    becomes `it does not exist`."""
+    cfg, root = loose_config()
+    store = Store(root) if root is not None else None
+    ledger = store.refs if store else {}
+    # resolved once per run: a document naming the same work twice is one lookup,
+    # and the ledger is a read-only cache when there happens to be one
+    memo = {}
+    for rec in ledger.values():
+        if rec.get("doi"):
+            memo[("doi", rec["doi"].lower())] = rec
+        if rec.get("arxiv"):
+            memo[("arxiv", rec["arxiv"])] = rec
+
+    reports = []
+    for path in args.paths:
+        text, how = document_text(path)
+        idents = sorted(bare_identifiers(text, cfg))
+        keys = sorted(cited_keys(text, cfg))
+        resolved, unresolved, unchecked, retracted = {}, [], [], []
+        for kind, value in idents:
+            shown = f"arXiv:{value}" if kind == "arxiv" else value
+            if (kind, value) in memo:
+                rec = memo[(kind, value)]
+            else:
+                try:
+                    rec, _ = resolve_reference(cfg, value, first=True, soft=True)
+                except Unresolved:
+                    unresolved.append(shown)
+                    continue
+                except (RateLimited, RuntimeError, urllib.error.URLError) as e:
+                    unchecked.append(f"{shown} ({type(e).__name__})")
+                    continue
+                memo[(kind, value)] = rec
+            resolved[shown] = rec
+            if rec.get("retracted"):
+                retracted.append(shown)
+
+        known = resolved_surnames(dict(resolved, **ledger))
+        matched, unmatched = [], []
+        for name in sorted(attributed_names(text, cfg)):
+            low = fold_name(name)
+            if low in known or any(low in n.split() for n in known):
+                matched.append(name)
+            else:
+                unmatched.append(name)
+        keys_unresolved = [k for k in keys if k not in ledger] if store else []
+        reports.append({
+            "file": str(path), "read": how,
+            "identifiers": {
+                "named": len(idents), "resolved": len(resolved),
+                "unresolved": unresolved, "unchecked": unchecked,
+                "retracted": retracted},
+            "names": {"attributed": len(matched) + len(unmatched),
+                      "matched": len(matched), "unmatched": unmatched},
+            "citekeys": {"named": len(keys), "checked": bool(store),
+                         "unresolved": keys_unresolved},
+        })
+
+    if args.json:
+        sys.stdout.write(json.dumps(reports, indent=2, ensure_ascii=False) + "\n")
+        return
+    for r in reports:
+        i, n, k = r["identifiers"], r["names"], r["citekeys"]
+        say(f"nullius audit  {r['file']}"
+            + (f"  ({r['read']})" if r["read"] else ""))
+        say(f"  identifiers named       {i['named']}")
+        say(f"    resolved              {i['resolved']}")
+        for label, rows in (("did not resolve", i["unresolved"]),
+                            ("could not be checked", i["unchecked"]),
+                            ("RETRACTED", i["retracted"])):
+            if rows:
+                say(f"    {label:<21} {len(rows)}   " + " · ".join(rows[:4]))
+        say(f"  names attributed        {n['attributed']}")
+        say(f"    an author of a resolved work   {n['matched']}")
+        if n["unmatched"]:
+            say(f"    nothing behind them            {len(n['unmatched'])}   "
+                + " · ".join(n["unmatched"][:6]))
+        if k["named"]:
+            say(f"  citekeys                {k['named']}"
+                + (f", {len(k['unresolved'])} not in this project's ledger"
+                   if k["checked"] else
+                   ", not checkable here: a citekey needs the bibliography it "
+                   "belongs to"))
+        say("")
+    say("A resolved identifier exists. It is not thereby the work the sentence "
+        "says it is, and nothing here reads the sentence. An unmatched name may "
+        "be cited through a bibliography this cannot see, so read that row as a "
+        "lead. What is a fact is the middle rows: those identifiers were looked "
+        "for and the indexes did not have them.")
+
+
 def cmd_report(args):
     """What the ledger knows, as something a person reads. Not a typeset document:
     the tool has no business owning a house style, and the venue owns the format.
@@ -4369,6 +4531,13 @@ def build_parser():
 
     s = sub.add_parser("check", help="run the write guards over a draft")
     s.add_argument("path"); s.set_defaults(fn=cmd_check)
+
+    s = sub.add_parser("audit", help="resolve everything a document names, in or "
+                                     "out of a project")
+    s.add_argument("paths", nargs="+")
+    s.add_argument("--json", action="store_true",
+                   help="machine-readable, for comparing one arm against another")
+    s.set_defaults(fn=cmd_audit)
 
     s = sub.add_parser("report", help="what the ledger holds, for a person to read")
     s.add_argument("--out"); s.set_defaults(fn=cmd_report)

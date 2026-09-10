@@ -10,7 +10,7 @@ unread paper, the unsearched literature and the unbounded critique into states a
 > [!NOTE]
 > **Status: installable, and nothing is left stubbed.** The ledger, the gates, multi-index
 > search with fallbacks, the citation walk, the venue walk and the calibration engine all
-> work: 330 assertions in
+> work: 340 assertions in
 > [`tests/smoke.sh`](tests/smoke.sh), offline and in both directions, plus seven
 > end-to-end [scenarios](evals/) against live indexes. What remains is calibration, and
 > [algorithms/](algorithms/) says where each mechanism is weakest, including that none of
@@ -138,9 +138,9 @@ that fires at startup hands the session the whole vocabulary.
 | recording what you know | `cite` · `note` · `claim` · `considered` · `falsify` |
 | recording what you do not | `needs` · `settled` |
 | critiquing something | `finding` · `resolve` · `verdict` |
-| handing it to someone | `report` |
+| handing it to someone | `report` · `audit` |
 
-That is a third of them. `nullius --help` lists all thirty-nine with their flags, `--help` on
+That is a third of them. `nullius --help` lists all forty with their flags, `--help` on
 any one spells out that command's, and `/nullius` carries the rest of the vocabulary. The
 reference lives there rather than here, because a table kept by hand goes stale and this one
 had already started to.
