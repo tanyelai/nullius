@@ -168,6 +168,11 @@ DEFAULT_CONFIG = {
     "extension_window": 3,
     "extension_growth": 1.25,
     "section_thin_words": 80,
+    # How much of its content words two passages must share before they are
+    # worth looking at together. Picked, not measured, so it reports.
+    "redundancy_share": 0.55,
+    # Past this, prose alone is worth noticing. Also picked.
+    "visual_floor_words": 600,
     # Patterns, not phrases. A real draft headed "What this does not do" shares no
     # substring with "what this study does not do", and one word lost the boundary.
     "scope_headings": [
@@ -1017,6 +1022,7 @@ def check_artifact(store, unit, path, rel):
     text = path.read_text(encoding="utf-8", errors="replace")
     facts = check_draft_text(store, text, rel)
     chosen = check_attribution(store, text, rel)
+    chosen += prose_signals(store, text, rel, store.config)
     for c in companion_files(store, unit, rel):
         crel = os.path.relpath(c, store.root)
         ctext = c.read_text(encoding="utf-8", errors="replace")
@@ -1964,8 +1970,8 @@ def unit_findings(store):
             f"{len(counted)} draft(s) tracked and nothing says how long they "
             f"are allowed to be. `nullius start --words N`, a `words:` line in "
             f"the venue file, or `nullius config default_words N` once for the "
-            f"house norm. Short is the default worth having and long is a "
-            f"decision worth recording; with no number, neither is happening.")
+            f"house norm. This is about a limit existing, not about the writing "
+            f"being good: `nullius prose <path>` is the one that reads it.")
     if budget and not counted:
         facts.append(f"a budget of {budget} words is declared and no draft is "
                      f"tracked against it, so nothing is measuring it. "
@@ -4019,6 +4025,141 @@ def cmd_audit(args):
         "for and the indexes did not have them.")
 
 
+SUMMARY_HEADINGS = [r"abstract", r"summary", r"tl;?dr", r"in (one|a) (paragraph|line|"
+                    r"sentence)", r"in short", r"the short version", r"at a glance",
+                    r"executive summary", r"key points?", r"in plain words"]
+
+
+def paragraphs(text):
+    """(line number, words) for each block worth comparing. Headings, code and
+    lists are skipped: a list repeating a heading is not the failure here."""
+    out, buf, start, fenced = [], [], 1, False
+    for i, line in enumerate(text.splitlines(), 1):
+        if line.strip().startswith("```"):
+            fenced = not fenced
+            continue
+        if fenced:
+            continue
+        if not line.strip() or line.lstrip().startswith(("#", "|", "-", "*", ">")):
+            if buf:
+                out.append((start, " ".join(buf)))
+                buf = []
+            continue
+        if not buf:
+            start = i
+        buf.append(line.strip())
+    if buf:
+        out.append((start, " ".join(buf)))
+    return [(n, p) for n, p in out if len(p.split()) >= 25]
+
+
+def near_duplicates(text, threshold):
+    """Passages that may be saying the same thing twice.
+
+    Containment rather than Jaccard: the failure is a point restated more
+    briefly somewhere else, and a short restatement of a long paragraph scores
+    near zero on Jaccard and near one here.
+
+    A lead, never a verdict, and never a refusal. Two paragraphs about one
+    subject legitimately share vocabulary, and a tool that deleted the second
+    would be editing rather than checking. The direction of error that matters
+    is the one where a false hit removes something the author meant."""
+    paras = [(n, significant(strip_markup(p)), p) for n, p in paragraphs(text)]
+    out = []
+    for i, (n1, s1, p1) in enumerate(paras):
+        for n2, s2, p2 in paras[i + 1:]:
+            if not s1 or not s2:
+                continue
+            share = len(s1 & s2) / min(len(s1), len(s2))
+            if share >= threshold:
+                out.append((share, n1, p1, n2, p2))
+    return sorted(out, reverse=True)
+
+
+def visuals(text):
+    """Anything carrying structure a paragraph cannot: a figure, a table, a
+    diagram, a worked block."""
+    return (len(re.findall(r"!\[[^\]]*\]\(", text))
+            + len(re.findall(r"^\s*\|.*\|\s*$", text, re.M)) // 3
+            + len(re.findall(r"```(?:mermaid|dot|graphviz)", text))
+            + len(re.findall(r"\\begin\{(figure|tabular|table|tikzpicture)", text)))
+
+
+def has_short_version(text):
+    """Whether a reader can get the point without reading the whole thing: a
+    named summary, or an opening paragraph short enough to be one."""
+    for pat in SUMMARY_HEADINGS:
+        if re.search(r"^#{1,4}\s*.*" + pat, text, re.M | re.I):
+            return True
+        if re.search(r"^\*\*.*" + pat, text, re.M | re.I):
+            return True
+    paras = paragraphs(text)
+    return bool(paras) and len(paras[0][1].split()) <= 80
+
+
+def prose_signals(store, text, label, cfg):
+    """Reported, always. Every one of these is a count against a number somebody
+    picked, and none of them is a judgement about whether the writing is good."""
+    out = []
+    words = count_words(text)
+    dupes = near_duplicates(text, cfg["redundancy_share"])
+    if dupes:
+        out.append(
+            f"{label}: {len(dupes)} passage pair(s) share most of their content "
+            f"words, which is what one point made twice looks like:\n      "
+            + "\n      ".join(
+                f"{int(s * 100)}%  line {a} \"{pa[:44]}...\"\n              "
+                f"line {b} \"{pb[:44]}...\""
+                for s, a, pa, b, pb in dupes[:3])
+            + "\n    A lead, not a verdict: one subject legitimately reuses its "
+              "vocabulary. Read the pair and decide which one to keep.")
+    if words >= cfg["visual_floor_words"] and not visuals(text):
+        out.append(
+            f"{label}: {words} words and nothing but prose. No figure, table or "
+            f"diagram. Structure a reader has to reconstruct from sentences is "
+            f"structure they may not reconstruct.")
+    if words >= cfg["visual_floor_words"] and not has_short_version(text):
+        out.append(
+            f"{label}: {words} words, roughly {max(1, words // 220)} minute(s) "
+            f"to read, and no short version at the top. A reader who wants the "
+            f"point has to take all of it or none.")
+    return out
+
+
+def cmd_prose(args):
+    """What a draft is like to read. Nothing here refuses anything, and nothing
+    here is about whether the writing is good: every line is a count against a
+    number somebody chose."""
+    store = Store(require_root())
+    cfg = store.config
+    for path in args.paths:
+        text, _ = document_text(path)
+        words = count_words(text)
+        paras = paragraphs(text)
+        say(f"nullius prose  {path}")
+        say(f"  {words} words, about {max(1, words // 220)} minute(s) to read")
+        say(f"  {len(paras)} paragraph(s) long enough to compare, "
+            f"{visuals(text)} figure/table/diagram, "
+            f"short version at the top: {'yes' if has_short_version(text) else 'no'}")
+        dupes = near_duplicates(text, cfg["redundancy_share"])
+        if not dupes:
+            say(f"  no passage pair shares more than "
+                f"{int(cfg['redundancy_share'] * 100)}% of its content words")
+        for s, a, pa, b, pb in dupes[:8]:
+            say(f"  {int(s * 100)}%  line {a}  {pa[:58]}")
+            say(f"       line {b}  {pb[:58]}")
+        # the same lines the stop would report, said here where you asked
+        for sig in prose_signals(store, text, path, cfg):
+            if "share most of their content words" in sig:
+                continue
+            say("  " + sig.split(": ", 1)[-1].split(".")[0] + ".")
+        say("")
+    say("Every number here is a count against a threshold somebody picked, so "
+        "none of it refuses anything and none of it is a claim about whether "
+        "the writing is good. A shared-vocabulary pair is a lead: read the two "
+        "and decide which one to keep.")
+
+
 def cmd_report(args):
     """What the ledger knows, as something a person reads. Not a typeset document:
     the tool has no business owning a house style, and the venue owns the format.
@@ -4920,6 +5061,11 @@ def build_parser():
     s.add_argument("--json", action="store_true",
                    help="machine-readable, for comparing one arm against another")
     s.set_defaults(fn=cmd_audit)
+
+    s = sub.add_parser("prose", help="what a draft is like to read: repetition, "
+                                     "figures, a short version")
+    s.add_argument("paths", nargs="+")
+    s.set_defaults(fn=cmd_prose)
 
     s = sub.add_parser("report", help="what the ledger holds, for a person to read")
     s.add_argument("--out"); s.set_defaults(fn=cmd_report)

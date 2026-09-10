@@ -57,6 +57,16 @@ was acted on, including the two that turned out to be false statements in the do
   test one function, which writes a 300kB `.pyc` beside it, and `git add -A` put one in
   0.5.1. Untracked, ignored, prevented at the source with `PYTHONDONTWRITEBYTECODE`, and
   preflight now refuses it, since the repository's rule about figures applies to everything.
+- **`prose`, because the failure is repetition and not length.** A long document with
+  nothing repeated is fine; a short one making its point three ways is not, and that is what
+  a model does and a person does not. Three signals, all counts: passage pairs sharing most
+  of their content words (containment rather than overlap, because the failure is a point
+  restated *more briefly* elsewhere), a document past a threshold with no figure, table or
+  diagram at all, and one with no summary and no short opening paragraph. Every one is a
+  lead and none refuses: two paragraphs on one subject legitimately share vocabulary, and a
+  tool that deleted the second would be editing rather than checking. They reach the stop
+  through the channel marked chosen. `voice.md` is rewritten around saying a thing once,
+  giving the reader a way in and a way out, and using a figure when the thing has a shape.
 - **A tracked draft has to say how long it may be.** A declared budget with no draft
   tracked against it has been a fact this refuses since the first release; its mirror was
   missing, so a tracked draft with no declared length had no length it could exceed and
