@@ -10,7 +10,7 @@ unread paper, the unsearched literature and the unbounded critique into states a
 > [!NOTE]
 > **Status: installable, and nothing is left stubbed.** The ledger, the gates, multi-index
 > search with fallbacks, the citation walk, the venue walk and the calibration engine all
-> work: 313 assertions in
+> work: 330 assertions in
 > [`tests/smoke.sh`](tests/smoke.sh), offline and in both directions, plus seven
 > end-to-end [scenarios](evals/) against live indexes. What remains is calibration, and
 > [algorithms/](algorithms/) says where each mechanism is weakest, including that none of
