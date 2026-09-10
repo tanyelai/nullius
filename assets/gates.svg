@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 530" width="1100" height="530" role="img" aria-label="Where nullius intervenes. At SessionStart and after compaction it tells you what is open, what was read only to an abstract, and what you already buried. On a write to a draft or to its declared companions, whether through Write, Edit or a shell heredoc, it refuses an identifier that resolves to nothing, a retracted source, a surname credited with no reference behind it, or wording an open finding quotes as defective. At Stop it refuses to end the turn while the acceptance check fails, a claim outruns the reading, a finding is neither answered nor waived, a zero was never re-run over full text, or nothing was read past an abstract. A fact exits 2 and the turn does not end. A threshold somebody chose is reported through systemMessage and the turn ends.">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 556" width="1100" height="556" role="img" aria-label="Where nullius intervenes. At SessionStart and after compaction it tells you what is open, what was read only to an abstract, and what you already buried. On a write to a draft or to its declared companions, whether through Write, Edit or a shell heredoc, it refuses an identifier that resolves to nothing, a retracted source, a surname credited with no reference behind it, or wording an open finding quotes as defective. At Stop it refuses to end the turn while the acceptance check fails, a claim outruns the reading, a finding is neither answered nor waived, a zero was never re-run over full text, nothing was read past an abstract, or a question was asked and never come back to. A fact exits 2 and the turn does not end. A threshold somebody chose is reported through systemMessage and the turn ends.">
   <style>
     .plate { fill:#F4F6F8 }
     .hair  { stroke:#C9D3DB; stroke-width:1 }
@@ -49,17 +49,18 @@
   <line class="tickr" x1="780" y1="294" x2="792" y2="294"/><text class="c" x="802" y="298">a finding neither answered nor waived</text>
   <line class="tickr" x1="780" y1="320" x2="792" y2="320"/><text class="c" x="802" y="324">a zero never re-run over full text</text>
   <line class="tickr" x1="780" y1="346" x2="792" y2="346"/><text class="c" x="802" y="350">nothing read past an abstract</text>
+  <line class="tickr" x1="780" y1="372" x2="792" y2="372"/><text class="c" x="802" y="376">a question asked and never come back to</text>
 
-  <line class="hair" x1="44" y1="378" x2="1056" y2="378"/>
-  <text class="eb" x="44" y="408">AND THE PART THAT KEEPS IT USABLE</text>
+  <line class="hair" x1="44" y1="404" x2="1056" y2="404"/>
+  <text class="eb" x="44" y="434">AND THE PART THAT KEEPS IT USABLE</text>
 
-  <line class="stop" x1="46" y1="430" x2="46" y2="454"/>
-  <text class="lead" x="66" y="442">a fact</text>
-  <text class="mr"   x="300" y="442">exit 2</text>
-  <text class="c"    x="470" y="442">the turn does not end, and the reason is the fact</text>
+  <line class="stop" x1="46" y1="456" x2="46" y2="480"/>
+  <text class="lead" x="66" y="468">a fact</text>
+  <text class="mr"   x="300" y="468">exit 2</text>
+  <text class="c"    x="470" y="468">the turn does not end, and the reason is the fact</text>
 
-  <line class="tell" x1="46" y1="474" x2="46" y2="498"/>
-  <text class="lead" x="66" y="486">a threshold somebody chose</text>
-  <text class="m"    x="300" y="486">systemMessage</text>
-  <text class="c"    x="470" y="486">reported, marked as chosen, and the turn ends</text>
+  <line class="tell" x1="46" y1="500" x2="46" y2="524"/>
+  <text class="lead" x="66" y="512">a threshold somebody chose</text>
+  <text class="m"    x="300" y="512">systemMessage</text>
+  <text class="c"    x="470" y="512">reported, marked as chosen, and the turn ends</text>
 </svg>

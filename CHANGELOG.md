@@ -3,7 +3,7 @@
 Versions follow [semantic versioning](https://semver.org). Until `1.0.0` the ledger format
 and the CLI surface may change; when they do, the change is listed here with what it breaks.
 
-## Unreleased
+## 0.5.0
 
 **The third answer, and a gate that only ever passed.**
 
@@ -37,6 +37,9 @@ and the CLI surface may change; when they do, the change is listed here with wha
   harmless shell command must draw no comment at all.
 - **[algorithms/loops.md](algorithms/loops.md).** What may end a loop, and why an exit the
   model computes is not one.
+- **The gates figure enumerates the stop's facts, and had gone one short.** The front door
+  drew five and there are six. Camo keys its cache on the URL, so the README link moves to
+  `?v=3` or a changed diagram at an unchanged path goes on serving the old one.
 - **[evals/control.md](evals/control.md).** The arm this repository has never run: the same
   advice, enforced against not enforced. It needs real sessions, so it is a protocol rather
   than a scenario, and it names the one instrument still missing to run it.
