@@ -3,6 +3,32 @@
 Versions follow [semantic versioning](https://semver.org). Until `1.0.0` the ledger format
 and the CLI surface may change; when they do, the change is listed here with what it breaks.
 
+## 0.7.0
+
+**One agent and two lenses, having designed three agents.**
+
+- **A `reader` agent, and two lenses rather than a second critic.** An elegance agent was
+  designed and then mostly declined: `parsimony` (which parts could be deleted and the claim
+  still hold) and `baseline` (what is the simplest thing that would also produce this) are
+  lenses, and the `skeptic` is a lens-taking agent, so they are two rows in its table rather
+  than a new file. Both are told that the honest answer is usually that it is fine, because
+  anything can be described as having one part too many and a critic that can always find
+  something has stopped being one. The `novelty` lens now reads the search log before forming
+  a view; a judgement about a literature made without looking at what was searched for is the
+  impression this tool is built against.
+  `reader` is the genuinely missing one: it reads a single source at `brief`, `working` or
+  `full` depth and returns what the source establishes, what it does not, and what could not
+  be accounted for. It looks like it breaks the `librarian`'s prohibition on summarising and
+  does not -- that rule is about a *set* of works, where a summary hides how thin the set
+  was. Every point here carries a passage the agent has run `nullius quote` on before
+  returning it, so a fabricated point cannot produce one that verifies, and with no cached
+  text it refuses to start.
+- **The release workflow can be pinned to the commit you approved.** It checks out `main` at
+  run time, and approval happens before any step runs, so 0.6.0 was dispatched at one commit
+  and released three commits later. Nothing bad shipped and the tag identifies its content
+  either way, but *approve* meant something other than it looked like. Pass `sha` alongside
+  `version` and the run refuses unless `main` is still there.
+
 ## 0.6.0
 
 **A thread, a lifecycle, and a channel that leads with the answer.**
@@ -57,22 +83,6 @@ was acted on, including the two that turned out to be false statements in the do
   test one function, which writes a 300kB `.pyc` beside it, and `git add -A` put one in
   0.5.1. Untracked, ignored, prevented at the source with `PYTHONDONTWRITEBYTECODE`, and
   preflight now refuses it, since the repository's rule about figures applies to everything.
-- **A `reader` agent, and two lenses rather than a second critic.** An elegance agent was
-  designed and then mostly declined: `parsimony` (which parts could be deleted and the claim
-  still hold) and `baseline` (what is the simplest thing that would also produce this) are
-  lenses, and the `skeptic` is a lens-taking agent, so they are two rows in its table rather
-  than a new file. Both are told that the honest answer is usually that it is fine, because
-  anything can be described as having one part too many and a critic that can always find
-  something has stopped being one. The `novelty` lens now reads the search log before forming
-  a view; a judgement about a literature made without looking at what was searched for is the
-  impression this tool is built against.
-  `reader` is the genuinely missing one: it reads a single source at `brief`, `working` or
-  `full` depth and returns what the source establishes, what it does not, and what could not
-  be accounted for. It looks like it breaks the `librarian`'s prohibition on summarising and
-  does not -- that rule is about a *set* of works, where a summary hides how thin the set
-  was. Every point here carries a passage the agent has run `nullius quote` on before
-  returning it, so a fabricated point cannot produce one that verifies, and with no cached
-  text it refuses to start.
 - **A draft does not go out unread.** A `critique` unit has always had to produce a verdict
   and a `write` unit never had to receive one, so a draft could reach the end read by
   nobody. Every piece of the oldest gate in science was already here -- located findings, a

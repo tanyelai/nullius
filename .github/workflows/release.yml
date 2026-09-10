@@ -10,6 +10,10 @@ on:
         description: "the version to release, exactly as it stands in plugin.json (e.g. 0.3.0)"
         required: true
         type: string
+      sha:
+        description: "optional: the commit you are approving. The run refuses if main has moved off it."
+        required: false
+        type: string
 
 permissions:
   contents: write
@@ -19,6 +23,7 @@ permissions:
 # shell sees it, so a crafted input becomes code; an environment variable is data.
 env:
   VERSION: ${{ inputs.version }}
+  WANT_SHA: ${{ inputs.sha }}
 
 jobs:
   release:
@@ -42,6 +47,22 @@ jobs:
       - name: the official manifest validator, if it installs
         continue-on-error: true
         run: npm install -g @anthropic-ai/claude-code
+
+      # Approval happens before any step runs and this checks out main at run
+      # time, so a release approved at one commit can ship a later one. The tag
+      # still identifies its content; what was wrong is that `approve` meant
+      # something other than it looked like.
+      - name: main is still where it was when you approved
+        run: |
+          set -euo pipefail
+          [ -z "${WANT_SHA}" ] && { echo "no sha pinned; releasing main at $(git rev-parse HEAD)"; exit 0; }
+          have="$(git rev-parse HEAD)"
+          case "$have" in
+            "${WANT_SHA}"*) echo "main is at ${WANT_SHA}, as approved" ;;
+            *) echo "you approved ${WANT_SHA} and main is now $have."
+               echo "Dispatch again with the sha you mean to release."
+               exit 1 ;;
+          esac
 
       - name: the gate, again, on the commit being released
         run: bash tests/preflight.sh
