@@ -37,6 +37,20 @@ and the CLI surface may change; when they do, the change is listed here with wha
   harmless shell command must draw no comment at all.
 - **[algorithms/loops.md](algorithms/loops.md).** What may end a loop, and why an exit the
   model computes is not one.
+- **An invented DOI raised instead of refusing, and it shipped in 0.4.0.** Crossref and
+  OpenAlex both answering empty is the case for every fabricated identifier, and the merge of
+  their two answers guarded each one-sided case and fell through both into `dict(None)`. So
+  the one refusal this tool is named for arrived as a `TypeError` rather than as the sentence
+  that explains what to do about it. Nothing caught it because the suite is offline and never
+  resolves, and the live scenarios only ever asked for identifiers that exist:
+  [both directions](algorithms/provenance.md) had never been applied to the network path.
+  Eval 03 now asks for both.
+- **`audit`.** Resolves every identifier a document names against the live indexes, counts
+  what came back, and needs no project. `check` audits a draft against a ledger; this audits
+  a document that never had one, which is what
+  [evals/control.md](evals/control.md) needs to score three arms the same way. Three buckets,
+  not two: an index that refuses is not an index that has nothing. It reads PDFs where
+  poppler is installed, and it is what turned up the defect above.
 - **The gates figure enumerates the stop's facts, and had gone one short.** The front door
   drew five and there are six. Camo keys its cache on the URL, so the README link moves to
   `?v=3` or a changed diagram at an unchanged path goes on serving the old one.

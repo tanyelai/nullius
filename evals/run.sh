@@ -39,6 +39,12 @@ expect_fact() {
   else fail=$((fail+1)); log "- [ ] **NOT REPORTED, should refuse** · $label"; fi
 }
 note() { say ""; say "$*"; say ""; }
+# expect_grep_out <pattern> <label> <text>. A refusal can be right and unreadable:
+# a traceback also exits non-zero.
+expect_grep_out() {
+  if printf '%s' "$3" | grep -qi -- "$1"; then pass=$((pass+1)); log "- [x] said it · $2"
+  else fail=$((fail+1)); log "- [ ] **NOT SAID** · $2"; say '  ```'; say "  ${3:0:300}"; say '  ```'; fi
+}
 
 cd "$WORK" || exit 1
 say "# eval $S · $(date -u +%Y-%m-%dT%H:%MZ)"
@@ -105,6 +111,13 @@ case "$S" in
   say "## resolving"; say '```'
   nl cite 2101.03961 --first 2>&1 | head -6 | tee -a "$OUT" >/dev/null
   say '```'
+  # The other direction, against a live index. Everything else in this file asks
+  # the indexes for something that exists, so the refusal that matters most had
+  # never once been exercised end to end: it raised a TypeError for a release.
+  expect refuse "an arXiv id that does not exist"   nl cite 2599.88888 --first
+  expect refuse "a DOI that does not exist"         nl cite 10.9999/not-a-real-doi --first
+  expect_grep_out "did not resolve" "and the refusal is a sentence, not a traceback" \
+    "$(nl cite 10.9999/not-a-real-doi --first 2>&1)"
   KEY=$(python3 -c "import json;d=json.load(open('.nullius/refs.json'));print(list(d)[0] if d else '')" 2>/dev/null)
   note "## expectations"
   if [ -z "$KEY" ]; then blocked=$((blocked+1)); log "- [ ] **blocked by the index** · the paper did not resolve"; else

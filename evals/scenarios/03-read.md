@@ -16,6 +16,10 @@ that costs.
 
 ## Must refuse
 
+- An identifier that **does not exist**, in both forms, with the sentence that explains why
+  rather than a stack trace. Everything else here asks a live index for something real, so
+  this leg is the only one that exercises the refusal the whole tool is named for.
+
 - A `--strength mechanism` claim from a source noted at `abstract`.
 - A claim whose source has **no note at all**.
 - `--status established` from sources sharing an author.

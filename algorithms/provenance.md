@@ -62,6 +62,40 @@ computer science titles. After that was handled by blacklisting a few characters
 ending in a question mark did the same. Whitelist, never blacklist. And one route is not a
 route: when the structured filter refuses, fall back to the endpoint that parses nothing.
 
+## Two empty answers are an answer
+
+**Naive.** Ask Crossref and OpenAlex, merge what comes back, and let each contribute what it
+knows. The merge guards the two one-sided cases: only Crossref answered, only OpenAlex did.
+
+**Measured, by auditing a document with an invented DOI in it.** Neither index has an invented
+DOI, so both come back empty, and both guards are written as `if x and not y`. Two empty
+answers fall through both into `dict(None)` and raise.
+
+That case is not an edge. It is **the answer for every fabricated identifier**, which is the
+one refusal this tool is named for, and it arrived as
+
+```
+TypeError: 'NoneType' object is not iterable
+```
+
+instead of the sentence that explains what to do about it. It shipped in 0.4.0.
+
+```
+merge(p, q) = p            if q is empty
+              q            if p is empty
+              NONE         if both are           <- the case that mattered
+              merged       otherwise
+```
+
+**Why nothing caught it.** `tests/smoke.sh` is offline and fabricates the ledger where a real
+resolution would need network, so it never resolves anything. The live scenarios in `evals/`
+do resolve, and every identifier they have ever asked for exists. The repository's rule is
+both directions on every guard; nobody had applied it to the network path, where the two
+directions are *a work that is there* and *a work that is not*. Eval 03 now asks for both.
+
+**Weak.** The same shape is available anywhere two optional sources are combined, and the only
+defence here is that this one is now tested. Nothing enumerates the others.
+
 ## Getting the text
 
 ```
