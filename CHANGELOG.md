@@ -57,6 +57,15 @@ was acted on, including the two that turned out to be false statements in the do
   test one function, which writes a 300kB `.pyc` beside it, and `git add -A` put one in
   0.5.1. Untracked, ignored, prevented at the source with `PYTHONDONTWRITEBYTECODE`, and
   preflight now refuses it, since the repository's rule about figures applies to everything.
+- **A tracked draft has to say how long it may be.** A declared budget with no draft
+  tracked against it has been a fact this refuses since the first release; its mirror was
+  missing, so a tracked draft with no declared length had no length it could exceed and
+  nothing could notice an eight-hundred-word answer arriving at four thousand. Three places
+  satisfy it -- the unit, the venue file, or `config default_words` as the house norm -- and
+  the tool never picks the number, because a default it chose would be the tool deciding how
+  long your work is. What it refuses is for nobody to have decided, which is the acceptance
+  question and the killing assumption again. Every write to a counted draft now also says
+  where it puts you rather than waiting for the stop.
 - **Five defects a fifth review found in the four changes above**, before any of it
   shipped. Grounding survived a depth change, so `--depth abstract --quote "..."` then
   `--depth replicated` produced a claim recording that the source attested a depth nothing

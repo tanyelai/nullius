@@ -151,6 +151,10 @@ DEFAULT_CONFIG = {
     "field": "",
     "contact": "",
     "default_venue": "",
+    # A number here satisfies the draft-length gate for every unit in the
+    # project. Unset on purpose: a default the tool picked would be the tool
+    # deciding how long your work is, which is the one thing it must not do.
+    "default_words": "",
     "vocabularies_suggested": 3,
     "indexes": ["openalex", "crossref", "arxiv", "europepmc"],
     "snowball_depth": 1,
@@ -1497,20 +1501,24 @@ def check_attribution(store, text, label):
 
 
 def effective_budget(store, unit, cfg):
-    """The unit's own figure if it declared one, otherwise the venue's. Read here
-    rather than copied at start, so editing the venue file moves every unit that
-    targets it instead of leaving a stale snapshot behind."""
+    """The unit's own figure, else the venue's, else the project's house norm.
+    Read here rather than copied at start, so editing the venue file moves every
+    unit that targets it instead of leaving a stale snapshot behind."""
     declared = (unit.get("budget") or {}).get("words")
     if declared:
         return declared, "declared for this unit"
     name = unit.get("venue")
-    if not name:
-        return None, None
-    vpath = venue_path(store, name)
-    if not vpath.is_file():
-        return None, None
-    words = parse_venue(vpath, cfg["section_thin_words"])["words"]
-    return (words, f"{os.path.relpath(vpath, store.root)}") if words else (None, None)
+    vpath = venue_path(store, name) if name else None
+    if vpath is not None and vpath.is_file():
+        words = parse_venue(vpath, cfg["section_thin_words"])["words"]
+        if words:
+            return words, os.path.relpath(vpath, store.root)
+    house = cfg.get("default_words")
+    try:
+        house = int(house)
+    except (TypeError, ValueError):
+        house = 0
+    return (house, "default_words, the project's house norm") if house else (None, None)
 
 
 def closed_work_count(store):
@@ -1943,13 +1951,28 @@ def unit_findings(store):
                           "whether the section does its job.")
 
     budget, _ = effective_budget(store, unit, cfg)
-    if budget and not tracked_drafts(store, unit, counted_only=True):
+    counted = tracked_drafts(store, unit, counted_only=True)
+    if counted and not budget:
+        # The mirror of the gate below, and it was missing, so a draft with no
+        # declared length had no length it could exceed. That is how a request
+        # for a proposal comes back at four thousand words: nobody decided, and
+        # nothing could notice. Length is a decision taken before the writing,
+        # not a property that emerges from it -- and the tool does not get to
+        # make it, only to refuse to let you not make it. The same shape as the
+        # acceptance question, the killing assumption and the scope boundary.
+        facts.append(
+            f"{len(counted)} draft(s) tracked and nothing says how long they "
+            f"are allowed to be. `nullius start --words N`, a `words:` line in "
+            f"the venue file, or `nullius config default_words N` once for the "
+            f"house norm. Short is the default worth having and long is a "
+            f"decision worth recording; with no number, neither is happening.")
+    if budget and not counted:
         facts.append(f"a budget of {budget} words is declared and no draft is "
                      f"tracked against it, so nothing is measuring it. "
                      f"`nullius artifact <path>`, or drop the budget.")
     elif budget:
         words = sum(count_words(f.read_text(encoding="utf-8", errors="replace"))
-                    for f in tracked_drafts(store, unit, counted_only=True))
+                    for f in counted)
         if words > budget and not unit.get("trade"):
             facts.append(f"{words} words against a declared budget of {budget}. "
                          f"Over budget an addition is a trade, not an addition: "
@@ -4534,6 +4557,19 @@ def hook_pre_write(payload):
         if depth:
             notes.append(f"{key}: read to `{depth}`")
     said = []
+    unit_now = store.unit
+    if unit_now and rel in (unit_now.get("artifacts") or []) \
+            and rel not in (unit_now.get("excluded") or []):
+        b, _ = effective_budget(store, unit_now, cfg)
+        if b:
+            others = sum(count_words(f.read_text(encoding="utf-8", errors="replace"))
+                         for f in tracked_drafts(store, unit_now, counted_only=True)
+                         if os.path.relpath(f, store.root) != rel)
+            after = others + count_words(text)
+            said.append(f"nullius: this write puts the tracked draft(s) at "
+                        f"{after} of {b} words."
+                        + ("  Over. An addition here is a trade: name what it "
+                           "costs, or subtract." if after > b else ""))
     if leads:
         said.append("nullius: " + rel + " is not tracked by this unit, so these "
                     "are leads rather than refusals -- " + "; ".join(

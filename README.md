@@ -307,6 +307,40 @@ The passage is checked verbatim against the cached text or the note is refused, 
 claim records whether its depth came from the source or from the session. That row is the
 one *nullius in verba* did not have.
 
+## How long is it allowed to be
+
+Nobody writing by hand produces four thousand words because nobody asked for eight hundred.
+A model does, every time, unless a number was decided first.
+
+So the mirror of an old gate is now closed. A declared budget with no draft tracked against
+it has always been a fact this refuses. **A tracked draft with no declared length now is
+too**, because without a number there is nothing the writing can exceed and no point at
+which an addition becomes a trade.
+
+```
+./.nullius/bin/nullius start proposal write "draft it" --artifact p.md --words 900
+./.nullius/bin/nullius config default_words 900     # or once, as the house norm
+```
+
+Three places satisfy it: the unit, the venue file, or the project's house norm. **The tool
+never picks the number.** It has no view on how long your work should be, and a default it
+chose would be exactly that. What it refuses is for nobody to have chosen, which is the same
+move as the acceptance question, the killing assumption and the scope boundary.
+
+Every write to a counted draft then says where it puts you, rather than waiting for the
+stop:
+
+```
+nullius: this write puts the tracked draft(s) at 1,040 of 900 words.
+  Over. An addition here is a trade: name what it costs, or subtract.
+```
+
+**What this does not reach.** Anything not tracked as an artifact, including a session's
+prose in the terminal. Track a slide deck or a memo and it is covered; leave it untracked
+and only [`invariants/voice.md`](invariants/voice.md) applies, which is an instruction and
+therefore the weaker kind of constraint. This repository is candid about that difference
+everywhere else and should be here too.
+
 ## What not knowing has to become
 
 Every other gate here can refuse. None of them could say *not yet, and here is the door*, and

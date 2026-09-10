@@ -3,6 +3,15 @@
 **Lead with the answer, then stop.** First sentence carries the finding, the number or the
 decision. No preamble, no restating the question.
 
+**Short is the default and long is a request.** Nobody writing by hand produces four
+thousand words because nobody asked for eight hundred. Write the version a reader can
+finish, and say what a longer one would add; if they want it, they will say so. A draft
+tracked against a declared length has this as a gate, because a length is a decision
+somebody takes before the writing rather than a property that emerges from it. Everything
+else -- an explanation in the terminal, a summary, an answer to a question -- has only this
+sentence, and this sentence is an instruction, which is the weaker kind of constraint and
+is named as such throughout this repository.
+
 **Say "I don't know," and name what would settle it.** A confident guess is cheaper to
 produce than an admission and costs more than anything else here. In research it does not
 cost a debugging session; it costs a chapter. `nullius needs "<the observation>"` makes it a

@@ -613,7 +613,7 @@ python3 "$NULLIUS" init >/dev/null 2>&1
 LOOP_JSON="{\"cwd\":\"$PWD\"}"
 python3 -c "open('p.md','w').write('# Method\n' + 'word '*3000)"
 expect_exit 0 "open a write unit over a draft" \
-  python3 "$NULLIUS" start w1 write "revise" --artifact p.md
+  python3 "$NULLIUS" start w1 write "revise" --artifact p.md --words 20000
 expect_exit 0 "accept" python3 "$NULLIUS" accept "is the frame stated"
 expect_exit 0 "close"  python3 "$NULLIUS" close "in the Method"
 for n in 4200 5600 7000; do
@@ -631,7 +631,7 @@ mkdir -p worked && cd worked
 python3 "$NULLIUS" init >/dev/null 2>&1
 WORK_JSON="{\"cwd\":\"$PWD\"}"
 python3 -c "open('p.md','w').write('# Method\n' + 'word '*3000)"
-python3 "$NULLIUS" start w2 critique "revise" --artifact p.md >/dev/null
+python3 "$NULLIUS" start w2 critique "revise" --artifact p.md --words 20000 >/dev/null
 python3 "$NULLIUS" accept "does it go out" >/dev/null
 python3 "$NULLIUS" close "in the Method" >/dev/null
 i=0
@@ -1179,7 +1179,7 @@ IW="$WORK/inject"; mkdir -p "$IW"
   # growth signal is checked through `status` above; this is the stop's own
   # channel, which is the one that actually reaches a turn.
   python3 -c "open('p.md','w').write('# M\n' + 'word '*3000)"
-  expect_exit 0 "open a write unit" N4 start g write "revise" --artifact p.md
+  expect_exit 0 "open a write unit" N4 start g write "revise" --artifact p.md --words 20000
   expect_exit 0 "accept" N4 accept "is the frame stated"
   expect_exit 0 "close"  N4 close "in the M section"
   for n in 4200 5600 7000; do
@@ -1490,6 +1490,54 @@ TERSE
   printf '%s\n' "$pass $fail" > "$RW/.tally" )
 read -r r_pass r_fail < "$RW/.tally"
 pass=$((pass + r_pass)); fail=$((fail + r_fail))
+
+# ---- a draft has to say how long it may be --------------------------------
+# The gate below it, a budget with no draft, shipped in the first release. Its
+# mirror did not, so a tracked draft with no declared length had no length it
+# could exceed, and a request for a proposal came back at whatever length the
+# writing happened to reach. The tool does not pick the number; it refuses to
+# let nobody pick one.
+LW="$WORK/length"; mkdir -p "$LW"
+( cd "$LW" || exit 1
+  pass=0; fail=0
+  N8() { python3 "$NULLIUS" "$@"; }
+  expect_exit 0 "init" N8 init --field t
+  printf 'a first paragraph.\n' > p.md
+  expect_exit 0 "open a write unit with no length" N8 start w write "draft it"
+  expect_exit 0 "accept" N8 accept "does it state the claim"
+  expect_exit 0 "close"  N8 close "at p.md:1"
+  expect_hook stop 0 "with no draft tracked, nothing is owed"  "{\"cwd\":\"$LW\"}"
+  expect_exit 0 "track the draft" N8 artifact p.md
+  expect_hook stop 2 "a tracked draft with no declared length refuses" "{\"cwd\":\"$LW\"}"
+  expect_grep "nothing says how long" "and says so" N8 status
+
+  # any of the three places satisfies it
+  expect_exit 0 "the house norm, set once" N8 config default_words 900
+  expect_hook stop 0 "and the draft may now be finished"       "{\"cwd\":\"$LW\"}"
+  expect_grep "house norm" "status names where the number came from" N8 status
+
+  # a draft excluded from the count is not owed one
+  expect_exit 0 "clear the house norm" N8 config default_words ""
+  expect_exit 0 "exclude the draft from the count" N8 artifact p.md --excluded
+  expect_hook stop 0 "an uncounted draft owes no length" "{\"cwd\":\"$LW\"}"
+  expect_exit 0 "count it again" N8 artifact p.md
+  expect_hook stop 2 "and a counted one owes one again" "{\"cwd\":\"$LW\"}"
+
+  # the count arrives while writing, not only at the stop
+  expect_exit 0 "declare a short one" N8 start w2 write "draft it" --artifact p.md --words 40 --force
+  expect_exit 0 "accept" N8 accept "does it state the claim"
+  expect_exit 0 "close"  N8 close "at p.md:1"
+  SHORT="{\"cwd\":\"$LW\",\"tool_input\":{\"file_path\":\"p.md\",\"content\":\"one two three four five\"}}"
+  LONG="{\"cwd\":\"$LW\",\"tool_input\":{\"file_path\":\"p.md\",\"content\":\"$(python3 -c "print('word '*80, end='')")\"}}"
+  expect_hook_out pre-write says "of 40 words" \
+    "a write says where it puts the draft"               "$SHORT"
+  expect_hook_out pre-write silent "Over. An addition" \
+    "and does not cry over one that fits"                "$SHORT"
+  expect_hook_out pre-write says "Over. An addition here is a trade" \
+    "a write that goes over says what that now costs"    "$LONG"
+  printf '%s\n' "$pass $fail" > "$LW/.tally" )
+read -r l_pass l_fail < "$LW/.tally"
+pass=$((pass + l_pass)); fail=$((fail + l_fail))
 
 echo
 echo "  $pass passed, $fail failed"
