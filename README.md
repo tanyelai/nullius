@@ -463,9 +463,9 @@ reconstruct from the draft. Feed the markdown to whatever build you already have
 The report closes on what it does not establish, which is most things: not coverage, not
 quality, and not independence where a record carried no author identifiers.
 
-## Three agents, and why they run blind
+## Four agents, and why they run blind
 
-The plugin installs three subagents alongside the CLI. Each one starts in a **clean context**,
+The plugin installs four subagents alongside the CLI. Each one starts in a **clean context**,
 which is the feature rather than an implementation detail: a second opinion is worth something
 only if it did not watch you form the first one.
 
@@ -474,6 +474,7 @@ only if it did not watch you form the first one.
 | `skeptic` | takes one claim through one lens and returns survives, dies, or the observation that would settle it |
 | `librarian` | runs a search protocol and returns records: identifiers, counts, screening decisions. It is forbidden from summarising them |
 | `referee` | reviews a draft as a reviewer at one named venue, against that venue's own written requirements |
+| `reader` | reads one source at a stated depth and returns what it establishes, every point carrying a passage it has checked verbatim with `nullius quote` |
 
 Ask for them in plain words: *have the skeptic take apart c003*, or *get the referee to read
 this against the venue file*.
@@ -485,7 +486,15 @@ because a summary is exactly where a thin search stops looking thin: six shallow
 confident paragraph about what the field thinks, and the thinness is no longer visible to
 anybody, including you.
 
-None of the three decides anything. They return findings, and what to do about a finding stays
+The `reader` is the one that looks like it breaks the librarian's rule and does not. That
+prohibition is about summarising **a set of works**, where the summary hides how thin the set
+was. Explaining **one source whose full text you hold** is a different act, and it is
+checkable in a way no summary is: every point comes back with a passage, the agent runs
+`nullius quote` on each before returning it, and a fabricated point cannot produce a passage
+that verifies. Without cached text it refuses to start, because an explanation built from an
+abstract is the failure it exists to prevent rather than a smaller version of the job.
+
+None of the four decides anything. They return findings, and what to do about a finding stays
 yours.
 
 ## Where the rest of it is

@@ -23,9 +23,22 @@ One per pass, given to you.
 | `generality` | what exactly does the evidence license, and where does it stop |
 | `novelty` | who did this already, under what name |
 | `measurement` | does the instrument measure the construct the claim is about |
+| `parsimony` | which parts could be deleted and the claim still hold |
+| `baseline` | what is the simplest thing that would also produce this, and how much worse is it |
 
 A lens is a failure mode, not a topic. Stay inside yours; findings outside it are noise the
 requester has to process.
+
+**On `novelty`, read the search log before you form a view.** `nullius coverage` says how
+many vocabularies were tried and what came back; the ledger holds what resolved. A judgement
+about what exists in a literature, formed without looking at what was searched for, is the
+impression this whole tool is built against.
+
+**On `parsimony` and `baseline`, the honest answer is usually that it is fine.** These two
+are where a critic can always find something, because anything can be described as having
+one part too many. They earn their place only if you can name the part and say what happens
+without it, or name the simpler thing and say what it costs. If you cannot, the claim
+survives, and saying so is the finding.
 
 ## How to attack it
 
