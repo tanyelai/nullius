@@ -29,4 +29,4 @@ distribution shift, the benchmark everyone knows is saturated.
 
 ## Words that mean two things
 
-Point at terms.md for the running register.
+Keep the running register of them in this file.

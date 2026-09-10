@@ -8,13 +8,15 @@ unread paper, the unsearched literature and the unbounded critique into states a
 **cannot finish in**.
 
 > [!NOTE]
-> **Status: installable, and nothing is left stubbed.** The ledger, the gates, multi-index
+> **Status: installable, and one thing is still described and unbuilt.** The ledger, the gates, multi-index
 > search with fallbacks, the citation walk, the venue walk and the calibration engine all
-> work: 461 assertions in
+> work: 456 assertions in
 > [`tests/smoke.sh`](tests/smoke.sh), offline and in both directions, plus seven
 > end-to-end [scenarios](evals/) against live indexes. What remains is calibration, and
 > [algorithms/](algorithms/) says where each mechanism is weakest, including that none of
-> them has been evaluated against a control.
+> them has been evaluated against a control. The folklore walk that
+> [WHY.md](WHY.md) section 4 describes does not exist: `folklore` is a status you can record,
+> not a trail anything follows.
 >
 > The argument is in **[WHY.md](WHY.md)**: what goes wrong, why better instructions do
 > not fix it, and what a harness has to constrain instead. Read that first if you want
@@ -143,10 +145,10 @@ that fires at startup hands the session the whole vocabulary.
 | reading a literature | `lit` · `snowball` · `screen` · `coverage` |
 | recording what you know | `cite` · `note` · `claim` · `considered` · `falsify` |
 | recording what you do not | `needs` · `settled` |
-| critiquing something | `finding` · `resolve` · `verdict` · `prose` · `unread` |
+| critiquing something | `finding` · `resolve` · `verdict` · `unread` |
 | handing it to someone | `report` · `audit` |
 
-That is a third of them. `nullius --help` lists all forty-three with their flags, `--help` on
+That is a third of them. `nullius --help` lists all forty-two with their flags, `--help` on
 any one spells out that command's, and `/nullius` carries the rest of the vocabulary. The
 reference lives there rather than here, because a table kept by hand goes stale and this one
 had already started to.
@@ -338,15 +340,15 @@ travelling with the unit, because a gate with no way past it is a gate people ro
 
 Length was never the problem. A long document with nothing repeated is fine; a short one
 that makes its point three ways is not, and that is the thing a model does and a person
-does not. It is also, unlike elegance, partly measurable:
+does not. It is also, unlike elegance, partly measurable, and `nullius check` reports it
+alongside everything else it reads:
 
 ```
-$ nullius prose proposal.md
-nullius prose  proposal.md
-  108 words, about 1 minute(s) to read
-  3 paragraph(s) long enough to compare, 0 figure/table/diagram, short version at the top: yes
-  78%  line 3  The central difficulty is that speculative decoding is eva
-       line 9  Nobody has characterised whether draft and verify decoding
+$ nullius check proposal.md
+proposal.md: 108 words, 0 citation key(s), 0 bare identifier(s), 0 attributed name(s)
+  chosen proposal.md: 1 passage pair(s) share most of their content words, which is
+      78%  line 3 "The central difficulty is that speculative d..."
+              line 9 "Nobody has characterised whether draft and ..."
 ```
 
 Three signals, all of them counts:

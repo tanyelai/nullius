@@ -39,7 +39,7 @@ Each with its locator: table, figure, page.
 
 ## Terms it redefines
 
-If it uses a shared word its own way, record both readings in terms.md.
+If it uses a shared word its own way, record both readings here.
 
 ## What would have to be true
 

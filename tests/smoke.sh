@@ -1545,7 +1545,12 @@ LW="$WORK/length"; mkdir -p "$LW"
 read -r l_pass l_fail < "$LW/.tally"
 pass=$((pass + l_pass)); fail=$((fail + l_fail))
 
-# ---- one point made twice is measurable; length was never the problem -----
+# ---- one point made twice is measurable, and `check` is where it surfaces --
+# There was a `prose` command for this and it was 85% of `check`: the same word
+# count, the same passage pairs, the same percentages and line numbers, the
+# same closing sentence. The signals live in prose_signals, which check_artifact
+# already calls, so the capability stayed and the fourth path-taking command
+# went.
 PW="$WORK/prose"; mkdir -p "$PW"
 ( cd "$PW" || exit 1
   pass=0; fail=0
@@ -1564,54 +1569,27 @@ Nobody has characterised whether draft and verify decoding changes output qualit
 than latency. The literature evaluates speculative decoding on latency and the quality
 question is not addressed across the three vocabularies we surveyed.
 REP
-  cat > tight.md <<'TIGHT'
-# A proposal
+  printf '# A proposal\n\n## In one paragraph\n\nSpeculative decoding is evaluated on latency and nobody asked what it does to quality.\n' > tight.md
+  expect_grep "share most of their content words" "check finds a restated point" N9 check rep.md
+  expect_grep "line 3" "with both locations" N9 check rep.md
+  expect_grep "%  line" "and how much they share" N9 check rep.md
+  bash -c "cd '$PW' && python3 \"$NULLIUS\" check tight.md | grep -q 'content words'" \
+    && bad "a draft that repeats nothing was flagged" || ok
+  expect_exit 0 "and none of it refuses" N9 check rep.md
 
-## In one paragraph
-
-Speculative decoding is evaluated on latency and nobody has asked what it does to quality.
-
-## Method
-
-We fix an edit distance budget and sweep it, scoring a paired comparison against greedy
-decoding on held-out prompts with two independent raters and reported agreement.
-
-| budget | detection |
-|---|---|
-| 0.1 | 0.9 |
-| 0.2 | 0.7 |
-TIGHT
-  expect_grep "line 3" "a restated point is found, with both locations" N9 prose rep.md
-  expect_grep "%" "and how much they share" N9 prose rep.md
-  expect_grep "no passage pair shares" "a draft that repeats nothing says so" N9 prose tight.md
-  expect_grep "figure/table/diagram" "figures are counted" N9 prose tight.md
-  expect_grep "short version at the top: yes" "and a named summary is found" N9 prose tight.md
-  expect_grep "short version at the top: no" "and its absence is too" \
-    bash -c "cd '$PW' && python3 -c \"
-open('nowayin.md','w').write('# T\\n\\n' + ' '.join('word%d' % i for i in range(400)))\" && python3 \"$NULLIUS\" prose nowayin.md"
-  expect_exit 0 "prose refuses nothing"      N9 prose rep.md
-
-  # it reaches the stop as a chosen matter, never as a fact
-  expect_exit 0 "open a unit over the repetitive draft" \
-    N9 start w write "draft it" --artifact rep.md --words 5000
-  expect_exit 0 "accept" N9 accept "does it state the claim"
-  expect_exit 0 "close"  N9 close "at rep.md:3"
-  expect_hook stop 0 "repetition never refuses the stop" "{\"cwd\":\"$PW\"}"
-  expect_hook_out stop says "share most of their content words" \
-    "but it does reach the person"                       "{\"cwd\":\"$PW\"}"
-
-  # a long draft with no figure and no way in
+  # a long draft with no figure and no way in, both past the floor
   python3 - <<'LONG'
-# distinct vocabulary per paragraph, so the only signal left is the absence of
-# any figure past the floor
 import random
 random.seed(7)
 syll = "ka lo mi ne ta ru pe si dov gal hen ir jo kul mar nyx".split()
 def word(): return "".join(random.choice(syll) for _ in range(3))
-paras = [" ".join(word() for _ in range(60)) + "." for _ in range(14)]
-open("long.md", "w").write("# T\n\n" + "\n\n".join(paras))
+open("long.md", "w").write("# T\n\n" + "\n\n".join(
+    " ".join(word() for _ in range(100)) + "." for _ in range(9)))
 LONG
-  expect_grep "nothing but prose" "a long draft with no figure is reported" N9 prose long.md
+  expect_grep "nothing but prose" "a long draft with no figure is reported" N9 check long.md
+  expect_grep "no short version at the top" "and one with no way in" N9 check long.md
+  expect_exit 0 "the prose command is gone" \
+    bash -c "cd '$PW' && ! python3 \"$NULLIUS\" prose rep.md 2>/dev/null"
   printf '%s\n' "$pass $fail" > "$PW/.tally" )
 read -r p_pass p_fail < "$PW/.tally"
 pass=$((pass + p_pass)); fail=$((fail + p_fail))

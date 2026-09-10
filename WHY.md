@@ -24,7 +24,7 @@ constraint in this harness turns out to be that sentence pointed at a different 
 | the author's word | an `authors-claim` may never be written as a bare assertion |
 | the abstract's word | warrant is capped by how deeply you actually read |
 | the field's word | `established` is computed from author-set overlap, never declared |
-| the repeated word | folklore is a citation trail that never reaches data |
+| the repeated word | `folklore` is a status you may record, and prose is held to it |
 | your own word | your unpublished data is held to a published paper's bar |
 | the reviewer's word | a `defensible` finding closes with one sentence, permanently |
 | **the session's own word** | a read depth may be grounded in a passage checked against the source, and a claim records which it was |
@@ -183,10 +183,13 @@ and the two must not be confused:
 | vocabularies | how many distinct query vocabularies were logged | whether three is enough |
 | format | words or pages against the declared limit | the limit, which the venue sets |
 
-And one is openly a **heuristic**, which is why it reports and never blocks: walking a
-claim's citations backwards to see whether the trail reaches primary evidence. No index has a
-*“this work reports data”* field, so the walk infers it from work type and reference count.
-It is a good lead and a bad gate.
+**And one was described here as built and is not.** Walking a claim's citations backwards to
+see whether the trail ever reaches primary evidence would be the cheapest real epistemic left,
+and this document has described it in the present tense for several releases. Nothing does it.
+`folklore` is a status you can type, and typing it holds the prose to *marked unsourced, or
+dropped*, which is worth something and is not the walk. It is written here as unbuilt rather
+than quietly dropped, because a reader who believed the earlier sentence was relying on a
+check that was never running.
 
 Two of these are the cheapest real epistemics available and nobody builds them. **Source
 independence is set arithmetic on author lists.** **Folklore is a citation trail that never
@@ -273,10 +276,16 @@ claims wearing one word, and they differ in whether they can point at something 
 | `coherence` | two locations in the artifact | the pairs are finite |
 | `enhancement` | **nothing** | **it never does** |
 
-So: **a finding must cite a required-section id, a claim id with an empty warrant, or two
-conflicting locations. A finding that cites none of the three is enhancement, and
-inadmissible.** No severity intuition required: a finding either has a referent or it does
-not.
+So: **a finding must name one of those referents and carry a locator, or it is enhancement
+and inadmissible.** No severity intuition required: a finding either has a referent or it
+does not.
+
+**What is checked, exactly.** That the referent is one of the four and that the locator is
+not empty. The locator is stored and printed; it is not resolved against the venue file or
+against a claim id, so a finding can name `structural` and point at a line that requires
+nothing. The termination guarantee is therefore that the *set of admissible kinds* is
+closed, which is what makes the loop finite, and not that each finding has been checked
+against the thing it cites. That is a smaller claim than this section used to make.
 
 The same rule keeps the tool honest in the other direction. The completeness sweep is
 **walked, not sampled**: every required section gets present, thin or absent, every run.
@@ -369,9 +378,9 @@ into a nuisance.
 | a citation is unresolved, or retracted | single-source claims present |
 | a claim sits above its source's read depth | a status reached through author *names* rather than identifiers |
 | a status is stronger than source independence earns | a weak claim written as a bare assertion |
-| a source kind cannot carry the status claimed of it | a citation trail that never reaches data |
+| a source kind cannot carry the status claimed of it | passages that repeat one point, and a long draft with no figure |
 | a survey unit left items unscreened | the extension-loop signal |
-| over the format budget with no trade named | judge scores, for ranking only |
+| over the format budget with no trade named | a read depth attested by the session rather than by the source |
 | a budget is declared and no draft is tracked against it | |
 
 The left column needs no calibration to be right. The right column would need a hundred or
@@ -436,8 +445,9 @@ wrong in its own. So the tool ships knowing nothing, and the norms are configura
 - **`venues/<venue>.md`**: required sections, page limit, what reviewers there actually ask
   for. Bootstrapped once from the real call or author guidelines. A structural finding must
   cite a line in this file, so the tool cannot invent a requirement.
-- **`program.md`**: what you are actually working on, so a thread that does not trace to it
-  can be flagged as the distraction it is.
+- **`program.md`**: what you are actually working on. Nothing reads it; it is there for you
+  and for a session you point at it. An earlier version of this line promised that a thread
+  failing to trace to it would be flagged, and no code has ever done that.
 - **`threads/`, `papers/`, `claims.jsonl`, `falsified.md`**: the durable record. A thread
   holds the question, the current best answer *with its warrant and its status*, what would
   change it, what has been ruled out, and the next falsifiable step. This is the
