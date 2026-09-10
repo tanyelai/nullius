@@ -27,11 +27,17 @@ constraint in this harness turns out to be that sentence pointed at a different 
 | the repeated word | folklore is a citation trail that never reaches data |
 | your own word | your unpublished data is held to a published paper's bar |
 | the reviewer's word | a `defensible` finding closes with one sentence, permanently |
+| **the session's own word** | a read depth may be grounded in a passage checked against the source, and a claim records which it was |
 
-The last row is the one people are surprised by, and it is the reason this is a harness
+The reviewer's row is the one people are surprised by, and it is the reason this is a harness
 rather than a critic. Taking nobody's word for it cuts both ways: an unexamined objection is
 no better than an unexamined claim, and a tool that can always find one more thing wrong has
 stopped providing evidence and started providing pressure.
+
+The session's row was missing for a long time and it is the one that matters most when nobody
+is watching. Every other narrator in that table is somebody else. Whoever is typing the
+commands is a narrator too: with a person driving that is an honest broker, and in an
+unattended run it is the only narrator in the room.
 
 ## 2 · What goes wrong by default
 
@@ -217,10 +223,17 @@ read depth of its source.**
 | `method` | ok | ok | ok | refused |
 | `replicated` | ok | ok | ok | ok |
 
-This works where an instruction does not because the difference is **textual**. *“They report
-a 12% gain”* and *“the method gives a 12% gain”* are different strings, and the ledger holds
-the class. A script can decide it. *“Be appropriately skeptical”* cannot be decided by
-anything.
+This works where an instruction does not because the class is **recorded before the claim
+exists**, so the comparison is arithmetic on two ledger fields rather than a judgement about
+prose. *“Be appropriately skeptical”* cannot be decided by anything; `strength ≤ depth` can.
+
+**Be clear about what that does not check.** Nothing compares the recorded strength against
+the sentence in the draft: *“they report a 12% gain”* and *“the method gives a 12% gain”* are
+indeed different strings, and no script here reads either of them. And the depth itself is
+recorded by whoever is typing. With a person reading a paper that is an honest-broker field
+and the ordering is the discipline. To settle it against the source instead, `nullius note
+<key> --depth <d> --quote "<a passage>"` checks the passage verbatim against the cached text,
+and every claim records whether its depth rested on the source or on the session.
 
 ## 6 · Settled versus proposed
 
@@ -345,8 +358,17 @@ It is the difference between a gate you trust and one you learn to route around.
 
 ![The four hook points and what each one refuses, and the two channels out of the stop gate: a fact blocks, a chosen threshold is reported.](assets/gates.svg)
 
-No wrapper, no proxy, no prompt prepended. Shell scripts on hook events, one ledger on disk,
-and agents that get a clean context window.
+No wrapper and no proxy: shell scripts on hook events, one ledger on disk, and agents that
+get a clean context window.
+
+It **does** prepend text, and saying otherwise here was wrong. `SessionStart` and
+`PostCompact` inject the live state of the thread you are on, then the five invariant files,
+then the command vocabulary. State first, because it is the only part that is about today and
+it used to sit two thirds of the way down, behind the rules, which is both against
+`voice.md`'s own first line and against the position *Lost in the Middle* puts worst. What
+crosses the boundary is what is still live: a search every result of which has been screened
+does not recite its rows again, and a buried idea is named when it shares a term with the
+question in front of you and counted when it does not. The ledger keeps all of it either way.
 
 ```mermaid
 sequenceDiagram
@@ -418,12 +440,23 @@ wrong in its own. So the tool ships knowing nothing, and the norms are configura
   depth and the claim is capped accordingly. That is a state, not a failure.
 - **Not an author.** It has no opinion about what you should study, and the parts that look
   like opinions are your own `field.md` read back to you.
-- **Not an autonomous research agent, and deliberately not.** That is a different programme
-  with its own literature and its own critiques: AI Scientists Fail Without Strong
-  Implementation Capability, and How Far Are AI Scientists from Changing the World?
-  ([arXiv:2507.23276](https://arxiv.org/abs/2507.23276)). This assumes a person doing the
-  research and constrains what their session must satisfy. Every gate here presupposes someone
-  who can be refused.
+- **Not an AI Scientist, and not the opposite of one either.** This was written as a flat
+  refusal of that programme and the grounds were thinner than the sentence: *How Far Are AI
+  Scientists from Changing the World?* ([arXiv:2507.23276](https://arxiv.org/abs/2507.23276))
+  is a prospect-driven survey identifying *"key bottlenecks and the critical components
+  required"*, which is a roadmap rather than a case against, and *AI Scientists Fail Without
+  Strong Implementation Capability*
+  ([arXiv:2506.01372](https://arxiv.org/abs/2506.01372)) was cited here by bare title, a form
+  this tool refuses in a draft.
+
+  What is true is narrower and more useful. The documented failure of autonomous research
+  agents is output nobody can check, which is the list in section 2. So the honest position is
+  that this is the half that programme is missing, and that **an unattended run is tolerable
+  exactly in proportion to how checkable its output is**: retrieval and screening return
+  identifiers that resolve or do not, and generation returns nothing a gate can read. What
+  changes without a person is which gates still mean something. The ones grounded in the world
+  hold; the ones resting on the session's own word have to be grounded too, which is what
+  `--quote` is for, or carried into the output as attested rather than checked.
 
 ## 12 · Where this is
 

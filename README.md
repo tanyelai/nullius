@@ -10,7 +10,7 @@ unread paper, the unsearched literature and the unbounded critique into states a
 > [!NOTE]
 > **Status: installable, and nothing is left stubbed.** The ledger, the gates, multi-index
 > search with fallbacks, the citation walk, the venue walk and the calibration engine all
-> work: 340 assertions in
+> work: 380 assertions in
 > [`tests/smoke.sh`](tests/smoke.sh), offline and in both directions, plus seven
 > end-to-end [scenarios](evals/) against live indexes. What remains is calibration, and
 > [algorithms/](algorithms/) says where each mechanism is weakest, including that none of
@@ -120,8 +120,14 @@ which is deliberate: it may not ask for what it cannot cite a line for.
 That last command is the shape of the whole tool. Ask for `--strength mechanism` on a
 source you only read to `abstract` and it refuses; ask for `--status established` on two
 papers that share an author and it refuses, because independence is set arithmetic on
-author lists rather than a judgement. Write `\\cite{somethingUnresolved}` into the draft
+author lists rather than a judgement. Write `\\cite{somethingUnresolved}` into a tracked draft
 and the write itself is refused.
+
+**A file the unit does not track is a scratch note**, and a scratch note is where the work
+actually happens. An invented identifier is still refused there, because that is a fact and
+it is the worst thing this tool could let through. An unattributed surname is reported as a
+lead instead, because the name may belong to something cited elsewhere or to nothing yet.
+`nullius artifact <path>` holds a file to the draft's bar when you are ready for that.
 
 When you try to finish, `nullius status` says why the gate is holding, and which of its
 reasons are facts and which are thresholds somebody chose.
@@ -133,14 +139,14 @@ that fires at startup hands the session the whole vocabulary.
 
 | when you are | the commands |
 |---|---|
-| opening work | `start` · `accept` · `status` · `done` |
+| opening work | `start` · `accept` · `status` · `done` · `compact` |
 | reading a literature | `lit` · `snowball` · `screen` · `coverage` |
 | recording what you know | `cite` · `note` · `claim` · `considered` · `falsify` |
 | recording what you do not | `needs` · `settled` |
 | critiquing something | `finding` · `resolve` · `verdict` |
 | handing it to someone | `report` · `audit` |
 
-That is a third of them. `nullius --help` lists all forty with their flags, `--help` on
+That is a third of them. `nullius --help` lists all forty-one with their flags, `--help` on
 any one spells out that command's, and `/nullius` carries the rest of the vocabulary. The
 reference lives there rather than here, because a table kept by hand goes stale and this one
 had already started to.
@@ -252,6 +258,54 @@ Three more, against the two ways a screen quietly fails:
 
 And an `idea` unit does not close with no `considered` on the record: an idea with no rejected
 sibling is a preference rather than a choice, and the reasoning is the first thing lost.
+
+## A thread is a line of enquiry, and the gates read one
+
+Nobody works on one question at a time. `start --thread <name>` says which line this unit
+belongs to, and every search and claim written under it is stamped with that thread.
+
+```bash
+./.nullius/bin/nullius start novelty idea "has anyone measured X" --thread calibration
+```
+
+**The gates then read that thread and no other.** Unfiltered, one search logged in March
+satisfied *silence is a failed search* for every idea unit after it, and one failed
+vocabulary blocked every unrelated idea after that. A project with two live questions is the
+ordinary case rather than an exotic one.
+
+Nothing needs migrating: a record written before threads existed reads as `main`.
+
+## What is on disk, and what comes back
+
+They are different decisions and this tool used to make them once, so the only way to read
+less was to record less. The ledger keeps everything and `report` walks everything. What
+crosses a context boundary is what is still **live** on the thread in front of you:
+
+| | |
+|---|---|
+| a search | recites its kept works while anything is unscreened. After that its counts are in `coverage` and its rows stay there |
+| a buried idea | named when it shares a term with the question you are asking, counted when it does not. Never silently dropped, which the old cap at eight was |
+| what is unknown | until it is `observed` or `unmet`; `carried` keeps it coming back |
+
+`nullius compact` is the only thing that deletes, and it deletes only what can be rebuilt:
+cached full text, which `fulltext` refetches, and growth samples outside the window any
+detector reads. It will not remove a claim, a finding, a screening decision or a buried
+idea, and there is no flag that will. The file-drawer problem is why this tool writes things
+down in the first place.
+
+## Whose word a read depth rests on
+
+`strength ≤ depth` is the tool's flagship cap and both sides of it are typed by whoever is
+at the keyboard. With a person reading a paper that is an honest-broker field. In an
+unattended run it is the only unchecked thing left, so it can be settled against the source:
+
+```bash
+./.nullius/bin/nullius note lewis2020 --depth method --quote "we fine-tune the retriever"
+```
+
+The passage is checked verbatim against the cached text or the note is refused, and every
+claim records whether its depth came from the source or from the session. That row is the
+one *nullius in verba* did not have.
 
 ## What not knowing has to become
 

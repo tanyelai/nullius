@@ -10,3 +10,10 @@
 *.blg
 
 .DS_Store
+
+# Python bytecode. The tests load bin/nullius as a module to unit-test one
+# function, and that writes a 300kB .pyc next to it; `git add -A` swept one into
+# 0.5.1. The repository's rule about figures applies to everything: no generated
+# binary in the diff.
+__pycache__/
+*.pyc

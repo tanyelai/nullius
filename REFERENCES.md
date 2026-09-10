@@ -160,8 +160,14 @@ saturation signal here is a crude proxy for what these estimate, and
 | | |
 |---|---|
 | *How Far Are AI Scientists from Changing the World?* (2025) | [arXiv:2507.23276](https://arxiv.org/abs/2507.23276) |
+| Zhu et al. (2025), *AI Scientists Fail Without Strong Implementation Capability* | [arXiv:2506.01372](https://arxiv.org/abs/2506.01372) |
 
-The autonomous-agent programme this tool is deliberately not part of.
+The programme this tool is the missing half of rather than the opposite of. WHY.md section
+11 used to cite the first of these as grounds for declining autonomy outright; it is a
+prospect-driven survey of what is still missing, which is a roadmap, and the second was
+carried there by bare title with no identifier at all. Both are corrected, and the position
+now turns on what the phrase actually licenses: an unattended run is tolerable in proportion
+to how checkable its output is.
 
 ---
 

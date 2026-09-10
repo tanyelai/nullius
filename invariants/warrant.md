@@ -11,6 +11,11 @@ The obligation attaches to the **kind of claim**, not to how confident you feel.
 | something you derived | its premises, each itself warranted | plausibility |
 | your own unpublished data | `path:cell`, and it is held to a published paper's bar | having run it yourself |
 
+**A read depth is your word until it is the source's.** `nullius note <key> --depth <d>
+--quote "<a passage>"` checks the passage verbatim against the cached text; without one the
+depth is what whoever was typing said it was, and the claim records which. That is the
+ordinary case with a person reading, and it is the weakest link when nobody is watching.
+
 **A claim may not exceed the read depth of its source.** `abstract` supports *they report
 X*. `skim` adds *X holds*. `method` adds *their method shows why*. Only `replicated` supports
 *this generalises*. The ledger holds what you recorded before the claim existed, so this is

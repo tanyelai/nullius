@@ -85,6 +85,38 @@ The tool cannot decide whether a section is present in spirit, whether a suggest
 a boundary row, or whether a name refers to the work you meant. So it does not try. It refuses
 to let the list go unlooked-at and leaves the decision where it belongs.
 
+## Storage and surfacing are two decisions
+
+**Naive.** Write everything down, and hand all of it back at every session start. The
+file-drawer result says the record you did not keep stops being available and then you run
+the experiment again, so the writing half is right and stays.
+
+**Measured.** The handing-back half was the same decision. A driven project with 40 finished
+searches emitted 3,796 words at SessionStart and one with 80 emitted 8,116, because the
+per-search cap on kept works had no cap across searches. A fresh project with nothing in it
+emitted 2,091 words, of which 39 were about the project: 1.7x the ceiling this repository
+sets for its own subagents, and the part that was about today began 72% of the way down.
+Twelve buried ideas were injected as eight with no sign that four were missing.
+
+**Instead**, keep the ledger complete and make surfacing a query over state:
+
+```
+live(search)  = any result still unscreened          # else its counts are in `coverage`
+live(killed)  = shares a term with the question      # else counted, never dropped
+live(need)    = not observed and not unmet           # `carried` stays live, and says where
+scope         = the thread the open unit is on
+order         = state, then invariants, then vocabulary
+```
+
+The same ledger now emits 2,223 words at 40 searches instead of 3,796, and the excess no
+longer grows with the project. Deletion is a separate command and touches only what can be
+rebuilt.
+
+**Weak.** The floor is still 2,091 words and 94% of it is the invariants and the command
+list, which are what make the harness work at all. Nothing budgets them, and cutting them
+trades directly against the constraint reaching the model. Term overlap for buried ideas is
+the same crude instrument `scope` uses and will miss a re-proposal phrased in new words.
+
 ## Where all of this is weakest
 
 - **The severity classes are uncalibrated.** They rank; they do not measure. Calibrating them
