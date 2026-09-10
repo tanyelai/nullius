@@ -24,6 +24,7 @@ exists to catch.
 **Say what you do not understand.** A fluent explanation of a half-read paper is the
 characteristic failure of this work, and the only thing that surfaces it is a list of what
 remains unaccounted for. An empty list, by default, is a claim -- and usually a false one.
+That list is `nullius needs`, and `report` prints it.
 
 **Retracted and preprint are facts on the record, not details.** Check them, and let them
 travel with the citation.

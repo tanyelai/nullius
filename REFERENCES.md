@@ -93,6 +93,42 @@ whose most valuable finding is often that nothing more is needed, which is why t
 told about the bias explicitly and why "zero material findings" is defined as a verdict
 rather than as a short list.
 
+## Why a loop is not a check
+
+| | |
+|---|---|
+| **Huang et al. (2023)**, *Large Language Models Cannot Self-Correct Reasoning Yet* | [arXiv:2310.01798](https://arxiv.org/abs/2310.01798) |
+
+The measurement behind [algorithms/loops.md](algorithms/loops.md). Revision with no external
+feedback in it is close to a no-op with a negative tail, and the same paper reports that
+multi-agent debate underperforms plain self-consistency, which is the finding usually left out
+of the citation: the shape of the conversation was not what was doing the work.
+
+| | |
+|---|---|
+| **Turpin et al. (2023)**, *Language Models Don't Always Say What They Think* | [arXiv:2305.04388](https://arxiv.org/abs/2305.04388) |
+| **Sharma et al. (2023)**, *Towards Understanding Sycophancy in Language Models* | [arXiv:2310.13548](https://arxiv.org/abs/2310.13548) |
+
+Why the three agents get a clean context and why the `skeptic` is not told whose claim it is.
+A stated reason can misrepresent the actual one, and a preference-trained model drifts toward
+agreement, so a critic that watched the claim being formed is checking the wrong thing.
+
+## The same problem, in software, where the feedback is fast
+
+| | |
+|---|---|
+| **Cemri et al. (2025)**, *Why Do Multi-Agent LLM Systems Fail?* | [arXiv:2503.13657](https://arxiv.org/abs/2503.13657) |
+| **Xia et al. (2024)**, *Agentless: Demystifying LLM-based Software Engineering Agents* | [arXiv:2407.01489](https://arxiv.org/abs/2407.01489) |
+| **Ouyang et al. (2024)**, *RepoGraph: Enhancing AI Software Engineering with Repository-level Code Graph* | [arXiv:2410.14684](https://arxiv.org/abs/2410.14684) |
+
+Software engineering ran this experiment first and its results point the same way. A failure
+taxonomy over 1,600 traces finds the losses in system design and verification rather than in
+model capability; a deliberately structureless localise-then-repair pipeline beat the agent
+frameworks it was compared against; and the gain that did generalise came from handing every
+existing scaffold a typed map of the artifact, not from rearranging who talks to whom. This
+harness has no control graph and an evidence graph, which is the same bet, made earlier and
+for the reasons in [WHY.md](WHY.md) section 3.
+
 ## The failures this tool gates against, as other people found them
 
 | | |

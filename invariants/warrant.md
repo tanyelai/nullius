@@ -17,7 +17,8 @@ X*. `skim` adds *X holds*. `method` adds *their method shows why*. Only `replica
 decided rather than argued.
 
 **There is no terminal `assumed` state.** An assumption is an open question wearing another
-word, and the point is that you cannot finish inside one.
+word, and the point is that you cannot finish inside one. Record it as one: `nullius needs
+"<what would settle it>"`, and dispose of it before the unit closes.
 
 **The counter-search is not optional on a consensus claim.** Searching again because the
 first hits were thin is ordinary work. Searching until something agrees with your hypothesis

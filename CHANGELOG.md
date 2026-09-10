@@ -3,6 +3,35 @@
 Versions follow [semantic versioning](https://semver.org). Until `1.0.0` the ledger format
 and the CLI surface may change; when they do, the change is listed here with what it breaks.
 
+## Unreleased
+
+**The third answer, and a gate that only ever passed.**
+
+- **`needs` and `settled`.** Not knowing had nowhere to go. Every way of saying it here was a
+  singleton or free text: one `accept` per unit, one `kills` per idea, one `decisive` per
+  interpretation, threads nobody counts, and a `skeptic` verdict with no ledger state to land
+  in. `nullius needs "<the observation that would settle it>"` is countable, outlives the unit
+  that found it, and arrives at every session start until it is `observed`, `unmet` or
+  `carried`. A unit does not close on one it opened and never came back to. An open one is
+  fine, and `carried` is how you say so.
+- **`--warrant assumed` names the mechanism.** It was refused and redirected to a free-text
+  thread file, which is a place things go rather than a place things come back from.
+- **The pre-write gate crashed on every clean write.** A duplicated attribution block
+  referenced two names that were not bound in that scope, and it sat after the refusal had
+  already been decided, so it could only ever raise. `cmd_hook` catches everything and exits 0
+  so a broken gate cannot wedge a session, which meant the suite's `expect_hook pre-write 0`
+  passed on a gate that was doing nothing. The read-depth note the PreToolUse hook is
+  documented to inject had therefore never once fired. Tests now assert the third direction:
+  not refused, and not silent either.
+- **A softer mode is gentler, not quieter.** Any `mode` outside `certain|block` skipped the
+  refusal and dropped the reasons with it, so a project in a soft mode heard less than a
+  strict one. The facts now go out through `systemMessage` and `additionalContext` instead.
+- **[algorithms/loops.md](algorithms/loops.md).** What may end a loop, and why an exit the
+  model computes is not one.
+- **[evals/control.md](evals/control.md).** The arm this repository has never run: the same
+  advice, enforced against not enforced. It needs real sessions, so it is a protocol rather
+  than a scenario, and it names the one instrument still missing to run it.
+
 ## 0.4.0
 
 **Seven gates, against two defect classes the first six did not cover.**

@@ -1,6 +1,6 @@
 # Evals
 
-Six scenarios, one per use case, each on a different AI subject picked at random and none of
+Seven scenarios, one per use case, each on a different AI subject picked at random and none of
 them one the author works in. Every scenario says what a healthy run produces **and what would
 count as a failure in both directions**: the tool blocking something it should allow, and
 passing something it should refuse.
@@ -25,6 +25,10 @@ control, human labels and an agreement measure. None of that exists here, and
 [`algorithms/harness.md`](../algorithms/harness.md) says so.
 
 Read a green run as *nothing broke on this path today*, not as evidence the tool works.
+
+The arm that would be evidence is designed in [control.md](control.md) and has not been run.
+It is the one comparison that matters, advice against enforcement, and it needs real sessions
+rather than this runner.
 
 ## One thing these runs taught about reading them
 

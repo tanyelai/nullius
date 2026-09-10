@@ -10,7 +10,7 @@ unread paper, the unsearched literature and the unbounded critique into states a
 > [!NOTE]
 > **Status: installable, and nothing is left stubbed.** The ledger, the gates, multi-index
 > search with fallbacks, the citation walk, the venue walk and the calibration engine all
-> work: 239 assertions in
+> work: 313 assertions in
 > [`tests/smoke.sh`](tests/smoke.sh), offline and in both directions, plus seven
 > end-to-end [scenarios](evals/) against live indexes. What remains is calibration, and
 > [algorithms/](algorithms/) says where each mechanism is weakest, including that none of
@@ -136,10 +136,11 @@ that fires at startup hands the session the whole vocabulary.
 | opening work | `start` · `accept` · `status` · `done` |
 | reading a literature | `lit` · `snowball` · `screen` · `coverage` |
 | recording what you know | `cite` · `note` · `claim` · `considered` · `falsify` |
+| recording what you do not | `needs` · `settled` |
 | critiquing something | `finding` · `resolve` · `verdict` |
 | handing it to someone | `report` |
 
-That is a third of them. `nullius --help` lists all thirty-seven with their flags, `--help` on
+That is a third of them. `nullius --help` lists all thirty-nine with their flags, `--help` on
 any one spells out that command's, and `/nullius` carries the rest of the vocabulary. The
 reference lives there rather than here, because a table kept by hand goes stale and this one
 had already started to.
@@ -251,6 +252,33 @@ Three more, against the two ways a screen quietly fails:
 
 And an `idea` unit does not close with no `considered` on the record: an idea with no rejected
 sibling is a preference rather than a choice, and the reasoning is the first thing lost.
+
+## What not knowing has to become
+
+Every other gate here can refuse. None of them could say *not yet, and here is the door*, and
+so the one thing a careful person does most often had nowhere to go. `nullius needs` records
+it as a countable state instead of a sentence:
+
+```bash
+./.nullius/bin/nullius needs "run it once on data the model never saw" \
+    --for c003 --cost "one afternoon of retraining"
+```
+
+It outlives the unit that found it, it comes back at every session start, and it closes three
+ways and no others:
+
+| | |
+|---|---|
+| `observed` | you got the observation. Say what it was |
+| `unmet` | it could not be got. Say why, and it travels with the conclusion rather than being dropped when the paragraph is written |
+| `carried` | still open, and you are saying where it now lives |
+
+**Staying open is fine, and `carried` is how you say so.** What the unit cannot close on is a
+question it asked itself and then walked past, which is the same guarantee the venue walk and
+the reviewer points give: enumeration, not judgement.
+
+This is also why `--warrant assumed` is refused. An assumption is an open question wearing
+another word, and now there is somewhere for it to be one.
 
 ## When a draft is only getting longer
 

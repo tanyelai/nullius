@@ -13,6 +13,7 @@ most real use; the others will fill in as they get tested.
 | [graph](graph.md) | walking citations, and knowing when you have the literature |
 | [provenance](provenance.md) | what counts as a citation, and what a claim may say |
 | [critique](critique.md) | which findings are admissible, and when to stop |
+| [loops](loops.md) | what may end one, and where not knowing goes |
 | [harness](harness.md) | what blocks, what reports, and what survives |
 
 ## Adding one
