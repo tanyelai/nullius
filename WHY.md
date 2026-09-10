@@ -333,6 +333,31 @@ having to judge them soft.
 > The switch from *“what is missing”* to *“what earns its place”* is then nobody's
 > judgement call. It happens on its own, the moment the last real gap closes.
 
+### A judgement can be required without being obeyed
+
+Section 3 draws a line between a rule about how to work, which nothing can check, and a
+constraint on what must hold, which can be observed. Everything here sits on the second side,
+and that is why the gates count things rather than understand them.
+
+There is a third position and this document missed it for a long time. The three agents start
+in a clean context and do not know whose work they are reading, which is the only arrangement
+under which a model's judgement is worth anything. They are the most capable part of this
+tool. **Nothing ever depended on one running**, so the enforced half was arithmetic and the
+smart half was advice, which is the pair this section says does not work.
+
+The join is one sentence:
+
+> **A gate can require that a judgement was obtained, without depending on what it said.**
+
+That is enumeration over judgement, one level up. The venue walk does not decide whether a
+section is any good; it refuses to let the list go unlooked-at. So a draft that names where it
+is going does not close without a recommendation on it, and the tool never reads the
+recommendation. A `rework` finishes the unit exactly as an `accept` does.
+
+What that guarantees is small and it is the whole of peer review: somebody who did not write
+it, looked. What it cannot guarantee is that the reader was any good, or independent, or real.
+Those are recorded rather than checked, and `report` says which.
+
 ## 8 · What blocks, and what is merely reported
 
 A fact and a chosen number are different claims, and conflating them is how a good gate turns

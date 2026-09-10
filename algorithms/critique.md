@@ -18,6 +18,48 @@ admissible(f) = f.referent ∈ {structural, evidential, coherence, scope} and f.
 
 No severity intuition required: a finding either has a referent or it does not.
 
+## Requiring a judgement without depending on it
+
+**Naive.** Gates must be computable, so a gate can only ever check what a script can decide.
+That is why every gate in this tool counts something, and it is why none of them is smart.
+
+**The category that was missing.** This repository already built three critics that start in
+a clean context and do not know whose work they are reading. They are the smartest thing in
+it. **Nothing has ever depended on one running.** So the enforced half was dumb, the smart
+half was optional, and WHY.md section 3 says exactly what happens to an optional rule.
+
+The asymmetry made it concrete: a `critique` unit must produce a verdict, and a `write` unit
+need never receive one. A draft could reach the end read by nobody.
+
+```
+gate:  a write unit that names a venue does not close
+       while a tracked draft has no recommendation on it
+never: the tool does not read the recommendation, and does not care what it says
+```
+
+**Why this is not a judgement inside a gate.** The tool checks that a verdict exists. It
+never checks whether the verdict is right, and a `rework` closes the unit exactly as an
+`accept` does. What to do about a finding stays where it always was. This is the venue walk
+one level up: the tool cannot decide whether a draft is good, so it refuses to let nobody
+look.
+
+**Why it is hard to satisfy dishonestly.** A verdict has to be on the venue's own scale, and
+zero findings that generate work already forces the positive end of it. Producing a plausible
+review means producing located findings against a file the tool can read. That is more work
+than obtaining one.
+
+**Only once it names a venue.** A write unit with no venue is drafting, and drafting is where
+the work happens. Declaring a venue is the observable act of saying this goes out. Firing on
+every write unit would tax thinking, and a gate that taxes thinking is switched off inside a
+week.
+
+**Weak, and it is the same weakness as everywhere else.** Nothing verifies that the reader had
+a clean context, or was a reader at all. `--by` records the answer and `report` carries it, so
+a verdict with no reader named is reported as the session's own verdict on its own draft,
+which is the check this tool exists to say is not one. And `unread "<why>"` is the way past,
+because a gate with no way past it is a gate people route around; the decision is recorded and
+travels.
+
 ## The budget is a price, not a ceiling
 
 The failure this addresses: a proposal that went 12 pages, then 24, and came back with a list
