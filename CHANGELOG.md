@@ -57,6 +57,17 @@ was acted on, including the two that turned out to be false statements in the do
   test one function, which writes a 300kB `.pyc` beside it, and `git add -A` put one in
   0.5.1. Untracked, ignored, prevented at the source with `PYTHONDONTWRITEBYTECODE`, and
   preflight now refuses it, since the repository's rule about figures applies to everything.
+- **Five defects a fifth review found in the four changes above**, before any of it
+  shipped. Grounding survived a depth change, so `--depth abstract --quote "..."` then
+  `--depth replicated` produced a claim recording that the source attested a depth nothing
+  had checked, which is the exact narrator the feature exists to name. Session start stopped
+  showing kept works precisely while screening was unfinished, because the fallback tested
+  whether any search was live rather than whether there was anything to show. Screening a
+  search logged before threads existed relabelled it onto whatever thread was open, which is
+  the rewriting-under-you that reading an absent thread as `main` exists to avoid. A tracked
+  draft written as `./draft.md` compared unequal to `draft.md` and quietly became a scratch
+  note. And `terse` cut at the first period, so a work titled *Scaling laws vs. emergent
+  abilities* ended a sentence at "vs."
 - **Section 11 is rewritten.** It declined the AI-Scientist programme outright on grounds
   that turned out to be a prospect-driven survey of what that programme still needs, plus a
   second work carried by bare title with no identifier anywhere in the repository. The
