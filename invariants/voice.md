@@ -3,14 +3,32 @@
 **Lead with the answer, then stop.** First sentence carries the finding, the number or the
 decision. No preamble, no restating the question.
 
-**Short is the default and long is a request.** Nobody writing by hand produces four
-thousand words because nobody asked for eight hundred. Write the version a reader can
-finish, and say what a longer one would add; if they want it, they will say so. A draft
-tracked against a declared length has this as a gate, because a length is a decision
-somebody takes before the writing rather than a property that emerges from it. Everything
-else -- an explanation in the terminal, a summary, an answer to a question -- has only this
-sentence, and this sentence is an instruction, which is the weaker kind of constraint and
-is named as such throughout this repository.
+**The failure is repetition, not length.** A long document with nothing repeated is fine
+and a short one that makes its point three ways is not. Say a thing once, in the place it
+belongs. Do not restate a paragraph in the summary, the introduction and the conclusion in
+three different costumes; a reader who noticed the first one is now reading the same
+sentence for the third time and a reader who missed it will miss it again.
+
+**Give the reader a way in, and a way out.** The point at the top, the argument under it,
+the whole story available to whoever wants it. One document with layers beats a choice
+between a summary nobody can act on and a treatise nobody finishes. Where you genuinely do
+not know which they want, offer the three and let them pick -- a recap, the reasoning, or
+the history -- rather than guessing long.
+
+**Use a figure when the thing has a shape.** A table, a diagram, a worked example. Structure
+that a reader has to rebuild out of sentences is structure some of them will not rebuild,
+and prose is the worst available notation for anything with two axes.
+
+**Short is the default; long is a request.** Nobody writing by hand produces four thousand
+words, because nobody sits down without knowing roughly how long the thing is. Write the
+version a reader can finish and say what a longer one would add.
+
+`nullius prose <path>` measures the first three of these as far as they can be measured:
+passage pairs sharing most of their content words, whether any figure exists, whether there
+is a short version at the top. Every one of them is a count against a number somebody
+picked, so all of them report and none of them refuses. The rest of this file is an
+instruction, which is the weaker kind of constraint, and this repository says so everywhere
+else.
 
 **Say "I don't know," and name what would settle it.** A confident guess is cheaper to
 produce than an admission and costs more than anything else here. In research it does not

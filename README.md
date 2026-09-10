@@ -307,12 +307,37 @@ The passage is checked verbatim against the cached text or the note is refused, 
 claim records whether its depth came from the source or from the session. That row is the
 one *nullius in verba* did not have.
 
+## Saying a thing once
+
+Length was never the problem. A long document with nothing repeated is fine; a short one
+that makes its point three ways is not, and that is the thing a model does and a person
+does not. It is also, unlike elegance, partly measurable:
+
+```
+$ nullius prose proposal.md
+nullius prose  proposal.md
+  108 words, about 1 minute(s) to read
+  3 paragraph(s) long enough to compare, 0 figure/table/diagram, short version at the top: yes
+  78%  line 3  The central difficulty is that speculative decoding is eva
+       line 9  Nobody has characterised whether draft and verify decoding
+```
+
+Three signals, all of them counts:
+
+| | |
+|---|---|
+| **one point, twice** | passage pairs sharing most of their content words. Containment rather than overlap, because the failure is a point restated *more briefly* somewhere else |
+| **no way in** | past a threshold, a document with no summary and no short opening paragraph |
+| **no shape** | past the same threshold, a document with no figure, table or diagram at all |
+
+**Every one of these is a lead, never a verdict, and none of them refuses anything.** Two
+paragraphs on one subject legitimately share vocabulary, and a tool that deleted the second
+would be editing rather than checking. They reach the stop through the channel marked as
+chosen rather than measured, alongside the other numbers somebody picked.
+
 ## How long is it allowed to be
 
-Nobody writing by hand produces four thousand words because nobody asked for eight hundred.
-A model does, every time, unless a number was decided first.
-
-So the mirror of an old gate is now closed. A declared budget with no draft tracked against
+A different question, and a smaller one. The mirror of an old gate is now closed. A declared budget with no draft tracked against
 it has always been a fact this refuses. **A tracked draft with no declared length now is
 too**, because without a number there is nothing the writing can exceed and no point at
 which an addition becomes a trade.
