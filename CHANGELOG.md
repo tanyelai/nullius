@@ -3,9 +3,9 @@
 Versions follow [semantic versioning](https://semver.org). Until `1.0.0` the ledger format
 and the CLI surface may change; when they do, the change is listed here with what it breaks.
 
-## Unreleased
+## 0.7.0
 
-**A cut, and four claims that were not true.**
+**A cut, four claims that were not true, and one agent.**
 
 Two clean-context reviews were run with a lens nobody had applied: what does not earn its
 place, and do the pieces agree with each other. Both put the same thing first. Nothing here
@@ -48,10 +48,6 @@ non-blocking signal and is also the only thing measuring change over turns rathe
 state; and the two gates keyed on `fatal|material`, because the severity is the author's own
 declaration and holding somebody to what they declared is the `accept` pattern, not the tool
 judging.
-
-## 0.7.0
-
-**One agent and two lenses, having designed three agents.**
 
 - **A `reader` agent, and two lenses rather than a second critic.** An elegance agent was
   designed and then mostly declined: `parsimony` (which parts could be deleted and the claim
