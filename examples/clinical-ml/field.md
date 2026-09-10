@@ -49,4 +49,4 @@ devices. Say what happened to the excluded cases.
 
 `validation` means a tuning split to one half of this field and a prospective study to the
 other. `accuracy` is uninformative under class imbalance and is still reported. Register both
-in terms.md the first time they appear in two senses.
+here the first time they appear in two senses.

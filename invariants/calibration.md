@@ -6,10 +6,12 @@ finished; one whose limits are unstated is unfinished. The work of critique is d
 limits are *fatal to the claim* and which are *the ordinary conditionality of evidence* --
 and the second kind is discharged by one honest sentence, not by more experiments.
 
-**A finding must have a referent.** It cites a required section from the venue file, a claim
-whose warrant is empty, or two locations that conflict. A finding that cites none of the
-three is *enhancement* -- it would be stronger with more -- and enhancement is inadmissible,
-because it is the one kind that never runs out.
+**A finding must have a referent.** It names a required section from the venue file, a claim
+whose warrant is empty, two locations that conflict, or a row in the draft's own scope
+boundary. A finding naming none of the four is *enhancement* -- it would be stronger with
+more -- and enhancement is inadmissible, because it is the one kind that never runs out. The
+tool checks that the referent is one of the four and that a locator is present; it does not
+resolve the locator, so the guarantee is that the admissible kinds are finite.
 
 | class | means | discharged by |
 |---|---|---|

@@ -3,6 +3,52 @@
 Versions follow [semantic versioning](https://semver.org). Until `1.0.0` the ledger format
 and the CLI surface may change; when they do, the change is listed here with what it breaks.
 
+## Unreleased
+
+**A cut, and four claims that were not true.**
+
+Two clean-context reviews were run with a lens nobody had applied: what does not earn its
+place, and do the pieces agree with each other. Both put the same thing first. Nothing here
+adds a feature.
+
+- **`mode block` is gone.** Undocumented, untested, and its one distinct behaviour made
+  chosen thresholds refuse the stop -- which `algorithms/harness.md` records as a mistake
+  already made once, four lines above the code doing it again. `certain` is now the only
+  mode that blocks and anything else reports.
+- **Two unit kinds are gone.** `explain` appeared in exactly one place, `UNIT_KINDS`, and no
+  gate branched on it: choosing it did nothing. `referee` was handled identically to
+  `critique` at every site and shared a name with the agent, so a reader had to work out
+  which of two things was meant. A venue-specific review is `critique --venue <name>`.
+- **`prose` is gone, four hours after it shipped.** It was 85% of `check`, which already
+  printed the word count, the passage pairs, their percentages and line numbers, and the
+  same closing sentence. The signals stayed -- `prose_signals` feeds `check_artifact` -- and
+  the fourth path-taking command went.
+- **A permanent signal, a dead config key, an unread file.** The single-source report fired
+  on nearly every claim forever and told you what `STATUS_NEEDS_GROUPS` had already refused.
+  `budget_overrun_ratio` had one occurrence in the repository, its own definition. `terms.md`
+  was created by `init` and read by nothing.
+- **The folklore walk does not exist.** WHY.md described it in the present tense across three
+  sections and README said nothing was left stubbed. `folklore` is a status you can type;
+  nothing has ever walked a citation trail looking for primary evidence. Written as unbuilt
+  rather than quietly dropped, because a reader who believed the earlier sentence was relying
+  on a check that was never running.
+- **The referent is checked, the locator is not.** WHY.md sections 7 and 10 described a
+  finding as citing a resolved reference. `cmd_finding` checks that the referent is one of
+  four and that `--at` is non-empty; the locator is stored and printed and never matched
+  against the venue file or a claim id. The termination guarantee is that the admissible
+  kinds are finite, which is smaller than the claim and is still the thing that closes the
+  loop.
+- **`program.md` is read by nothing**, and the promise that a thread failing to trace to it
+  would be flagged has never been implemented. Said, rather than implied away.
+- **`done --force` needs a sentence.** Every other way past a gate here -- `unread`,
+  `frontier`, `settled` -- refuses without one. This was a bare flag.
+
+Left standing on purpose: the growth-sampling subsystem, which is 110 lines producing one
+non-blocking signal and is also the only thing measuring change over turns rather than
+state; and the two gates keyed on `fatal|material`, because the severity is the author's own
+declaration and holding somebody to what they declared is the `accept` pattern, not the tool
+judging.
+
 ## 0.7.0
 
 **One agent and two lenses, having designed three agents.**

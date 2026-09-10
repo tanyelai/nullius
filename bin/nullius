@@ -50,8 +50,14 @@ STATUSES = ["folklore", "single-result", "emerging", "contested",
             "established", "textbook"]
 STATUS_NEEDS_GROUPS = {"established": 2, "textbook": 2, "contested": 2}
 
-UNIT_KINDS = ["read", "survey", "idea", "explain", "interpret", "critique",
-              "write", "referee", "respond"]
+# `explain` and `referee` were here and are gone. `explain` had no branch in
+# any gate, so choosing it did nothing; `referee` was handled identically to
+# `critique` at every site and shared a name with the agent, so a reader had to
+# work out which of two things was meant. A venue-specific review is
+# `critique --venue <name>`. Old ledgers keep working: the read side still
+# matches "referee" wherever it appears on disk.
+UNIT_KINDS = ["read", "survey", "idea", "interpret", "critique", "write",
+              "respond"]
 
 # What you may do about a reviewer's point. Declining is a real answer and the one
 # that needs a reason, because it is the one the reviewer will read hardest.
@@ -80,19 +86,22 @@ VOCABULARY = """## nullius: the commands
 Run them as `./.nullius/bin/nullius <cmd>` from the project root.
 
     start <slug> <kind> "<question>" [--venue V] [--words N] [--artifact PATH]
-        kind: read survey idea explain interpret critique write referee respond
+        kind: read survey idea interpret critique write respond
         idea    also needs: kills "<what would end it>" and cost "<what it takes>",
                 plus a search with something screened in. All three are enforced.
         survey  needs every retrieved work screened. Enforced.
-        write   needs the venue walk and the budget. Enforced.
+        write   needs the venue walk and a declared length. Enforced. One that names
+                a venue also needs a recommendation on its draft: a draft does not
+                go out unread.
         interpret  needs decisive "<what would change the conclusion>" before the
                 results, and reading "<what it was>" after. Enforced.
-        critique / referee  need a verdict, and every finding needs a referent and a
+        critique  needs a verdict, and every finding needs a referent and a
                 locator. Zero fatal and zero material means the verdict is the
-                positive end of the scale. Enforced.
+                positive end of the scale. Enforced. A venue-specific review is
+                `critique --venue <name>`; the `referee` agent does the reading.
         respond  every reviewer point recorded and each one changed, rebutted or
                 declined, with a reason on the last two. Enforced.
-        read and explain shape what `accept` should say; they are not gated.
+        read shapes what `accept` should say; it is not gated.
 
     point "<what the reviewer said>" --reviewer R1        point (lists them)
     point <changed|rebutted|declined> --settle N --why "<what>"
@@ -183,7 +192,6 @@ DEFAULT_CONFIG = {
         r"what (is|was) (deliberately )?(left )?out",
     ],
     "rank_floor_citations": 1,
-    "budget_overrun_ratio": 1.5,
     "cite_patterns": [
         r"\\cite[tpanyear]*\*?(?:\[[^\]]*\])*\{([^}]*)\}",
         r"\[@([A-Za-z0-9_:.-]+)",
@@ -2063,11 +2071,6 @@ def unit_findings(store):
 
     chosen += extension_signal(store, cfg)
 
-    singles = [c for c in store.claims() if len(c.get("sources", [])) == 1]
-    if singles:
-        chosen.append(f"{len(singles)} claim(s) rest on a single source. That is "
-                      f"a fact about the evidence, not a defect -- but it "
-                      f"travels with the claim.")
     return facts, chosen
 
 
@@ -2107,13 +2110,15 @@ def cmd_init(args):
         if src.is_file() and not out.is_file():
             out.parent.mkdir(parents=True, exist_ok=True)
             out.write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
+    # terms.md was created here and read by nothing: not by the CLI, not by any
+    # hook, not by a template. And this header claimed falsified.md was injected
+    # before a write, which it never was -- it is named at session start when
+    # the question shares a term with a buried idea, and counted otherwise.
     for name, head in (("falsified.md", "# Falsified\n\nIdeas that died, and what "
-                        "killed them. Injected before a write on the thread that "
-                        "would repeat them.\n"),
+                        "killed them. Named at every session start whose question "
+                        "shares a term with one.\n"),
                        ("decisions.md", "# Decisions\n\nMethodological choices, "
-                        "with the alternative that was rejected.\n"),
-                       ("terms.md", "# Terms\n\nWords this literature uses two "
-                        "ways, and each paper's operationalisation.\n")):
+                        "with the alternative that was rejected.\n")):
         f = store.p(name)
         if not f.is_file():
             f.write_text(head, encoding="utf-8")
@@ -4199,40 +4204,6 @@ def prose_signals(store, text, label, cfg):
     return out
 
 
-def cmd_prose(args):
-    """What a draft is like to read. Nothing here refuses anything, and nothing
-    here is about whether the writing is good: every line is a count against a
-    number somebody chose."""
-    store = Store(require_root())
-    cfg = store.config
-    for path in args.paths:
-        text, _ = document_text(path)
-        words = count_words(text)
-        paras = paragraphs(text)
-        say(f"nullius prose  {path}")
-        say(f"  {words} words, about {max(1, words // 220)} minute(s) to read")
-        say(f"  {len(paras)} paragraph(s) long enough to compare, "
-            f"{visuals(text)} figure/table/diagram, "
-            f"short version at the top: {'yes' if has_short_version(text) else 'no'}")
-        dupes = near_duplicates(text, cfg["redundancy_share"])
-        if not dupes:
-            say(f"  no passage pair shares more than "
-                f"{int(cfg['redundancy_share'] * 100)}% of its content words")
-        for s, a, pa, b, pb in dupes[:8]:
-            say(f"  {int(s * 100)}%  line {a}  {pa[:58]}")
-            say(f"       line {b}  {pb[:58]}")
-        # the same lines the stop would report, said here where you asked
-        for sig in prose_signals(store, text, path, cfg):
-            if "share most of their content words" in sig:
-                continue
-            say("  " + sig.split(": ", 1)[-1].split(".")[0] + ".")
-        say("")
-    say("Every number here is a count against a threshold somebody picked, so "
-        "none of it refuses anything and none of it is a claim about whether "
-        "the writing is good. A shared-vocabulary pair is a lead: read the two "
-        "and decide which one to keep.")
-
-
 def cmd_report(args):
     """What the ledger knows, as something a person reads. Not a typeset document:
     the tool has no business owning a house style, and the venue owns the format.
@@ -4442,12 +4413,19 @@ def cmd_done(args):
     store = Store(require_root())
     unit = store.unit or die("no open unit.")
     facts, _ = unit_findings(store)
+    if facts and args.force and not args.why:
+        die("`--force` closes a unit over the tool's objection, which is a real "
+            "answer and the one worth a sentence. `nullius done --force \"<why "
+            "this is finishable anyway>\"`. Every other way past a gate here "
+            "asks for one.")
     if facts and not args.force:
         say("nullius: not finishable yet --")
         for f in facts:
             say(f"  - {terse(f)}")
         say("  `nullius status --why` for what each means.")
         sys.exit(1)
+    if facts:
+        unit["forced_why"] = args.why
     archive_unit(store, unit, "finished" if not facts else "forced")
     store.clear_unit()
     say(f"nullius: '{unit['slug']}' closed.")
@@ -4750,7 +4728,7 @@ def hook_pre_write(payload):
     # reason, and refusing it here means you cannot keep a thinking file.
     leads = None if is_tracked(store, store.unit, rel) else []
     facts = check_draft_text(store, text, rel, soft_names=leads)
-    if facts and cfg["mode"] in ("certain", "block"):
+    if facts and cfg["mode"] == "certain":
         sys.stderr.write("nullius refuses this write:\n  - "
                          + "\n  - ".join(facts) + "\n")
         return 2
@@ -4844,7 +4822,7 @@ def hook_pre_bash(payload):
             unseen.append(target)
         else:
             facts += check_draft_text(store, body, target)
-    if facts and cfg["mode"] in ("certain", "block"):
+    if facts and cfg["mode"] == "certain":
         sys.stderr.write("nullius refuses this write:\n  - "
                          + "\n  - ".join(facts) + "\n")
         return 2
@@ -4872,7 +4850,7 @@ def hook_stop(payload):
     sample_growth(store)
     facts, chosen = unit_findings(store)
     mode = store.config["mode"]
-    if facts and mode in ("certain", "block"):
+    if facts and mode == "certain":
         sys.stderr.write(
             f"nullius: '{store.unit['slug']}' is not finishable. "
             f"{len(facts)} fact(s):\n  - "
@@ -4881,10 +4859,6 @@ def hook_stop(payload):
                if chosen else "")
             + "\n  `nullius status --why` for what each one means and what to "
               "run.\n")
-        return 2
-    if chosen and mode == "block":
-        sys.stderr.write("nullius: only chosen thresholds remain:\n  - "
-                         + "\n  - ".join(chosen) + "\n")
         return 2
     if facts:
         # A mode that does not block still has to say what it found. Computing the
@@ -5142,11 +5116,6 @@ def build_parser():
                    help="machine-readable, for comparing one arm against another")
     s.set_defaults(fn=cmd_audit)
 
-    s = sub.add_parser("prose", help="what a draft is like to read: repetition, "
-                                     "figures, a short version")
-    s.add_argument("paths", nargs="+")
-    s.set_defaults(fn=cmd_prose)
-
     s = sub.add_parser("report", help="what the ledger holds, for a person to read")
     s.add_argument("--out"); s.set_defaults(fn=cmd_report)
 
@@ -5156,6 +5125,8 @@ def build_parser():
     s.set_defaults(fn=cmd_status)
 
     s = sub.add_parser("done", help="close the unit")
+    s.add_argument("why", nargs="?",
+                   help="required with --force: why it is finishable anyway")
     s.add_argument("--force", action="store_true"); s.set_defaults(fn=cmd_done)
 
     s = sub.add_parser("compact", help="drop working state that can be rebuilt")
