@@ -30,6 +30,23 @@ expect_hook() {
   fi
 }
 
+# expect_hook_out <event> <says|silent> <pattern> <label> <json>
+# A hook that crashes exits 0, because cmd_hook must never wedge a session. So an
+# exit code alone cannot tell a working gate from a dead one, and the pre-write
+# gate spent a release crashing on every clean write while the suite read green.
+# The third direction: not refused, and not silent either.
+expect_hook_out() {
+  local event="$1" want="$2" pat="$3" label="$4" json="$5"
+  local out; out="$(printf '%s' "$json" | python3 "$NULLIUS" _hook "$event" 2>&1)"
+  if printf '%s\n' "$out" | grep -q -- "$pat"; then
+    [ "$want" = says ] && ok || { bad "$label: said '$pat' and should not have"
+                                  printf '        %s\n' "${out%%$'\n'*}"; }
+  else
+    [ "$want" = silent ] && ok || { bad "$label: never said '$pat'"
+                                    printf '        %s\n' "${out%%$'\n'*}"; }
+  fi
+}
+
 expect_grep() {
   local pat="$1" label="$2"; shift 2
   local out; out="$("$@" 2>&1)"
@@ -124,9 +141,24 @@ expect_exit 2 "check refuses a retracted citation"           python3 "$NULLIUS" 
 WRITE_OK="{\"cwd\":\"$WORK\",\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"$WORK/x.md\",\"content\":\"see \\\\cite{alpha2021}\"}}"
 WRITE_BAD="{\"cwd\":\"$WORK\",\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"$WORK/x.md\",\"content\":\"see \\\\cite{ghost1999}\"}}"
 WRITE_CODE="{\"cwd\":\"$WORK\",\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"$WORK/x.py\",\"content\":\"see \\\\cite{ghost1999}\"}}"
+WRITE_PLAIN="{\"cwd\":\"$WORK\",\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"$WORK/x.md\",\"content\":\"a sentence citing nothing\"}}"
 expect_hook pre-write 0 "write allowed when the citation resolves"   "$WRITE_OK"
 expect_hook pre-write 2 "write refused when the citation does not"   "$WRITE_BAD"
 expect_hook pre-write 0 "non-draft files are none of its business"   "$WRITE_CODE"
+
+# The allowed path has to do its own work, and nothing here used to check that it
+# did. `alpha2021` is noted at abstract depth, so the write that cites it must
+# carry the cap into the context; the write that cites nothing must not.
+expect_hook_out pre-write silent "gate error" \
+  "a clean write does not crash the gate"                            "$WRITE_OK"
+expect_hook_out pre-write says   "read to .abstract." \
+  "a clean write carries the read depth of what it cites"            "$WRITE_OK"
+expect_hook_out pre-write says   "additionalContext" \
+  "and it arrives as context rather than as a refusal"               "$WRITE_OK"
+expect_hook_out pre-write silent "read depth of what this cites" \
+  "a write that cites nothing says nothing about read depth"         "$WRITE_PLAIN"
+expect_hook_out pre-write silent "gate error" \
+  "and it does not crash either"                                     "$WRITE_PLAIN"
 
 # --------------------------------------------------------------- budget ----
 expect_exit 0 "track the draft" python3 "$NULLIUS" artifact good.md
@@ -1001,6 +1033,37 @@ printf '%s\n' "$out" | grep -q "read past .abstract" \
 # ---- resolved is not read ---------------------------------------------------
 expect_grep "opened at any depth" "coverage separates resolved from read" \
   bash -c "cd '$WORK' && python3 \"$NULLIUS\" coverage"
+
+# ---- a softer mode is gentler, not quieter ----------------------------------
+# Anything outside certain|block skips the refusal. It used to skip the report
+# with it, so a project in a soft mode heard less than a strict one rather than
+# the same thing without teeth. That also made the advice arm in
+# evals/control.md measure whether the session was told, not whether it was
+# refused, which is the wrong difference.
+AW="$WORK/advice"; mkdir -p "$AW"
+( cd "$AW" || exit 1
+  pass=0; fail=0                    # the subshell inherits the running tally
+  N3() { python3 "$NULLIUS" "$@"; }
+  A_BAD="{\"cwd\":\"$AW\",\"tool_input\":{\"file_path\":\"$AW/a.md\",\"content\":\"see \\\\cite{ghost1999}\"}}"
+  expect_exit 0 "init"          N3 init --field t
+  expect_exit 0 "start a unit"  N3 start ad read "q"
+  # no acceptance question, so the stop has a fact to refuse on
+  expect_hook stop      2 "certain refuses the stop"       "{\"cwd\":\"$AW\"}"
+  expect_hook pre-write 2 "certain refuses the write"      "$A_BAD"
+  expect_exit 0 "switch to advice" N3 config mode advice
+  expect_hook stop      0 "advice allows the stop"         "{\"cwd\":\"$AW\"}"
+  expect_hook pre-write 0 "advice allows the write"        "$A_BAD"
+  expect_hook_out stop      says "would not be finishable" \
+    "and still says what it found"                         "{\"cwd\":\"$AW\"}"
+  expect_hook_out pre-write says "would be refused" \
+    "and still says what it found about the write"         "$A_BAD"
+  expect_hook_out stop      says "systemMessage" \
+    "through the channel that reaches the person"          "{\"cwd\":\"$AW\"}"
+  expect_exit 0 "back to certain" N3 config mode certain
+  expect_hook stop 2 "and it refuses again"                "{\"cwd\":\"$AW\"}"
+  printf '%s\n' "$pass $fail" > "$AW/.tally" )
+read -r a_pass a_fail < "$AW/.tally"
+pass=$((pass + a_pass)); fail=$((fail + a_fail))
 
 echo
 echo "  $pass passed, $fail failed"

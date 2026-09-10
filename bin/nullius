@@ -3871,17 +3871,18 @@ def hook_pre_write(payload):
         sys.stderr.write("nullius refuses this write:\n  - "
                          + "\n  - ".join(facts) + "\n")
         return 2
+    if facts:
+        emit_context("nullius: this write would be refused under `mode certain`, "
+                     "and is allowed because this project is in `mode "
+                     + cfg["mode"] + "`:\n  - " + "\n  - ".join(facts))
+        return 0
+    # The write is allowed. What is left is the half that informs rather than
+    # refuses, and it has to run on exactly the path where nothing was wrong:
+    # attribution is already checked inside check_draft_text above, and a second
+    # copy of it here ran after the refusal had been decided, so it could only
+    # ever crash -- which it did, on every clean write, taking the read-depth
+    # note with it.
     notes = []
-    known_names = resolved_surnames(refs)
-    for name in sorted(attributed_names(text, cfg)):
-        low = fold_name(name)
-        if low in known_names or any(low in n.split() for n in known_names):
-            continue
-        facts.append(f"{label}: the text attributes something to `{name}` and no "
-                     f"resolved reference has an author of that name. A name is a "
-                     f"citation -- it is how most prose actually cites -- and it "
-                     f"is the form nothing else checks. `nullius cite` the work, "
-                     f"or drop the attribution.")
     for key in sorted(cited_keys(text, cfg)):
         depth = store.note_depth(key)
         if depth:
@@ -3978,6 +3979,16 @@ def hook_stop(payload):
         sys.stderr.write("nullius: only chosen thresholds remain:\n  - "
                          + "\n  - ".join(chosen) + "\n")
         return 2
+    if facts:
+        # A mode that does not block still has to say what it found. Computing the
+        # facts and dropping them makes a softer mode quieter than the strict one
+        # rather than gentler than it, which is the opposite of what somebody
+        # setting it wanted.
+        sys.stdout.write(json.dumps({"systemMessage": (
+            f"nullius: '{store.unit['slug']}' would not be finishable under "
+            f"`mode certain`. Reported rather than enforced because this project "
+            f"is in `mode {mode}`:\n  - " + "\n  - ".join(facts + chosen))}) + "\n")
+        return 0
     if chosen:
         # A threshold picked rather than measured does not get to end a turn. It goes
         # to the person, who can judge it, through the one channel Stop has for them.
