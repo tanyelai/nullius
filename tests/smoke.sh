@@ -4,6 +4,9 @@
 set -uo pipefail
 
 NULLIUS="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/bin/nullius"
+# Two tests import bin/nullius as a module. Without this that writes bytecode
+# into the source tree, which is how a .pyc reached a release.
+export PYTHONDONTWRITEBYTECODE=1
 WORK="$(mktemp -d)"; trap 'rm -rf "$WORK"' EXIT
 cd "$WORK" || exit 1
 
@@ -306,7 +309,9 @@ expect_grep "clean" "the same claim, attributed, is not" \
   python3 "$NULLIUS" check cued.md
 
 # threads were promised by the documentation and written by nothing
-expect_grep "no threads yet" "an empty thread list says so" python3 "$NULLIUS" thread
+# `start` now opens the thread its unit belongs to, so by here `main` exists.
+# The empty case is real and is tested in its own ledger further down.
+expect_grep "main" "the unit's thread is listed" python3 "$NULLIUS" thread
 expect_exit 0 "open a thread" python3 "$NULLIUS" thread "sample-efficiency"
 [ -f .nullius/threads/sample-efficiency.md ] && ok || bad "thread file not written"
 expect_grep "sample-efficiency" "and it lists" python3 "$NULLIUS" thread
@@ -365,8 +370,10 @@ expect_grep "4000" "and so does the word budget" python3 "$NULLIUS" status
 expect_grep "ABSENT   Ethics Statement" "an entry with no heading is absent" \
   python3 "$NULLIUS" walk
 expect_hook stop 2 "an absence nobody looked at refuses the stop" "$CWD_JSON"
-expect_grep "conf.md:" "and the finding cites a line in the venue file" \
+expect_grep "completeness walk has entries" "the walk names the absence" \
   python3 "$NULLIUS" status
+expect_grep "conf.md:" "and --why cites the line in the venue file" \
+  python3 "$NULLIUS" status --why
 expect_exit 1 "elsewhere has to name where" \
   python3 "$NULLIUS" section "Ethics Statement" elsewhere
 expect_exit 0 "disposition it" \
@@ -455,8 +462,10 @@ pathlib.Path(".nullius/searches/2026-04-04-n.json").write_text(json.dumps({
         {"title": "nearest thing", "year": 2025, "cited_by": 4,
          "screened": "exclude", "reason": "not close"}]}, indent=2))
 PYIN
-expect_grep "empty neighbour set" "and neither can one that screened everything out" \
+expect_grep "nothing screened in" "and neither can one that screened everything out" \
   python3 "$NULLIUS" status
+expect_grep "empty neighbour set" "and --why says why that is a red flag" \
+  python3 "$NULLIUS" status --why
 python3 - <<'PYIN'
 import json, pathlib
 p = pathlib.Path(".nullius/searches/2026-04-04-n.json"); d = json.loads(p.read_text())
@@ -997,7 +1006,7 @@ d = pathlib.Path(".nullius/searches"); d.mkdir(parents=True, exist_ok=True)
     "results": [{"title": "the live neighbour", "year": 2025, "cited_by": 1,
                  "screened": "exclude", "reason": "looked unrelated"}]}, indent=2))
 PYIN
-expect_grep "tight zero is a statement about the words" \
+expect_grep "returned nothing over title and abstract" \
   "a zero never re-run over full text is refused" python3 "$NULLIUS" done
 expect_grep "excluded on a query that failed" \
   "and an exclusion resting on a failed query is not a screen" python3 "$NULLIUS" done
@@ -1012,7 +1021,7 @@ d["results"] = [{"title": "found over full text", "year": 2025, "cited_by": 1,
 p.write_text(json.dumps(d, indent=2))
 PYIN
 out="$(python3 "$NULLIUS" done 2>&1)"
-printf '%s\n' "$out" | grep -q "tight zero is a statement" \
+printf '%s\n' "$out" | grep -q "returned nothing over title and abstract" \
   && bad "the loose gate still fires after the sweep was run" || ok
 printf '%s\n' "$out" | grep -q "excluded on a query that failed" \
   && bad "the failed-query gate still fires after unknown was recorded" || ok
@@ -1102,7 +1111,8 @@ NW="$WORK/needs"; mkdir -p "$NW"
 
   expect_hook stop 2 "the stop refuses a need this unit never came back to" \
     "{\"cwd\":\"$NW\"}"
-  expect_grep "never came back to" "and status says which" N2 status
+  expect_grep "n001" "and status names which" N2 status
+  expect_grep "never come back to" "and --why says what to do about it" N2 status --why
 
   expect_exit 1 "settling a need that does not exist"  N2 settled n404 observed "x"
   expect_exit 1 "settling with no sentence"            N2 settled n001 observed
@@ -1197,6 +1207,59 @@ pass=$((pass + i_pass)); fail=$((fail + i_fail))
 cd "$WORK" || exit 1     # earlier sections leave the cwd elsewhere, and the
                          # fabricated ledger these two need lives here
 
+# ---- a thread is the unit of enquiry, and the gates read only one ---------
+# Unfiltered, one search in March satisfied "silence is a failed search" for
+# every idea unit after it, and one failed vocabulary blocked every idea after
+# that. Two questions in one project is the ordinary case, not an exotic one.
+TW="$WORK/threads2"; mkdir -p "$TW"
+( cd "$TW" || exit 1
+  pass=0; fail=0
+  N5() { python3 "$NULLIUS" "$@"; }
+  expect_exit 0 "init" N5 init --field t
+  expect_grep "no threads yet" "an empty thread list says so, before any unit" N5 thread
+  expect_exit 0 "a unit on its own thread" \
+    N5 start a idea "does X hold" --thread alpha
+  expect_grep "thread 'alpha'" "start says which line of enquiry this is" \
+    bash -c "cd '$TW' && python3 \"$NULLIUS\" start a2 idea q --thread alpha --force"
+  [ -f .nullius/threads/alpha.md ] && ok || bad "start wrote no thread file"
+
+  # a search logged under alpha
+  python3 - <<'SEARCH'
+import json, pathlib
+pathlib.Path(".nullius/searches").mkdir(parents=True, exist_ok=True)
+pathlib.Path(".nullius/searches/s1.json").write_text(json.dumps({
+    "id": "s1", "query": "q", "vocabulary": "v", "when": "now", "thread": "alpha",
+    "found": 1, "retrieved": 1, "results": [
+        {"title": "t", "year": 2024, "doi": None, "screened": "include",
+         "reason": "the nearest work"}]}, indent=2))
+SEARCH
+  expect_grep "no search logged" "a unit on a different thread sees none of it" \
+    bash -c "cd '$TW' && python3 \"$NULLIUS\" start b idea 'does Y hold' --thread beta --force >/dev/null && python3 \"$NULLIUS\" status"
+  expect_grep "no alternative recorded" "while its own thread is past that gate" \
+    bash -c "cd '$TW' && python3 \"$NULLIUS\" start c idea 'does X hold' --thread alpha --force >/dev/null && python3 \"$NULLIUS\" status"
+  expect_grep "search(es) logged and nothing screened\|no alternative recorded" \
+    "and the alpha thread does not report an empty search log" \
+    bash -c "cd '$TW' && python3 \"$NULLIUS\" status"
+
+  # a search written now inherits the open unit's thread
+  expect_exit 0 "back to beta" N5 start d survey "cover Y" --thread beta --force
+  NL="$NULLIUS" python3 - <<'STAMP'
+import importlib.machinery, importlib.util, os, sys
+src = os.environ["NL"]
+spec = importlib.util.spec_from_loader(
+    "nl", importlib.machinery.SourceFileLoader("nl", src))
+nl = importlib.util.module_from_spec(spec); spec.loader.exec_module(nl)
+st = nl.Store(os.getcwd())
+st.save_search({"id": "s2", "query": "q2", "vocabulary": "v", "when": "now",
+                "found": 0, "retrieved": 0, "results": []})
+import json
+assert json.load(open(".nullius/searches/s2.json"))["thread"] == "beta"
+STAMP
+  [ $? -eq 0 ] && ok || bad "a search does not inherit the open unit's thread"
+  printf '%s\n' "$pass $fail" > "$TW/.tally" )
+read -r t_pass t_fail < "$TW/.tally"
+pass=$((pass + t_pass)); fail=$((fail + t_fail))
+
 # ---- neither index had it, which is the answer that matters ----------------
 # merge_records fell through both of its guards into dict(None) when Crossref
 # and OpenAlex both came back empty. That is the answer for every invented DOI,
@@ -1256,6 +1319,89 @@ expect_grep "not checkable here" "outside a project a citekey has no bibliograph
 expect_exit 0 "and the audit still runs" \
   bash -c "cd '$OUTP' && python3 \"$NULLIUS\" audit loose.md"
 rm -rf "$OUTP"
+
+# ---- what a switch costs, what a note rests on, and what may be deleted ----
+FW="$WORK/final"; mkdir -p "$FW"
+( cd "$FW" || exit 1
+  pass=0; fail=0
+  N6() { python3 "$NULLIUS" "$@"; }
+  expect_exit 0 "init" N6 init --field t
+
+  # a displaced unit used to be written straight over the top
+  expect_exit 0 "open one"        N6 start u1 critique "does it go out"
+  expect_exit 0 "record a finding" N6 finding fatal coherence "the two sections disagree" --at "a.md:1"
+  expect_exit 1 "a second unit is refused" N6 start u2 read "something else"
+  expect_exit 0 "unless forced"            N6 start u2 read "something else" --force
+  python3 - <<'ARCH' && ok || bad "start --force did not archive the displaced unit"
+import json
+rows = [json.loads(l) for l in open(".nullius/work/log.jsonl") if l.strip()]
+assert len(rows) == 1, rows
+assert rows[0]["slug"] == "u1" and rows[0]["closed_as"] == "replaced"
+assert rows[0]["findings"][0]["severity"] == "fatal", "the finding went with it"
+ARCH
+
+  # a buried idea comes back when it bears on the question, and is counted when not
+  expect_exit 0 "bury one that bears on it" \
+    N6 falsify "speculative decoding hurts calibration" "measured, it does not"
+  expect_exit 0 "and one that does not"     N6 falsify "a wholly unrelated notion" "it died"
+  expect_grep "named at every session start" "falsify says what it actually does" \
+    N6 falsify "a third" "died too"
+  expect_exit 0 "a unit whose question shares a term" \
+    N6 start u3 idea "does speculative decoding change calibration" --force
+  expect_hook_out session-start says "killed: speculative decoding hurts" \
+    "the matching buried idea is named"           "{\"cwd\":\"$FW\"}"
+  expect_hook_out session-start says "further idea(s) already falsified" \
+    "and the rest are counted, never silently dropped" "{\"cwd\":\"$FW\"}"
+
+  # read depth: whose word it rests on
+  python3 - <<'LEDGER'
+import json, pathlib
+pathlib.Path(".nullius/refs.json").write_text(json.dumps({"a2021": {
+    "openalex": None, "doi": "10.1234/a", "title": "A", "year": 2021,
+    "type": "article", "venue": "J", "peer_reviewed": True, "retracted": False,
+    "authors": [{"id": "A1", "name": "One Author"}], "institutions": [],
+    "cited_by": 1, "oa_url": None, "referenced_works": [], "resolved_at": "now",
+    "index": "openalex"}}, indent=2))
+LEDGER
+  expect_exit 1 "a quote with no cached text cannot ground anything" \
+    N6 note a2021 --depth method --quote "the router balances load"
+  mkdir -p .nullius/cache/text
+  printf 'the router balances load through an auxiliary loss.\n' > .nullius/cache/text/a2021.txt
+  expect_exit 1 "and a passage that is not in the source does not either" \
+    N6 note a2021 --depth method --quote "the router does no such thing"
+  expect_exit 0 "a verbatim passage grounds the depth" \
+    N6 note a2021 --depth method --quote "the router balances load"
+  expect_grep "grounded_in:" "and the note records it" bash -c "cat '$FW/.nullius/papers/a2021.md'"
+  expect_exit 0 "a mechanism claim on a grounded note" \
+    N6 claim "their method shows why" --warrant measured --status single-result \
+      --strength mechanism --source a2021
+  python3 - <<'ATT' && ok || bad "a grounded claim is not recorded as source-attested"
+import json
+c = [json.loads(l) for l in open(".nullius/claims.jsonl") if l.strip()][-1]
+assert c["depth_attested_by"] == "source", c["depth_attested_by"]
+ATT
+  printf 'read_depth: method\n\n# A\n' > .nullius/papers/a2021.md
+  expect_grep "rests on a read depth nobody checked" "an ungrounded one says so" \
+    N6 claim "their method shows why, again" --warrant measured \
+      --status single-result --strength mechanism --source a2021
+  python3 - <<'ATT2' && ok || bad "an ungrounded claim is not recorded as session-attested"
+import json
+c = [json.loads(l) for l in open(".nullius/claims.jsonl") if l.strip()][-1]
+assert c["depth_attested_by"] == "the session", c["depth_attested_by"]
+ATT2
+
+  # compact removes only what can be rebuilt
+  before_claims="$(wc -l < .nullius/claims.jsonl)"
+  expect_grep "would go" "dry run says what it would take" N6 compact --dry-run
+  [ -f .nullius/cache/text/a2021.txt ] && ok || bad "dry run deleted something"
+  expect_grep "rebuildable" "and the real thing says what it did not touch" N6 compact
+  [ -f .nullius/cache/text/a2021.txt ] && bad "compact left the cache" || ok
+  [ "$(wc -l < .nullius/claims.jsonl)" = "$before_claims" ] && ok || bad "compact touched the claims"
+  [ -f .nullius/falsified.md ] && ok || bad "compact removed falsified.md"
+  [ -f .nullius/work/log.jsonl ] && ok || bad "compact removed the unit log"
+  printf '%s\n' "$pass $fail" > "$FW/.tally" )
+read -r f_pass f_fail < "$FW/.tally"
+pass=$((pass + f_pass)); fail=$((fail + f_fail))
 
 echo
 echo "  $pass passed, $fail failed"

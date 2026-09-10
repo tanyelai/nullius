@@ -3,6 +3,66 @@
 Versions follow [semantic versioning](https://semver.org). Until `1.0.0` the ledger format
 and the CLI surface may change; when they do, the change is listed here with what it breaks.
 
+## 0.6.0
+
+**A thread, a lifecycle, and a channel that leads with the answer.**
+
+Four independent reviews, each with a clean context and one lens, went at this repository
+against the standard it sets for itself. Two returned `dies`. What follows is what they
+found and what it cost to fix. Every claim below was verified against the code before it
+was acted on, including the two that turned out to be false statements in the documentation.
+
+- **A thread is a first-class key.** `start --thread <name>` scopes a line of enquiry, and
+  every search and claim written under it is stamped. The gates then read that thread and no
+  other. Unfiltered, one search logged in March satisfied "silence is a failed search" for
+  every idea unit after it, and one failed vocabulary blocked every unrelated idea after
+  that; verified in an isolated project, a brand-new `idea` unit with zero references and
+  zero claims reported finishable. Records written before threads existed read as `main`, so
+  nothing migrates.
+- **Surfacing is a lifecycle query, not the whole ledger.** Storage and surfacing were one
+  decision, so the only way to read less was to record less. A driven project with 40
+  finished searches emitted 3,796 words at every SessionStart and one with 80 emitted 8,116,
+  because the cap on kept works was per search and not across them. Now a search recites its
+  rows only while something is unscreened, a buried idea is named when it shares a term with
+  the question and **counted** when it does not, and the same 40-search ledger emits 2,223
+  words. Twelve buried ideas used to arrive as eight with nothing saying four were missing.
+- **`compact`**, the only thing here that deletes, and it deletes only what can be rebuilt:
+  cached full text and growth samples outside the detector's window. Not a claim, a finding,
+  a screening decision or a buried idea, and no flag will.
+- **The gate leads with the state and `status --why` has the reasoning.** A stop that
+  emitted around 400 words now emits 71. The reasoning is written for the model, which
+  chooses its next action from it; a person reading six refusals wants the six states. This
+  is `voice.md` applied to the tool's own output for the first time: it budgeted the draft
+  and never itself.
+- **A file the unit does not track is a scratch note.** The write gate fired on any `.md` in
+  the project, so `Vaswani et al. say otherwise, check later` in a thinking file exited 2 and
+  you could not keep one. An invented identifier is still refused there; an unattributed
+  surname is now a lead, which is the call `check_artifact` already made for companions and
+  for the same reason.
+- **`note --quote` grounds a read depth in the source.** `strength <= depth` is the flagship
+  cap and both sides of it were typed by whoever was at the keyboard. A passage checked
+  verbatim against the cached text settles it instead, and every claim records whether its
+  depth came from the source or from the session. WHY.md section 1 gains the row the motto
+  never had: not the author's word, not the field's, not yours, but whoever is typing.
+- **`start --force` archives the unit it displaces.** It used to write straight over the top,
+  so findings, points, alternatives and the accept answer went with it, and
+  `closed_work_count` reads that log, so the growth detector then miscounted for every unit
+  after.
+- **Three false statements in the documentation.** WHY.md said "no prompt prepended" while
+  `hook_session_start` prepends five prose files and a command reference. It said the
+  read-depth cap works because the difference is textual and a script can decide it; no
+  script here reads either sentence. And `falsify` told the user its record was "injected
+  before a write", which it never was: `falsified.md` is read at session start only.
+- **A generated binary was in the tree.** The tests import `bin/nullius` as a module to unit
+  test one function, which writes a 300kB `.pyc` beside it, and `git add -A` put one in
+  0.5.1. Untracked, ignored, prevented at the source with `PYTHONDONTWRITEBYTECODE`, and
+  preflight now refuses it, since the repository's rule about figures applies to everything.
+- **Section 11 is rewritten.** It declined the AI-Scientist programme outright on grounds
+  that turned out to be a prospect-driven survey of what that programme still needs, plus a
+  second work carried by bare title with no identifier anywhere in the repository. The
+  position now turns on what is actually true: an unattended run is tolerable in proportion
+  to how checkable its output is.
+
 ## 0.5.1
 
 **A refusal that arrived as a stack trace, and the command that found it.**

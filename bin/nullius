@@ -22,6 +22,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 STATE_DIR = ".nullius"
+# Everything written before threads existed belongs to one, and this is its name.
+# Read-time default rather than a migration: an old .nullius/ keeps working and
+# nothing is rewritten under anybody.
+MAIN_THREAD = "main"
 API_TIMEOUT = 20
 # How far an indexed record's year may sit from the preprint's before it is a
 # different work rather than the same one.
@@ -128,6 +132,9 @@ Run them as `./.nullius/bin/nullius <cmd>` from the project root.
     walk                                   every required section, present/thin/absent
     section "<name>" <planned|elsewhere|n/a> "<why>"
     coverage        check <path>        doctor        report [--out PATH]
+    compact [--dry-run]
+        removes cached full text and spent growth samples, both rebuildable.
+        Never a claim, a finding, a screening decision or a buried idea.
     audit <path>... [--json]
         resolves every identifier a document names, against the live indexes,
         and needs no project. `check` audits against a ledger; this audits a
@@ -309,6 +316,7 @@ class Store:
         return out
 
     def append_claim(self, claim):
+        claim.setdefault("thread", self.thread)
         f = self.p("claims.jsonl")
         f.parent.mkdir(parents=True, exist_ok=True)
         with f.open("a", encoding="utf-8") as fh:
@@ -346,23 +354,43 @@ class Store:
         f.write_text("".join(json.dumps(n, ensure_ascii=False) + "\n"
                              for n in needs), encoding="utf-8")
 
-    def searches(self):
+    @property
+    def thread(self):
+        return (self.unit or {}).get("thread") or MAIN_THREAD
+
+    def searches(self, thread=None):
+        """Pass a thread to see only that line of enquiry. The gates do, because a
+        query that failed for one question is not a fact about another: unfiltered,
+        one search in March satisfied `silence is a failed search` for every idea
+        after it, and one failed vocabulary blocked every idea after that."""
         d = self.p("searches")
         if not d.is_dir():
             return []
         out = []
         for f in sorted(d.glob("*.json")):
             try:
-                out.append(json.loads(f.read_text(encoding="utf-8")))
+                rec = json.loads(f.read_text(encoding="utf-8"))
             except json.JSONDecodeError:
-                pass
+                continue
+            if thread is None or (rec.get("thread") or MAIN_THREAD) == thread:
+                out.append(rec)
         return out
 
     def save_search(self, search):
+        search.setdefault("thread", self.thread)
         self.write_json(f"searches/{search['id']}.json", search)
 
     def note_path(self, citekey):
         return self.p("papers", f"{citekey}.md")
+
+    def note_grounded(self, citekey):
+        """Whether the recorded depth rests on a passage checked against the
+        source, or on the session's own word."""
+        f = self.note_path(citekey)
+        if not f.is_file():
+            return False
+        return bool(re.search(r"^grounded_in:\s*\S", f.read_text(encoding="utf-8"),
+                              re.M))
 
     def note_depth(self, citekey):
         f = self.note_path(citekey)
@@ -942,6 +970,15 @@ def companion_files(store, unit, rel):
         if f.is_file():
             out.append(f)
     return out
+
+
+def is_tracked(store, unit, rel):
+    """Whether this file is one the unit has claimed: a tracked draft, or a
+    companion of one. Everything else in the project is somebody thinking."""
+    unit = unit or {}
+    if rel in (unit.get("artifacts") or []):
+        return True
+    return any(rel in v for v in (unit.get("companions") or {}).values())
 
 
 def check_artifact(store, unit, path, rel):
@@ -1534,6 +1571,22 @@ def extension_signal(store, cfg):
     return out
 
 
+def terse(fact):
+    """The claim, without the reasoning behind it.
+
+    Every fact here is written as a sentence naming the state, followed by what
+    to do and why it matters. That second half is written for the model, which
+    has to choose the next action from it. A person reading a list of six wants
+    the six states. So the gate leads with these and `status --why` has the rest,
+    which is invariants/voice.md applied to the tool's own output for the first
+    time: it budgeted the draft and never itself."""
+    head = (fact or "").split("\n", 1)[0].strip()
+    cut = head.find(". ")
+    if 12 <= cut < len(head) - 1:
+        head = head[:cut + 1]
+    return head if len(head) <= 116 else head[:113].rstrip() + "..."
+
+
 def unit_findings(store):
     """Everything the Stop gate asks. Returns (facts, chosen)."""
     cfg = store.config
@@ -1541,6 +1594,7 @@ def unit_findings(store):
     facts, chosen = [], []
     if not unit:
         return facts, chosen
+    thread = unit.get("thread") or MAIN_THREAD
 
     if not unit.get("accept"):
         facts.append("no acceptance question. `nullius accept \"<what would "
@@ -1574,7 +1628,7 @@ def unit_findings(store):
     if unit.get("kind") == "idea":
         # The vocabulary has always said an idea unit needs these three. Until now it
         # only said it, which is the exact failure this tool exists to replace.
-        searches = store.searches()
+        searches = store.searches(thread)
         screened_in = [r for sr in searches for r in sr.get("results", [])
                        if r.get("screened") == "include"]
         if not searches:
@@ -1598,7 +1652,7 @@ def unit_findings(store):
         # A zero from a title-and-abstract query is not a zero. Full text reaches
         # work that shares no vocabulary with the query, which is the neighbour a
         # tight zero is most likely to be hiding.
-        searches = store.searches()
+        searches = store.searches(thread)
         loose_vocabs = {sr.get("vocabulary") for sr in searches if sr.get("loose")}
         untested = [sr for sr in searches
                     if not sr.get("loose") and not sr.get("retrieved")
@@ -1763,7 +1817,7 @@ def unit_findings(store):
         state = snowball_state(store)
         stops = frontier_stops(store)
         unwalked, stopped = [], 0
-        for sr in store.searches():
+        for sr in store.searches(thread):
             for r in sr.get("results", []):
                 if r.get("screened") == "include" and r.get("openalex"):
                     wid = openalex_short(r["openalex"])
@@ -1777,7 +1831,7 @@ def unit_findings(store):
             chosen.append(f"{stopped} work(s) you kept were closed by decision "
                           f"rather than walked. `nullius frontier` lists them with "
                           f"the reason.")
-        offgraph = [r.get("title", "")[:52] for sr in store.searches()
+        offgraph = [r.get("title", "")[:52] for sr in store.searches(thread)
                     for r in sr.get("results", [])
                     if r.get("screened") == "include" and not r.get("openalex")]
         if offgraph:
@@ -1795,14 +1849,14 @@ def unit_findings(store):
                   "not worth it, say so: `nullius frontier \"<title>\" "
                   "\"<why>\"`.")
 
-        unscreened = sum(1 for s in store.searches()
+        unscreened = sum(1 for s in store.searches(thread)
                          for w in s.get("results", [])
                          if w.get("screened") is None)
         if unscreened:
             facts.append(f"this is a survey unit and {unscreened} retrieved "
                          f"works were never screened. `nullius coverage` lists "
                          f"them; screen or exclude each with a reason.")
-        vocabs = len({s.get("vocabulary") for s in store.searches()
+        vocabs = len({s.get("vocabulary") for s in store.searches(thread)
                       if s.get("vocabulary")})
         want = cfg["vocabularies_suggested"]
         if vocabs < want:
@@ -1870,19 +1924,30 @@ def unit_findings(store):
             if n.get("unit") == unit.get("slug") and not n.get("as")]
     if mine:
         facts.append(
-            f"{len(mine)} thing(s) this unit recorded as unknown and never came "
-            f"back to:\n      "
-            + "\n      ".join(f"[{n['id']}] {n['text'][:56]}" for n in mine[:6])
-            + "\n    Each is `observed`, `unmet` or `carried`: `nullius settled "
+            f"{len(mine)} thing(s) recorded as unknown and never come back to: "
+            + ", ".join(n["id"] for n in mine)
+            + ".\n    Each is `observed`, `unmet` or `carried`: `nullius settled "
               "<id> <state> \"<what happened>\"`. Staying open is fine and "
               "`carried` says so; what the gate refuses is a question you asked "
-              "yourself and then walked past.")
+              "yourself and then walked past. The text of each is printed at "
+              "session start and by `nullius needs`.")
     others = [n for n in store.needs()
               if n.get("unit") != unit.get("slug") and not n.get("as")]
     if others:
         chosen.append(f"{len(others)} open question(s) from earlier units are "
                       f"still on the record. They are not this unit's to close, "
                       f"and they are not gone either. `nullius needs`.")
+
+    said = [c for c in store.claims()
+            if c.get("depth_attested_by") == "the session"
+            and c.get("strength") in ("mechanism", "generalises")]
+    if said:
+        chosen.append(
+            f"{len(said)} claim(s) assert a mechanism or a generalisation on a "
+            f"read depth attested by whoever typed it rather than by a passage "
+            f"from the source. That is the ordinary case with a person reading, "
+            f"and it is the weakest link in an unattended run. `nullius note "
+            f"<key> --depth <d> --quote \"<a passage>\"`.")
 
     named = [c for c in store.claims()
              if c.get("independence_by_name")
@@ -2010,27 +2075,53 @@ def cmd_config(args):
     say(f"nullius: {args.key} = {val}  (.nullius/config.json, committed)")
 
 
+def archive_unit(store, unit, how):
+    unit = dict(unit)
+    unit["closed"] = now()
+    unit["closed_as"] = how
+    f = store.p("work", "log.jsonl")
+    f.parent.mkdir(parents=True, exist_ok=True)
+    with f.open("a", encoding="utf-8") as fh:
+        fh.write(json.dumps(unit, ensure_ascii=False) + "\n")
+
+
 def cmd_start(args):
     store = Store(require_root())
     if store.unit and not args.force:
         u = store.unit
         die(f"a unit is already open: {u['slug']} ({u['kind']}). Finish it with "
             f"`nullius done`, or pass --force to replace it.")
+    if store.unit:
+        # --force used to write straight over the top. The displaced unit's
+        # findings, points, alternatives and accept answer went with it, and
+        # closed_work_count reads that log, so the growth detector then
+        # miscounted for every unit after. Switching lines of enquiry is the
+        # ordinary case; losing one is not.
+        archive_unit(store, store.unit, "replaced")
+        say(f"nullius: '{store.unit['slug']}' archived to work/log.jsonl, "
+            f"unfinished.")
     if args.kind not in UNIT_KINDS:
         die(f"kind must be one of: {', '.join(UNIT_KINDS)}")
     budget = {}
     venue_name = args.venue or store.config.get("default_venue") or ""
     if args.words:
         budget["words"] = args.words
+    thread = args.thread or (store.unit or {}).get("thread") or MAIN_THREAD
+    tfile = store.p("threads", f"{slugify(thread)}.md")
     unit = {
         "slug": args.slug, "kind": args.kind, "question": args.question,
-        "venue": venue_name,
+        "thread": slugify(thread), "venue": venue_name,
         "budget": budget, "accept": None, "accept_closed": False,
         "artifacts": list(args.artifact or []), "trade": None,
         "started": now(),
     }
     store.save_unit(unit)
-    say(f"nullius: unit '{args.slug}' open ({args.kind})")
+    if not tfile.is_file():
+        tfile.parent.mkdir(parents=True, exist_ok=True)
+        tfile.write_text(f"# {thread}\n\n- **opened:** {today()}\n"
+                         f"- **first question:** {args.question}\n", encoding="utf-8")
+    say(f"nullius: unit '{args.slug}' open ({args.kind}) on thread "
+        f"'{slugify(thread)}'")
     say(f"  now declare what would close it, before the work:\n"
         f"    nullius accept \"<a question that is open right now>\"")
 
@@ -2683,6 +2774,17 @@ def cmd_fulltext(args):
         "failure.")
 
 
+def verbatim_in(store, citekey, text):
+    """None if there is no cached text to check against, else True or False.
+    `None` and `False` are different answers and only one of them is about the
+    quote."""
+    f = store.p("cache", "text", f"{citekey}.txt")
+    if not f.is_file():
+        return None
+    hay = re.sub(r"\s+", " ", f.read_text(encoding="utf-8")).lower()
+    return re.sub(r"\s+", " ", text).strip().lower() in hay
+
+
 def cmd_quote(args):
     store = Store(require_root())
     f = store.p("cache", "text", f"{args.citekey}.txt")
@@ -2713,6 +2815,21 @@ def cmd_note(args):
         die(f"'{args.citekey}' is not resolved. `nullius cite` it first.")
     if args.depth not in READ_DEPTHS:
         die(f"depth must be one of: {', '.join(READ_DEPTHS)}")
+    # Read depth is the one cap in this tool that compares two things the
+    # session typed. With a human driving that is an honest-broker field; with
+    # the model driving and a unit it wants to close, it is a hill to walk down.
+    # A passage from the source turns it into something the world settles.
+    grounded = ""
+    if args.quote:
+        ok = verbatim_in(store, args.citekey, args.quote)
+        if ok is None:
+            die(f"no cached text for {args.citekey}, so a passage cannot be "
+                f"checked. `nullius fulltext {args.citekey}` first, or record "
+                f"the depth without --quote and it stays your own word.")
+        if not ok:
+            die(f"that passage is not verbatim in the cached text of "
+                f"{args.citekey}.")
+        grounded = " ".join(args.quote.split())[:120]
     rec = refs[args.citekey]
     f = store.note_path(args.citekey)
     f.parent.mkdir(parents=True, exist_ok=True)
@@ -2720,8 +2837,15 @@ def cmd_note(args):
         text = f.read_text(encoding="utf-8")
         text = re.sub(r"^read_depth:.*$", f"read_depth: {args.depth}", text,
                       count=1, flags=re.M)
+        if grounded:
+            text = (re.sub(r"^grounded_in:.*$", f"grounded_in: {grounded}", text,
+                           count=1, flags=re.M) if "grounded_in:" in text
+                    else text.replace(f"read_depth: {args.depth}",
+                                      f"read_depth: {args.depth}\n"
+                                      f"grounded_in: {grounded}", 1))
         f.write_text(text, encoding="utf-8")
-        say(f"nullius: {args.citekey} read_depth -> {args.depth}")
+        say(f"nullius: {args.citekey} read_depth -> {args.depth}"
+            + ("  (grounded in a verbatim passage)" if grounded else ""))
         return
     tpl = Path(__file__).resolve().parent.parent / "templates" / "paper-note.md"
     body = tpl.read_text(encoding="utf-8") if tpl.is_file() else \
@@ -2743,8 +2867,13 @@ def cmd_note(args):
             filled = filled.replace("{" + k + "}", str(v))
         say("  the template carries braces str.format could not read; the known "
             "fields were substituted and the rest left as written.")
+    if grounded:
+        filled = filled.replace(f"read_depth: {args.depth}",
+                                f"read_depth: {args.depth}\n"
+                                f"grounded_in: {grounded}", 1)
     f.write_text(filled, encoding="utf-8")
-    say(f"nullius: {os.path.relpath(f, store.root)} ({args.depth})")
+    say(f"nullius: {os.path.relpath(f, store.root)} ({args.depth})"
+        + ("  grounded in a verbatim passage" if grounded else ""))
     say("  the three mandatory fields are the point: the gap between claimed and "
         "evidenced, what it does not show, and what you still do not understand.")
 
@@ -2805,6 +2934,7 @@ def cmd_claim(args):
                 f"`single-result`, or add a group.")
 
     by_name = [x for x in sources if refs[x].get("author_ids") == "name"]
+    ungrounded = [s for s in sources if not store.note_grounded(s)]
     claims = store.claims()
     claim = {
         "id": f"c{len(claims) + 1:03d}", "text": args.text,
@@ -2812,6 +2942,10 @@ def cmd_claim(args):
         "strength": args.strength, "sources": sources,
         "locator": args.locator or "", "created": now(),
         "independence_by_name": by_name,
+        # nullius in verba has a row for the author, the field and you. It never
+        # had one for whoever is typing, and in an unattended run that is the
+        # only narrator in the room.
+        "depth_attested_by": "source" if not ungrounded else "the session",
     }
     store.append_claim(claim)
     say(f"nullius: {claim['id']} recorded ({args.warrant} / {args.status} / "
@@ -2819,6 +2953,11 @@ def cmd_claim(args):
     if args.status in ("single-result", "folklore") or args.warrant == "authors-claim":
         say("  this may not be written as a bare assertion. Attribute and "
             "situate it in the prose.")
+    if ungrounded and args.strength in ("mechanism", "generalises"):
+        say(f"  `{args.strength}` rests on a read depth nobody checked for "
+            f"{', '.join(ungrounded)}. `nullius note <key> --depth <d> --quote "
+            f"\"<a passage>\"` settles it against the source instead of against "
+            f"your own word, and the claim records which it was.")
     if by_name and need:
         say(f"  independence here rests on name matching for "
             f"{', '.join(by_name)} -- two spellings of one person would read as "
@@ -2911,6 +3050,7 @@ def cmd_needs(args):
             f"not be found again when that claim is the one being questioned.")
     n = {"id": f"n{len(needs) + 1:03d}", "text": args.text, "for": ref,
          "cost": args.cost or "", "unit": (unit or {}).get("slug", ""),
+         "thread": store.thread,
          "as": None, "why": "", "opened": now()}
     f = store.p("needs.jsonl")
     f.parent.mkdir(parents=True, exist_ok=True)
@@ -2961,7 +3101,8 @@ def cmd_falsify(args):
     prev = f.read_text(encoding="utf-8") if f.is_file() else "# Falsified\n"
     f.write_text(prev.rstrip() + f"\n\n## {args.idea}\n\n- **killed by:** "
                  f"{args.why}\n- **when:** {today()}\n", encoding="utf-8")
-    say("nullius: recorded. This is now injected before a write on that thread.")
+    say("nullius: recorded. It is named at every session start whose question "
+        "shares a term with it, and counted at every other one.")
     unit = store.unit
     if unit is not None and tracked_drafts(store, unit):
         unit["invalidated_at"] = now()
@@ -3920,6 +4061,21 @@ def cmd_report(args):
           "carried by one sentence in Limitations. They do not come back.")
         w("")
 
+    unchecked = [c for c in claims if c.get("depth_attested_by") == "the session"
+                 and c.get("strength") in ("mechanism", "generalises")]
+    if unchecked:
+        w("## Whose word the read depth rests on")
+        w("")
+        for c in unchecked:
+            w(f"- **{c['id']}** ({c['strength']}) -- depth attested by the "
+              f"session, not by a passage checked against the source")
+        w("")
+        w("Every other claim above either asserts less than a mechanism, or has "
+          "a note grounded in a verbatim passage. This is the row *nullius in "
+          "verba* did not have: not the author's word, not the field's, not "
+          "yours -- whoever was typing.")
+        w("")
+
     needs = store.needs()
     if needs:
         w("## What is not known, and what would settle it")
@@ -3965,6 +4121,7 @@ def cmd_report(args):
 
 def cmd_status(args):
     store = Store(require_root())
+    show = (lambda f: f) if getattr(args, "why", False) else terse
     unit = store.unit
     refs, claims = store.refs, store.claims()
     say(f"project   {store.root}")
@@ -3976,6 +4133,7 @@ def cmd_status(args):
         return
     say(f"unit      {unit['slug']} ({unit['kind']})"
         + (f" -> {unit['venue']}" if unit.get("venue") else ""))
+    say(f"thread    {unit.get('thread') or MAIN_THREAD}")
     say(f"question  {unit['question']}")
     say(f"accept    {unit.get('accept') or '(not declared)'}"
         + ("  [closed]" if unit.get("accept_closed") else ""))
@@ -3989,13 +4147,16 @@ def cmd_status(args):
     if facts:
         say("the stop gate refuses on these facts:")
         for f in facts:
-            say(f"  - {f}")
+            say(f"  - {show(f)}")
     if chosen:
         say("reported, and marked as chosen rather than measured:")
         for c in chosen:
-            say(f"  - {c}")
+            say(f"  - {show(c)}")
     if not facts and not chosen:
         say("finishable.")
+    elif not getattr(args, "why", False):
+        say("")
+        say("`nullius status --why` for what each means and what to run.")
 
 
 def cmd_done(args):
@@ -4005,15 +4166,73 @@ def cmd_done(args):
     if facts and not args.force:
         say("nullius: not finishable yet --")
         for f in facts:
-            say(f"  - {f}")
+            say(f"  - {terse(f)}")
+        say("  `nullius status --why` for what each means.")
         sys.exit(1)
-    log = store.p("work", "log.jsonl")
-    log.parent.mkdir(parents=True, exist_ok=True)
-    unit["finished"] = now()
-    with log.open("a", encoding="utf-8") as fh:
-        fh.write(json.dumps(unit, ensure_ascii=False) + "\n")
+    archive_unit(store, unit, "finished" if not facts else "forced")
     store.clear_unit()
     say(f"nullius: '{unit['slug']}' closed.")
+
+
+def cmd_compact(args):
+    """Deletes only what can be rebuilt.
+
+    The file-drawer result is why this tool writes things down: what you did not
+    record does not stop existing, it stops being available, and then you run it
+    again. So nothing here removes a finding, a claim, a screening decision, a
+    search log, a note or a buried idea, and there is no flag that will.
+
+    What it removes is working state. Cached full text is a copy of a public
+    document and `fulltext` fetches it again. Growth samples outside the
+    detector's own window are spent telemetry. Neither is a record of anything
+    you decided."""
+    store = Store(require_root())
+    cfg = store.config
+    keep = max(4, cfg["extension_window"] * 4)
+    plan, freed = [], 0
+
+    cache = store.p("cache", "text")
+    for f in sorted(cache.glob("*.txt")) if cache.is_dir() else []:
+        n = f.stat().st_size
+        freed += n
+        plan.append((f, n, f"{n // 1024}kB of cached text, `nullius fulltext "
+                            f"{f.stem}` refetches it"))
+
+    growth = store.p("growth.jsonl")
+    trimmed = None
+    if growth.is_file():
+        rows = [l for l in growth.read_text(encoding="utf-8").splitlines() if l.strip()]
+        by = {}
+        for line in rows:
+            try:
+                by.setdefault(json.loads(line)["artifact"], []).append(line)
+            except (json.JSONDecodeError, KeyError):
+                pass
+        kept = [l for rs in by.values() for l in rs[-keep:]]
+        if len(kept) < len(rows):
+            trimmed = (len(rows) - len(kept), "\n".join(kept) + "\n" if kept else "")
+            freed += sum(len(l) + 1 for l in rows) - sum(len(l) + 1 for l in kept)
+
+    if not plan and not trimmed:
+        say("nullius: nothing to compact. Everything on disk is either a record "
+            "or inside the window something still reads.")
+        return
+    for _, _, why in plan:
+        say(f"  {why}")
+    if trimmed:
+        say(f"  {trimmed[0]} growth sample(s) older than the last {keep} per "
+            f"artifact, which no detector reads")
+    if args.dry_run:
+        say(f"nullius: {freed // 1024}kB would go. Nothing removed; drop "
+            f"--dry-run.")
+        return
+    for f, _, _ in plan:
+        f.unlink()
+    if trimmed:
+        growth.write_text(trimmed[1], encoding="utf-8")
+    say(f"nullius: {freed // 1024}kB removed, all of it rebuildable. No claim, "
+        f"finding, screening decision, search log, note or buried idea was "
+        f"touched, and none ever is.")
 
 
 def cmd_doctor(args):
@@ -4071,17 +4290,31 @@ def hook_payload():
         return {}
 
 
+SURFACE_CAP = 6
+STOPWORDS = {"the", "and", "for", "with", "that", "this", "from", "does", "what",
+             "when", "which", "into", "than", "then", "them", "they", "have",
+             "been", "were", "will", "would", "could", "about", "there", "their"}
+
+
+def significant(text):
+    return {w for w in re.findall(r"[a-z][a-z-]{3,}", (text or "").lower())
+            if w not in STOPWORDS}
+
+
+def bears_on(question, item):
+    """Whether a buried idea bears on the question in front of you. Term overlap,
+    reported as a lead and never acted on, which is exactly what `scope` does with
+    a finding against a boundary row and for the same reason: a wrong match here
+    would hide the one thing you most need to be reminded of."""
+    return bool(significant(question) & significant(item))
+
+
 def hook_session_start(payload):
     root = find_root(payload.get("cwd"))
     if root is None:
         return 0
     store = Store(root)
     plugin = Path(__file__).resolve().parent.parent
-    parts = []
-    inv = plugin / "invariants"
-    if inv.is_dir():
-        for f in sorted(inv.glob("*.md")):
-            parts.append(f.read_text(encoding="utf-8").rstrip())
     unit = store.unit
     cfg = store.config
     lines = []
@@ -4126,20 +4359,34 @@ def hook_session_start(payload):
                      "being checked. For anything past reading one paper: "
                      "`nullius start <slug> <kind> \"<question>\"`.")
 
-    searches = store.searches()
+    # Storage and surfacing are different decisions and this used to make them
+    # once: everything ever written came back, every session, so the only way to
+    # read less was to record less. The ledger still keeps all of it and `report`
+    # still walks all of it. What crosses the boundary is what is still live on
+    # the thread in front of you.
+    thread = store.thread
+    searches = store.searches(thread)
     if searches:
         results = [r for sr in searches for r in sr.get("results", [])]
         inc = sum(1 for r in results if r.get("screened") == "include")
         un = sum(1 for r in results if r.get("screened") is None)
         vocabs = {sr.get("vocabulary") for sr in searches if sr.get("vocabulary")}
-        lines.append(f"Searches: {len(searches)} across {len(vocabs)} vocabular"
+        lines.append(f"Searches on '{thread}': {len(searches)} across "
+                     f"{len(vocabs)} vocabular"
                      f"{'y' if len(vocabs) == 1 else 'ies'}, {len(results)} "
                      f"retrieved, {inc} included, {un} unscreened.")
-        for sr in searches:
-            kept = [r for r in sr.get("results", []) if r.get("screened") == "include"]
-            for r in kept[:4]:
-                lines.append(f"  kept: {(r.get('title') or '')[:64]}"
-                             + (f" -- {r.get('reason')}" if r.get("reason") else ""))
+        # A search every result of which has been dispositioned is finished. Its
+        # counts are above and in `coverage`; its rows do not need reciting.
+        live = [sr for sr in searches
+                if any(r.get("screened") is None for r in sr.get("results", []))]
+        kept = [r for sr in (live or searches)
+                for r in sr.get("results", []) if r.get("screened") == "include"]
+        for r in kept[:SURFACE_CAP]:
+            lines.append(f"  kept: {(r.get('title') or '')[:64]}"
+                         + (f" -- {r.get('reason')}" if r.get("reason") else ""))
+        if len(kept) > SURFACE_CAP:
+            lines.append(f"  (+{len(kept) - SURFACE_CAP} more kept, "
+                         f"`nullius coverage`)")
     refs = store.refs
     lines.append(f"Ledger: {len(refs)} reference(s), {len(store.claims())} claim(s).")
     tdir = store.p("threads")
@@ -4161,9 +4408,34 @@ def hook_session_start(payload):
     if fals.is_file():
         killed = re.findall(r"^## (.+)$", fals.read_text(encoding="utf-8"), re.M)
         if killed:
-            lines.append("Already falsified, do not re-propose: "
-                         + "; ".join(killed[:8]))
-    parts.append("## nullius: this project right now\n\n" + "\n".join(lines))
+            q = (unit or {}).get("question", "")
+            near = [k for k in killed if bears_on(q, k)] if q else []
+            # The whole point of this file is June against March, so the rest is
+            # never silently dropped -- it is counted, which the old truncation
+            # at eight was not.
+            rest = [k for k in killed if k not in near]
+            if near:
+                lines.append("Already falsified and bearing on this question, "
+                             "do not re-propose:")
+                for k in near[:SURFACE_CAP]:
+                    lines.append(f"  killed: {k[:76]}")
+                if len(near) > SURFACE_CAP:
+                    lines.append(f"  (+{len(near) - SURFACE_CAP} more that match)")
+            if rest:
+                lines.append(f"{len(rest)} further idea(s) already falsified on "
+                             f"other questions, in .nullius/falsified.md. Nothing "
+                             f"here matched them to this one, which is a term "
+                             f"overlap and not a judgement.")
+    # State first. It used to begin at 72% of the payload, behind the invariants,
+    # which is both against voice.md's own first line and against the position
+    # REFERENCES.md's own citation on long contexts says is worst. The rules and
+    # the command list are stable across sessions; this block is the only part
+    # that is about today.
+    parts = ["## nullius: this project right now\n\n" + "\n".join(lines)]
+    inv = plugin / "invariants"
+    if inv.is_dir():
+        for f in sorted(inv.glob("*.md")):
+            parts.append(f.read_text(encoding="utf-8").rstrip())
     parts.append(VOCABULARY)
     sys.stdout.write("\n\n".join(parts) + "\n")
     return 0
@@ -4184,7 +4456,15 @@ def hook_pre_write(payload):
         return 0
     rel = os.path.relpath(Path(target).resolve(), store.root) \
         if Path(target).is_absolute() else target
-    facts = check_draft_text(store, text, rel)
+    # A file the unit has not claimed is a scratch note, and a scratch note is
+    # where research is actually done. An invented identifier is still refused
+    # there -- it is a fact and it is the worst thing this tool can let through.
+    # An unattributed surname is not: the name may belong to a work cited
+    # somewhere else, or to nothing yet because the thought is half formed. That
+    # is the same call check_artifact already makes for companions, for the same
+    # reason, and refusing it here means you cannot keep a thinking file.
+    leads = None if is_tracked(store, store.unit, rel) else []
+    facts = check_draft_text(store, text, rel, soft_names=leads)
     if facts and cfg["mode"] in ("certain", "block"):
         sys.stderr.write("nullius refuses this write:\n  - "
                          + "\n  - ".join(facts) + "\n")
@@ -4205,9 +4485,18 @@ def hook_pre_write(payload):
         depth = store.note_depth(key)
         if depth:
             notes.append(f"{key}: read to `{depth}`")
+    said = []
+    if leads:
+        said.append("nullius: " + rel + " is not tracked by this unit, so these "
+                    "are leads rather than refusals -- " + "; ".join(
+                        m.split(": ", 1)[-1].split(".")[0] for m in leads)
+                    + ". `nullius artifact " + rel + "` to hold it to the "
+                    "draft's bar.")
     if notes:
-        emit_context("nullius: read depth of what this cites -- "
-                     + "; ".join(notes) + ". A claim may not exceed it.")
+        said.append("nullius: read depth of what this cites -- "
+                    + "; ".join(notes) + ". A claim may not exceed it.")
+    if said:
+        emit_context("\n".join(said))
     return 0
 
 
@@ -4287,11 +4576,13 @@ def hook_stop(payload):
     mode = store.config["mode"]
     if facts and mode in ("certain", "block"):
         sys.stderr.write(
-            f"nullius: unit '{store.unit['slug']}' is not finishable yet.\n  - "
-            + "\n  - ".join(facts)
-            + (("\n  and, on thresholds that were chosen rather than measured:"
-                "\n  - " + "\n  - ".join(chosen)) if chosen else "")
-            + "\n")
+            f"nullius: '{store.unit['slug']}' is not finishable. "
+            f"{len(facts)} fact(s):\n  - "
+            + "\n  - ".join(terse(f) for f in facts)
+            + (f"\n  and {len(chosen)} chosen threshold(s) reported, not enforced"
+               if chosen else "")
+            + "\n  `nullius status --why` for what each one means and what to "
+              "run.\n")
         return 2
     if chosen and mode == "block":
         sys.stderr.write("nullius: only chosen thresholds remain:\n  - "
@@ -4359,6 +4650,10 @@ def build_parser():
     s.add_argument("question")
     s.add_argument("--venue"); s.add_argument("--words", type=int)
     s.add_argument("--artifact", action="append")
+    s.add_argument("--thread", help="the line of enquiry this belongs to. "
+                                    "Searches and claims written under it are "
+                                    "scoped to it, and the gates read only this "
+                                    "thread. Defaults to the open unit's, else main.")
     s.add_argument("--force", action="store_true")
     s.set_defaults(fn=cmd_start)
 
@@ -4440,6 +4735,9 @@ def build_parser():
     s.set_defaults(fn=cmd_quote)
 
     s = sub.add_parser("note", help="open a paper note at a read depth")
+    s.add_argument("--quote", help="a passage from the source, checked verbatim "
+                                   "against the cached text. Turns the depth "
+                                   "from your word into the source's.")
     s.add_argument("citekey")
     s.add_argument("--depth", required=True, choices=READ_DEPTHS)
     s.set_defaults(fn=cmd_note)
@@ -4543,10 +4841,16 @@ def build_parser():
     s.add_argument("--out"); s.set_defaults(fn=cmd_report)
 
     s = sub.add_parser("status", help="why the stop gate is refusing")
+    s.add_argument("--why", action="store_true",
+                   help="the reasoning behind each, rather than the state alone")
     s.set_defaults(fn=cmd_status)
 
     s = sub.add_parser("done", help="close the unit")
     s.add_argument("--force", action="store_true"); s.set_defaults(fn=cmd_done)
+
+    s = sub.add_parser("compact", help="drop working state that can be rebuilt")
+    s.add_argument("--dry-run", action="store_true", dest="dry_run")
+    s.set_defaults(fn=cmd_compact)
 
     s = sub.add_parser("doctor", help="is this project still set up correctly")
     s.set_defaults(fn=cmd_doctor)
