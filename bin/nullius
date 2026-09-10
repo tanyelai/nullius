@@ -53,6 +53,12 @@ UNIT_KINDS = ["read", "survey", "idea", "explain", "interpret", "critique",
 # that needs a reason, because it is the one the reviewer will read hardest.
 POINT_DISPOSITIONS = ["changed", "rebutted", "declined"]
 
+# What you may do about something you do not know. All three are honest endings and
+# none of them is "thought about it harder": an open question closes by being
+# observed, by being given up on out loud, or by being handed somewhere that will
+# still hold it after this context window is gone.
+NEED_DISPOSITIONS = ["observed", "unmet", "carried"]
+
 # Not everything worth citing has a DOI. A documentation page, a lecture note, a
 # blog post and a book chapter are all legitimate sources; what differs is how
 # settled a claim they can carry on their own.
@@ -107,6 +113,10 @@ Run them as `./.nullius/bin/nullius <cmd>` from the project root.
         status:   folklore single-result emerging contested established textbook
         strength: reports holds mechanism generalises   -- capped by read depth
     falsify "<idea>" "<why it died>"
+    needs "<the observation that would settle it>" [--for c003] [--cost "<what it takes>"]
+    settled <id> <observed|unmet|carried> "<what happened>"
+        the three honest ends of not knowing. Thinking about it harder is not one.
+        A unit cannot close on a need it opened and never came back to. Enforced.
 
     lit "<query>" --vocabulary <name> [--index openalex|arxiv|europepmc]
     snowball [citekey] [--back|--forward|--both]   the citation graph, from what you kept
@@ -310,6 +320,26 @@ class Store:
         f = self.p("work/current.json")
         if f.is_file():
             f.unlink()
+
+    def needs(self):
+        f = self.p("needs.jsonl")
+        if not f.is_file():
+            return []
+        out = []
+        for line in f.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if line:
+                try:
+                    out.append(json.loads(line))
+                except json.JSONDecodeError:
+                    pass
+        return out
+
+    def save_needs(self, needs):
+        f = self.p("needs.jsonl")
+        f.parent.mkdir(parents=True, exist_ok=True)
+        f.write_text("".join(json.dumps(n, ensure_ascii=False) + "\n"
+                             for n in needs), encoding="utf-8")
 
     def searches(self):
         d = self.p("searches")
@@ -1825,6 +1855,24 @@ def unit_findings(store):
                          f"record what it costs with `nullius trade \"<what "
                          f"gets cut>\"`, or subtract.")
 
+    mine = [n for n in store.needs()
+            if n.get("unit") == unit.get("slug") and not n.get("as")]
+    if mine:
+        facts.append(
+            f"{len(mine)} thing(s) this unit recorded as unknown and never came "
+            f"back to:\n      "
+            + "\n      ".join(f"[{n['id']}] {n['text'][:56]}" for n in mine[:6])
+            + "\n    Each is `observed`, `unmet` or `carried`: `nullius settled "
+              "<id> <state> \"<what happened>\"`. Staying open is fine and "
+              "`carried` says so; what the gate refuses is a question you asked "
+              "yourself and then walked past.")
+    others = [n for n in store.needs()
+              if n.get("unit") != unit.get("slug") and not n.get("as")]
+    if others:
+        chosen.append(f"{len(others)} open question(s) from earlier units are "
+                      f"still on the record. They are not this unit's to close, "
+                      f"and they are not gone either. `nullius needs`.")
+
     named = [c for c in store.claims()
              if c.get("independence_by_name")
              and c.get("status") in STATUS_NEEDS_GROUPS]
@@ -2689,7 +2737,9 @@ def cmd_claim(args):
     if args.warrant == "assumed":
         die("there is no terminal `assumed` state. An assumption is an open "
             "question wearing another word, and the point is that you cannot "
-            "finish inside one. Record it as a thread question instead.")
+            "finish inside one. `nullius needs \"<the observation that would "
+            "settle it>\"`, which is countable, survives this context window, "
+            "and has to be dispositioned before the unit closes.")
 
     sources = args.source or []
     if args.warrant != "mine-unpublished" and not sources:
@@ -2797,6 +2847,88 @@ def cmd_considered(args):
                  f"- **when:** {today()}\n", encoding="utf-8")
     say(f"nullius: recorded. {len(unit['considered'])} alternative(s) on the record "
         f"for '{unit['slug']}'.")
+
+
+def cmd_needs(args):
+    """The one thing this harness could refuse and never record: not knowing.
+
+    Every other way of saying it here is a singleton or free text -- one `accept`
+    per unit, one `kills` per idea, one `decisive` per interpretation, a thread
+    file nobody counts. So `I don't know, and here is what would settle it` was an
+    instruction in voice.md with nothing behind it, and an instruction with no
+    truth value is the thing WHY.md section 3 says does not survive contact with
+    an interesting task.
+
+    A need is countable, it outlives its unit, and it comes back at every session
+    start. What it is not is a blocker: the gate refuses a need nobody looked at,
+    never a need that is still open."""
+    store = Store(require_root())
+    needs = store.needs()
+    if not args.text:
+        if not needs:
+            say("nullius: nothing recorded as unknown. That is a claim, and "
+                "usually a false one. `nullius needs \"<the observation that "
+                "would settle it>\"`.")
+            return
+        for n in needs:
+            state = n.get("as") or "OPEN"
+            say(f"  [{n['id']}] {state:<8} {n['text'][:60]}")
+            for label, key in (("for", "for"), ("costs", "cost"), ("", "why")):
+                if n.get(key):
+                    say(f"        {label + ': ' if label else ''}{n[key][:66]}")
+        open_n = [n for n in needs if n.get("as") not in ("observed", "unmet")]
+        say(f"  {len(open_n)} of {len(needs)} still open.")
+        return
+
+    unit = store.unit
+    ref = args.for_ or ""
+    if re.fullmatch(r"c\d{3}", ref) and ref not in {c["id"] for c in store.claims()}:
+        die(f"no claim `{ref}`. A need pointed at nothing is a note, and it will "
+            f"not be found again when that claim is the one being questioned.")
+    n = {"id": f"n{len(needs) + 1:03d}", "text": args.text, "for": ref,
+         "cost": args.cost or "", "unit": (unit or {}).get("slug", ""),
+         "as": None, "why": "", "opened": now()}
+    f = store.p("needs.jsonl")
+    f.parent.mkdir(parents=True, exist_ok=True)
+    with f.open("a", encoding="utf-8") as fh:
+        fh.write(json.dumps(n, ensure_ascii=False) + "\n")
+    say(f"nullius: {n['id']} open. It comes back at every session start until it "
+        f"is `observed`, `unmet` or `carried`.")
+    if not args.cost:
+        say("  no cost recorded. An observation nobody priced is the one that "
+            "turns out to need four hundred participants. `--cost`.")
+
+
+def cmd_settled(args):
+    """The other half. An open question closes three ways and `I thought about it
+    some more` is not one of them, which is the whole point: this is the exit a
+    critique loop does not have."""
+    store = Store(require_root())
+    needs = store.needs()
+    by_id = {n["id"]: n for n in needs}
+    n = by_id.get(args.need)
+    if n is None:
+        die(f"no need `{args.need}`. `nullius needs` lists them.")
+    if args.state not in NEED_DISPOSITIONS:
+        die(f"a need is {', '.join(NEED_DISPOSITIONS)}. `observed` means you got "
+            f"the observation, `unmet` means it could not be got and the "
+            f"conclusion has to carry that, `carried` means it is still open and "
+            f"you are saying where it now lives.")
+    if not args.why:
+        die(f"`{args.state}` needs a sentence. For `observed` it is what the "
+            f"observation was; for `unmet`, why it could not be got; for "
+            f"`carried`, where it goes. Without one this records that something "
+            f"happened and not what, which is the failure it exists against.")
+    n["as"] = args.state
+    n["why"] = args.why
+    n["settled_at"] = now()
+    store.save_needs(needs)
+    say(f"nullius: {n['id']} {args.state}.")
+    if args.state == "unmet":
+        say("  this travels with the conclusion rather than being dropped when "
+            "the paragraph is written.")
+    if args.state == "carried":
+        say("  still open, so it goes on arriving at every session start.")
 
 
 def cmd_falsify(args):
@@ -3626,6 +3758,21 @@ def cmd_report(args):
           "carried by one sentence in Limitations. They do not come back.")
         w("")
 
+    needs = store.needs()
+    if needs:
+        w("## What is not known, and what would settle it")
+        w("")
+        w("| state | what would settle it | for | what happened |")
+        w("|---|---|---|---|")
+        for n in needs:
+            w(f"| {n.get('as') or '**open**'} | {n['text']} | "
+              f"{n.get('for') or '-'} | {n.get('why') or '-'} |")
+        w("")
+        w("An `unmet` row travels with the conclusion rather than being dropped "
+          "when the paragraph is written. An empty version of this section is a "
+          "claim, and usually a false one.")
+        w("")
+
     if unit:
         facts, chosen = unit_findings(store)
         if facts or chosen:
@@ -3839,6 +3986,15 @@ def hook_session_start(payload):
         if names:
             lines.append(f"Threads open: {', '.join(names[:10])}"
                          + (f" (+{len(names) - 10} more)" if len(names) > 10 else ""))
+    open_needs = [n for n in store.needs() if not n.get("as")
+                  or n.get("as") == "carried"]
+    if open_needs:
+        lines.append(f"Still unknown, and what would settle each ({len(open_needs)}):")
+        for n in open_needs[:8]:
+            lines.append(f"  [{n['id']}] {n['text'][:66]}"
+                         + (f"  (for {n['for']})" if n.get("for") else ""))
+        if len(open_needs) > 8:
+            lines.append(f"  (+{len(open_needs) - 8} more, `nullius needs`)")
     fals = store.p("falsified.md")
     if fals.is_file():
         killed = re.findall(r"^## (.+)$", fals.read_text(encoding="utf-8"), re.M)
@@ -3983,7 +4139,8 @@ def hook_stop(payload):
         # A mode that does not block still has to say what it found. Computing the
         # facts and dropping them makes a softer mode quieter than the strict one
         # rather than gentler than it, which is the opposite of what somebody
-        # setting it wanted.
+        # setting it wanted, and it would make the advice arm in
+        # evals/control.md measure the wrong difference.
         sys.stdout.write(json.dumps({"systemMessage": (
             f"nullius: '{store.unit['slug']}' would not be finishable under "
             f"`mode certain`. Reported rather than enforced because this project "
@@ -4139,6 +4296,17 @@ def build_parser():
     s = sub.add_parser("considered", help="an option not taken, and why not")
     s.add_argument("option"); s.add_argument("why_not")
     s.set_defaults(fn=cmd_considered)
+
+    s = sub.add_parser("needs", help="what you do not know, and what would settle it")
+    s.add_argument("text", nargs="?")
+    s.add_argument("--for", dest="for_", help="a claim id or citekey it hangs on")
+    s.add_argument("--cost", help="what getting the observation would take")
+    s.set_defaults(fn=cmd_needs)
+
+    s = sub.add_parser("settled", help="observed, unmet or carried, with a sentence")
+    s.add_argument("need"); s.add_argument("state", choices=NEED_DISPOSITIONS)
+    s.add_argument("why", nargs="?")
+    s.set_defaults(fn=cmd_settled)
 
     s = sub.add_parser("falsify", help="record an idea that died, and why")
     s.add_argument("idea"); s.add_argument("why"); s.set_defaults(fn=cmd_falsify)

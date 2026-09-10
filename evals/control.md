@@ -1,0 +1,102 @@
+# The arm that is missing
+
+Every scenario in [scenarios/](scenarios/) answers *did this path complete and did the gates
+fire on real material*. None of them answers the question the whole repository rests on:
+
+> Does a session under these gates produce better-warranted work than the same session with
+> the same advice and nothing enforcing it?
+
+[algorithms/harness.md](../algorithms/harness.md) already says this has not been done:
+*nothing has been evaluated against a control*. This file is the design, so that the gap is a
+protocol somebody can run rather than a sentence somebody can nod at.
+
+It is not runnable by `run.sh`. That runner drives the CLI from bash with no model in the
+loop, and the question here is about what a model does, so the arms have to be real sessions.
+What follows is the protocol and, at the end, the one instrument that does not exist yet.
+
+## Three arms, and why the middle one is the whole experiment
+
+| arm | what the session gets | what it tests |
+|---|---|---|
+| **A, bare** | the task, nothing else | the floor |
+| **B, advice** | the five [invariants](../invariants/) in context, verbatim, and **nothing enforced** | whether writing the rule down is enough |
+| **C, enforced** | the same five, plus the gates | whether enforcement adds anything over advice |
+
+**B is the arm that makes this worth running.** A against C measures the whole package and
+proves nothing anyone disputes. B against C isolates the single claim
+[WHY.md](../WHY.md) section 3 actually makes: that a constraint on *what must hold* does
+something a rule about *how to work* cannot. If B and C come out the same, that section is
+wrong and the gates are ceremony. That is the result worth being able to get.
+
+Arm B is configurable today. The blocking paths are guarded by
+`cfg["mode"] in ("certain", "block")`, so any other value leaves every gate computing and
+reporting and none of them refusing:
+
+```bash
+nullius config mode advice        # gates report through systemMessage, nothing exits 2
+```
+
+The SessionStart hook still injects the invariants and the current state, and the stop gate
+still says what it found. That is exactly what arm B has to be: the advice, delivered as well
+as it can be delivered, with no teeth behind it. A mode that stayed silent would measure
+whether the session was told rather than whether it was refused, which is the wrong
+difference and was the behaviour until the commit that added this file.
+
+## Tasks
+
+Reuse the seven scenario subjects. They were picked at random, none is a subject the author
+works in, and they already span the six unit kinds. Each becomes a prompt with no mention of
+nullius: *decide whether X is an open question*, *cover the literature on Y*, *review this
+draft against this call*. Run every arm on every task, several times, because the variance
+between two runs of one arm is what decides how many runs the comparison needs and nobody
+knows it yet.
+
+## What to measure
+
+The point of measuring these and not others is that each one is a **fact**, in this
+repository's sense: a lookup or a count with no judgement anywhere in it. They can be computed
+from the artifacts each arm produced, by somebody who was not in the session.
+
+| measure | how it is decided |
+|---|---|
+| unresolved identifiers | every DOI and arXiv id in the draft, resolved against a live index. A count of the ones that do not exist |
+| retracted sources cited | retraction metadata on the resolved records |
+| attributed names with nothing behind them | surnames the draft credits, against the author lists of what resolved |
+| claims above their source's read depth | the strength the prose asserts against how far the source was read |
+| statuses above what independence earns | `established` or `textbook` on sources whose author sets intersect |
+| vocabularies searched | distinct query framings, counted |
+| screened over retrieved | how much of what was found was ever looked at |
+| findings with a referent | of the findings a critique produced, how many cite a required section, a claim, two conflicting locations or a scope row |
+| corrections that reached the draft | of the claims abandoned mid-session, how many stopped being asserted in the text |
+
+The last row is the one this repository is in the best position to measure and nobody else is
+measuring. The self-correction literature scores whether the **answer** changed. This scores
+whether the **artifact** changed, which is the thing that matters and the thing that silently
+does not happen.
+
+Arm C should score near zero on the first five by construction: the gates refuse those states,
+so a session under them cannot end in one. That is not a result, it is a check that the
+instrument works. **The result is arm B.** If advice alone gets most of the way there, this
+harness is over-engineered and should be a prompt.
+
+## And one measure that is not a fact
+
+Whether the work is any *good*. That needs human labels, at least two raters, and an agreement
+measure, and none of it exists here. It is the calibration work
+[harness.md](../algorithms/harness.md) names and it should not be smuggled in under a proxy:
+an LLM judge is verbosity-biased ([REFERENCES.md](../REFERENCES.md)), which is backwards for a
+harness whose most valuable output is often that nothing more is needed.
+
+Report the facts. Say the quality question is open.
+
+## What is missing to run this
+
+One instrument. The measures above have to be computed on drafts produced **outside** a
+nullius project, because arms A and B write no ledger. `nullius check` audits a draft against
+a ledger that already exists; there is no command that takes a bare file, resolves everything
+it names against the live indexes, and reports the counts.
+
+That is a small command and it is the whole distance between this file and an experiment.
+Until it exists, the honest statement about this design stays the one in
+[REFERENCES.md](../REFERENCES.md): the claim that it works is deliberately not cited, because
+it has not been measured.

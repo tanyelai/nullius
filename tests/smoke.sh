@@ -1065,6 +1065,59 @@ AW="$WORK/advice"; mkdir -p "$AW"
 read -r a_pass a_fail < "$AW/.tally"
 pass=$((pass + a_pass)); fail=$((fail + a_fail))
 
+# ---- not knowing is a state, not a sentence ---------------------------------
+# The gate here refuses a question nobody came back to, never a question that is
+# still open. `carried` is the direction that keeps it from being a nuisance: an
+# open question is the honest end of most research, and it closes by being handed
+# somewhere rather than by being answered.
+NW="$WORK/needs"; mkdir -p "$NW"
+( cd "$NW" || exit 1
+  pass=0; fail=0          # the subshell inherits the running tally, and adding it
+  N2() { python3 "$NULLIUS" "$@"; }   # back to itself would count everything twice
+  expect_exit 0 "init a fresh ledger for needs" N2 init --field t
+  expect_grep "usually a false one" "an empty needs list is itself a claim" N2 needs
+  expect_exit 0 "start a unit"  N2 start nd read "does the approximation hold"
+  expect_exit 0 "accept"        N2 accept "is the error bounded"
+  expect_exit 0 "close"         N2 close "stated at notes.md:3"
+  expect_hook stop 0 "the stop allows before anything is recorded as unknown" \
+    "{\"cwd\":\"$NW\"}"
+
+  expect_exit 1 "a need pointed at a claim that does not exist" \
+    N2 needs "a held-out split" --for c404
+  expect_exit 0 "a need pointed at nothing in particular" \
+    N2 needs "run it once on data the model never saw" --cost "one afternoon"
+  expect_grep "n001" "it lists with an id" N2 needs
+  expect_grep "1 of 1 still open" "and says how many are open" N2 needs
+
+  expect_hook stop 2 "the stop refuses a need this unit never came back to" \
+    "{\"cwd\":\"$NW\"}"
+  expect_grep "never came back to" "and status says which" N2 status
+
+  expect_exit 1 "settling a need that does not exist"  N2 settled n404 observed "x"
+  expect_exit 1 "settling with no sentence"            N2 settled n001 observed
+  expect_exit 0 "carried is a real answer, and it stays open" \
+    N2 settled n001 carried "into threads/approximation.md, for the next unit"
+  expect_hook stop 0 "and then the unit may close" "{\"cwd\":\"$NW\"}"
+  expect_hook session-start 0 "a carried need survives the context boundary" \
+    "{\"cwd\":\"$NW\"}"
+  expect_hook_out session-start says "Still unknown" \
+    "and it is named at the next session start"        "{\"cwd\":\"$NW\"}"
+
+  expect_exit 0 "observed closes it"  N2 settled n001 observed "0.31, below the line"
+  expect_hook_out session-start silent "Still unknown" \
+    "an observed need stops coming back"               "{\"cwd\":\"$NW\"}"
+  expect_grep "there is no terminal" "assumed still refuses" \
+    bash -c "cd '$NW' && python3 \"$NULLIUS\" claim x --warrant assumed --status emerging"
+  expect_grep "nullius needs" "and now it names the mechanism instead of a file" \
+    bash -c "cd '$NW' && python3 \"$NULLIUS\" claim x --warrant assumed --status emerging"
+  expect_exit 0 "report writes what is not known" N2 report
+  expect_grep "What is not known" "and it has its own section" \
+    bash -c "cat '$NW/nullius-report.md'"
+
+  printf '%s\n' "$pass $fail" > "$NW/.tally" )
+read -r sub_pass sub_fail < "$NW/.tally"
+pass=$((pass + sub_pass)); fail=$((fail + sub_fail))
+
 echo
 echo "  $pass passed, $fail failed"
 [ "$fail" -eq 0 ]
