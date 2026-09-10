@@ -1241,21 +1241,29 @@ SEARCH
     "and the alpha thread does not report an empty search log" \
     bash -c "cd '$TW' && python3 \"$NULLIUS\" status"
 
-  # a search written now inherits the open unit's thread
+  # A thread is stamped when a record is created, never when one is re-saved.
+  # Screening re-saves, so stamping on every write relabelled a search logged
+  # before threads existed onto whatever thread happened to be open when
+  # somebody screened one of its rows -- the rewriting-under-you that reading
+  # an absent thread as `main` exists to avoid.
   expect_exit 0 "back to beta" N5 start d survey "cover Y" --thread beta --force
+  python3 - <<'LEGACY'
+import json, pathlib
+pathlib.Path(".nullius/searches/legacy.json").write_text(json.dumps({
+    "id": "legacy", "query": "q", "vocabulary": "v", "when": "then",
+    "found": 1, "retrieved": 1, "results": [
+        {"title": "old", "year": 2020, "doi": None, "screened": None,
+         "reason": None}]}, indent=2))
+LEGACY
+  expect_exit 0 "screen a row of a search older than threads" \
+    N5 screen legacy include "still relevant" --index 0
   NL="$NULLIUS" python3 - <<'STAMP'
-import importlib.machinery, importlib.util, os, sys
-src = os.environ["NL"]
-spec = importlib.util.spec_from_loader(
-    "nl", importlib.machinery.SourceFileLoader("nl", src))
-nl = importlib.util.module_from_spec(spec); spec.loader.exec_module(nl)
-st = nl.Store(os.getcwd())
-st.save_search({"id": "s2", "query": "q2", "vocabulary": "v", "when": "now",
-                "found": 0, "retrieved": 0, "results": []})
 import json
-assert json.load(open(".nullius/searches/s2.json"))["thread"] == "beta"
+d = json.load(open(".nullius/searches/legacy.json"))
+assert "thread" not in d, f"screening relabelled it onto {d.get('thread')!r}"
+assert d["results"][0]["screened"] == "include", "and the screen did not land"
 STAMP
-  [ $? -eq 0 ] && ok || bad "a search does not inherit the open unit's thread"
+  [ $? -eq 0 ] && ok || bad "screening a legacy search relabelled its thread"
   printf '%s\n' "$pass $fail" > "$TW/.tally" )
 read -r t_pass t_fail < "$TW/.tally"
 pass=$((pass + t_pass)); fail=$((fail + t_fail))
@@ -1402,6 +1410,86 @@ ATT2
   printf '%s\n' "$pass $fail" > "$FW/.tally" )
 read -r f_pass f_fail < "$FW/.tally"
 pass=$((pass + f_pass)); fail=$((fail + f_fail))
+
+# ---- five defects a clean-context review found in the change above --------
+RW="$WORK/review"; mkdir -p "$RW"
+( cd "$RW" || exit 1
+  pass=0; fail=0
+  N7() { python3 "$NULLIUS" "$@"; }
+  expect_exit 0 "init" N7 init --field t
+  python3 - <<'LEDGER'
+import json, pathlib
+pathlib.Path(".nullius/refs.json").write_text(json.dumps({"a2021": {
+    "openalex": None, "doi": "10.1234/a", "title": "A", "year": 2021,
+    "type": "article", "venue": "J", "peer_reviewed": True, "retracted": False,
+    "authors": [{"id": "A1", "name": "One Author"}], "institutions": [],
+    "cited_by": 1, "oa_url": None, "referenced_works": [], "resolved_at": "now",
+    "index": "openalex"}}, indent=2))
+pathlib.Path(".nullius/cache/text").mkdir(parents=True, exist_ok=True)
+pathlib.Path(".nullius/cache/text/a2021.txt").write_text("the router balances load.\n")
+LEDGER
+  expect_exit 0 "open a unit" N7 start u read q
+
+  # 1. grounding belongs to the depth it was checked against
+  expect_exit 0 "ground a depth"  N7 note a2021 --depth abstract --quote "the router balances load"
+  expect_grep "grounded_in" "the note records it" bash -c "cat '$RW/.nullius/papers/a2021.md'"
+  expect_exit 0 "raise the depth with no passage" N7 note a2021 --depth replicated
+  bash -c "grep -q grounded_in '$RW/.nullius/papers/a2021.md'" \
+    && bad "a passage still grounds a depth it never checked" || ok
+  expect_exit 0 "a claim on the ungrounded depth" \
+    N7 claim "this generalises" --warrant measured --status single-result \
+      --strength generalises --source a2021
+  python3 - <<'ATT' && ok || bad "the claim credits the source for a depth nothing checked"
+import json
+c = [json.loads(l) for l in open(".nullius/claims.jsonl") if l.strip()][-1]
+assert c["depth_attested_by"] == "the session", c["depth_attested_by"]
+ATT
+
+  # 2. what you kept is shown while screening is unfinished
+  python3 - <<'TWO'
+import json, pathlib
+d = pathlib.Path(".nullius/searches"); d.mkdir(parents=True, exist_ok=True)
+(d / "done.json").write_text(json.dumps({
+    "id": "done", "query": "q", "vocabulary": "v", "when": "now", "found": 1,
+    "retrieved": 1, "results": [{"title": "a work you kept", "year": 2024,
+    "doi": None, "screened": "include", "reason": "on topic"}]}))
+(d / "open.json").write_text(json.dumps({
+    "id": "open", "query": "q2", "vocabulary": "v", "when": "now", "found": 1,
+    "retrieved": 1, "results": [{"title": "not looked at", "year": 2024,
+    "doi": None, "screened": None, "reason": None}]}))
+TWO
+  expect_hook_out session-start says "kept: a work you kept" \
+    "a finished search's keeps still show while another is unscreened" "{\"cwd\":\"$RW\"}"
+
+  # 4. a tracked draft is tracked however its path is spelled
+  printf 'placeholder\n' > d.md
+  expect_exit 0 "track a draft" N7 artifact d.md
+  D_DOT="{\"cwd\":\"$RW\",\"tool_input\":{\"file_path\":\"./d.md\",\"content\":\"Nobodyhere et al. say otherwise\"}}"
+  D_ABS="{\"cwd\":\"$RW\",\"tool_input\":{\"file_path\":\"$RW/d.md\",\"content\":\"Nobodyhere et al. say otherwise\"}}"
+  D_SCRATCH="{\"cwd\":\"$RW\",\"tool_input\":{\"file_path\":\"notes.md\",\"content\":\"Nobodyhere et al. say otherwise\"}}"
+  expect_hook pre-write 2 "a tracked draft refuses, written as ./path"   "$D_DOT"
+  expect_hook pre-write 2 "and as an absolute path"                      "$D_ABS"
+  expect_hook pre-write 0 "while an untracked note is still a note"      "$D_SCRATCH"
+
+  # 5. a period inside a title is not the end of a sentence
+  NL="$NULLIUS" python3 - <<'TERSE'
+import importlib.machinery, importlib.util, os
+spec = importlib.util.spec_from_loader(
+    "nl", importlib.machinery.SourceFileLoader("nl", os.environ["NL"]))
+nl = importlib.util.module_from_spec(spec); spec.loader.exec_module(nl)
+t = nl.terse("2 work(s) carry no index record: Scaling laws vs. emergent "
+             "abilities; Another one. Resolve them with `nullius cite`.")
+assert "emergent" in t, t
+assert not t.endswith("vs."), t
+assert nl.terse("the acceptance question is still open:\n  \"q\"") \
+    == "the acceptance question is still open", nl.terse("the acceptance question is still open:\n  \"q\"")
+assert nl.terse("no cost estimate. `nullius cost \"...\"` -- because") \
+    == "no cost estimate.", nl.terse("no cost estimate. `nullius cost \"...\"` -- because")
+TERSE
+  [ $? -eq 0 ] && ok || bad "terse cuts a title at its own period"
+  printf '%s\n' "$pass $fail" > "$RW/.tally" )
+read -r r_pass r_fail < "$RW/.tally"
+pass=$((pass + r_pass)); fail=$((fail + r_fail))
 
 echo
 echo "  $pass passed, $fail failed"

@@ -377,7 +377,11 @@ class Store:
         return out
 
     def save_search(self, search):
-        search.setdefault("thread", self.thread)
+        """No thread is stamped here. Screening re-saves a record, and stamping
+        on every write relabelled a search logged before threads existed onto
+        whatever thread happened to be open when somebody screened one of its
+        rows -- which is the rewriting-under-you that MAIN_THREAD exists to
+        avoid. `lit` and `snowball` set it when they create the record."""
         self.write_json(f"searches/{search['id']}.json", search)
 
     def note_path(self, citekey):
@@ -974,11 +978,31 @@ def companion_files(store, unit, rel):
 
 def is_tracked(store, unit, rel):
     """Whether this file is one the unit has claimed: a tracked draft, or a
-    companion of one. Everything else in the project is somebody thinking."""
+    companion of one. Everything else in the project is somebody thinking.
+
+    Compared as resolved paths. `cmd_artifact` stores relpath(resolve(...)) and
+    a hook is handed whatever the tool typed, so `./draft.md` and `draft.md`
+    named the same file and compared unequal, quietly turning a tracked draft
+    back into a scratch note.
+
+    With no unit open there is no tracked set and every file is a scratch note.
+    That is deliberate: between units nothing is the draft. Identifier and
+    retraction refusals do not depend on this and fire either way."""
     unit = unit or {}
-    if rel in (unit.get("artifacts") or []):
-        return True
-    return any(rel in v for v in (unit.get("companions") or {}).values())
+
+    def norm(x):
+        f = Path(x)
+        f = f if f.is_absolute() else store.root / f
+        try:
+            return os.path.relpath(f.resolve(), Path(store.root).resolve())
+        except (OSError, ValueError):
+            return str(x)
+
+    here = norm(rel)
+    claimed = set(unit.get("artifacts") or [])
+    for v in (unit.get("companions") or {}).values():
+        claimed.update(v)
+    return here in {norm(c) for c in claimed}
 
 
 def check_artifact(store, unit, path, rel):
@@ -1580,10 +1604,22 @@ def terse(fact):
     the six states. So the gate leads with these and `status --why` has the rest,
     which is invariants/voice.md applied to the tool's own output for the first
     time: it budgeted the draft and never itself."""
+    ABBREV = {"vs", "al", "eg", "ie", "cf", "fig", "no", "pp", "ed", "eds",
+              "etc", "st", "mr", "dr", "ca", "approx"}
     head = (fact or "").split("\n", 1)[0].strip()
-    cut = head.find(". ")
-    if 12 <= cut < len(head) - 1:
+    # Titles come out of an index and carry their own periods: cutting the first
+    # one turned "cannot be walked from them: Scaling laws vs. emergent
+    # abilities" into a sentence ending at "vs."
+    for m in re.finditer(r"\. ", head):
+        cut = m.start()
+        if cut < 12:
+            continue
+        word = re.split(r"[\s(\[]", head[:cut])[-1].lower()
+        if word in ABBREV or (len(word) <= 2 and word.isalpha()):
+            continue
         head = head[:cut + 1]
+        break
+    head = head.rstrip(":")
     return head if len(head) <= 116 else head[:113].rstrip() + "..."
 
 
@@ -2837,12 +2873,16 @@ def cmd_note(args):
         text = f.read_text(encoding="utf-8")
         text = re.sub(r"^read_depth:.*$", f"read_depth: {args.depth}", text,
                       count=1, flags=re.M)
+        # A passage grounds the depth it was recorded against and no other, so
+        # any depth written without one clears it. Left standing, `--depth
+        # abstract --quote "..."` followed by `--depth replicated` produced a
+        # claim recording that the source attested a depth nothing checked,
+        # which is the exact narrator this feature exists to name.
+        text = re.sub(r"^grounded_in:.*\n?", "", text, flags=re.M)
         if grounded:
-            text = (re.sub(r"^grounded_in:.*$", f"grounded_in: {grounded}", text,
-                           count=1, flags=re.M) if "grounded_in:" in text
-                    else text.replace(f"read_depth: {args.depth}",
-                                      f"read_depth: {args.depth}\n"
-                                      f"grounded_in: {grounded}", 1))
+            text = text.replace(f"read_depth: {args.depth}",
+                                f"read_depth: {args.depth}\n"
+                                f"grounded_in: {grounded}", 1)
         f.write_text(text, encoding="utf-8")
         say(f"nullius: {args.citekey} read_depth -> {args.depth}"
             + ("  (grounded in a verbatim passage)" if grounded else ""))
@@ -3250,6 +3290,7 @@ def cmd_lit(args):
     search = {
         # The label you chose is the handle you will look it up by, so it belongs in
         # the id: two queries in one vocabulary otherwise differ by a truncated slug.
+        "thread": store.thread,
         "id": f"{today()}-{slugify(args.vocabulary or 'q', 16)}"
               f"-{slugify(args.query, 24)}",
         "query": args.query,
@@ -3579,6 +3620,7 @@ def cmd_snowball(args):
     search = {
         # Naming a multi-seed walk after whichever seed happened to be first says
         # something false about what was walked.
+        "thread": store.thread,
         "id": f"{today()}-snowball-d{depth}-{len(seeds)}seeds",
         "query": (f"snowball from {seeds[0][1]}" if len(seeds) == 1
                   else f"snowball from {len(seeds)} seeds, depth {depth}"),
@@ -4379,8 +4421,14 @@ def hook_session_start(payload):
         # counts are above and in `coverage`; its rows do not need reciting.
         live = [sr for sr in searches
                 if any(r.get("screened") is None for r in sr.get("results", []))]
-        kept = [r for sr in (live or searches)
-                for r in sr.get("results", []) if r.get("screened") == "include"]
+        # The fallback is on what there is to show, not on what is live. On
+        # `live or searches` a project mid-screen whose only unfinished search
+        # had kept nothing showed no kept works at all, which is the one state
+        # where knowing what you already kept matters most.
+        kept = ([r for sr in live for r in sr.get("results", [])
+                 if r.get("screened") == "include"]
+                or [r for sr in searches for r in sr.get("results", [])
+                    if r.get("screened") == "include"])
         for r in kept[:SURFACE_CAP]:
             lines.append(f"  kept: {(r.get('title') or '')[:64]}"
                          + (f" -- {r.get('reason')}" if r.get("reason") else ""))
