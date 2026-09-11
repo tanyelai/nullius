@@ -14,7 +14,9 @@ unread paper, the unsearched literature and the unbounded critique into states a
 > [`tests/smoke.sh`](tests/smoke.sh), offline and in both directions, plus seven
 > end-to-end [scenarios](evals/) against live indexes. What remains is calibration, and
 > [algorithms/](algorithms/) says where each mechanism is weakest, including that none of
-> them has been evaluated against a control. The folklore walk that
+> them has been evaluated against a control, except once, on one task, where
+> [every arm scored clean](evals/results/control-2026-09-11.md) including the one with no
+> harness. The folklore walk that
 > [WHY.md](WHY.md) section 4 describes does not exist: `folklore` is a status you can record,
 > not a trail anything follows.
 >
