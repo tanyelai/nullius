@@ -3,6 +3,16 @@
 Versions follow [semantic versioning](https://semver.org). Until `1.0.0` the ledger format
 and the CLI surface may change; when they do, the change is listed here with what it breaks.
 
+## Unreleased
+
+- **One mistyped letter turned every gate off.** `mode` was a free string where `certain` was
+  magic and anything else silently behaved as report-only, with no validation anywhere:
+  `nullius config mode certian` was accepted and the stop gate went from exit 2 to exit 0
+  without a word. It is an enum of two now, `certain` and `advice`, and a session in `advice`
+  is told so at every start, because otherwise it believes it is being gated and is not.
+  Found by being asked why a harness needs a mode setting if there is only one mode. There
+  were two; the count in the 0.8.0 notes was of code sites, not modes, and was wrong.
+
 ## 0.8.0
 
 **Two broken agents, an eval record that read a failure as green, and a third less prose.**

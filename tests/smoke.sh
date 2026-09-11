@@ -1076,7 +1076,18 @@ AW="$WORK/advice"; mkdir -p "$AW"
   # no acceptance question, so the stop has a fact to refuse on
   expect_hook stop      2 "certain refuses the stop"       "{\"cwd\":\"$AW\"}"
   expect_hook pre-write 2 "certain refuses the write"      "$A_BAD"
+  # mode was a free string where one value was magic, so `mode certian` was
+  # accepted and turned every gate off without saying anything.
+  expect_exit 1 "a mistyped mode is refused"     N3 config mode certian
+  expect_exit 1 "and so is an invented one"      N3 config mode off
+  expect_grep "certain, advice" "and the refusal names both" \
+    bash -c "cd '$AW' && python3 \"$NULLIUS\" config mode certian 2>&1"
+  expect_hook stop 2 "so the gates are still on after a typo"  "{\"cwd\":\"$AW\"}"
   expect_exit 0 "switch to advice" N3 config mode advice
+  expect_hook_out session-start says "MODE advice" \
+    "a non-blocking mode says so at every session start"       "{\"cwd\":\"$AW\"}"
+  expect_hook_out session-start silent "MODE" \
+    "and certain says nothing, being the default" "{\"cwd\":\"$WORK\"}"
   expect_hook stop      0 "advice allows the stop"         "{\"cwd\":\"$AW\"}"
   expect_hook pre-write 0 "advice allows the write"        "$A_BAD"
   expect_hook_out stop      says "would not be finishable" \

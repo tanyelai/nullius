@@ -182,6 +182,12 @@ status reached through names rather than identifiers; passages sharing most of t
 long draft with no figure; growth with nothing closed; a read depth the session attested
 rather than the source.
 
+**Two modes, and only two.** `certain` refuses on a fact; `advice` computes the same facts
+and reports every one of them without refusing, which is what
+[evals/control.md](evals/control.md) needs and what you want if you are trying the tool out.
+A session in `advice` is told so at every start, because otherwise it believes it is being
+gated and is not.
+
 **Two things scope the rest.** `start --thread <name>` says which line of enquiry a unit
 belongs to, and the gates read only that thread. And what crosses a context boundary is what
 is still live on it: a search stops reciting its rows once everything is screened, a buried

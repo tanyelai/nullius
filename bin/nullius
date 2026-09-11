@@ -56,6 +56,13 @@ STATUS_NEEDS_GROUPS = {"established": 2, "textbook": 2, "contested": 2}
 # work out which of two things was meant. A venue-specific review is
 # `critique --venue <name>`. Old ledgers keep working: the read side still
 # matches "referee" wherever it appears on disk.
+# Two, and they are the whole of it: `certain` refuses on a fact, `advice`
+# computes the same facts and reports them without refusing. It was a free
+# string where one value was magic, so `mode certian` turned every gate off and
+# said nothing -- silent degradation, which is the failure class this refuses
+# everywhere else.
+MODES = ["certain", "advice"]
+
 UNIT_KINDS = ["read", "survey", "idea", "interpret", "critique", "write",
               "respond"]
 
@@ -2161,6 +2168,11 @@ def cmd_config(args):
             say(json.dumps(merged, indent=2, ensure_ascii=False))
         return
     val = int(args.value) if args.value.isdigit() else args.value
+    if args.key == "mode" and val not in MODES:
+        die(f"mode is one of: {', '.join(MODES)}. `certain` refuses on a fact; "
+            f"`advice` computes the same facts and reports them. Anything else "
+            f"used to be accepted and silently behaved as `advice`, so one "
+            f"mistyped letter turned every gate off.")
     if args.user or args.key == "contact":
         upath.parent.mkdir(parents=True, exist_ok=True)
         cfg = {}
@@ -4583,6 +4595,9 @@ def hook_session_start(payload):
     unit = store.unit
     cfg = store.config
     lines = []
+    if cfg["mode"] != "certain":
+        lines.append(f"MODE {cfg['mode']}: the gates compute and report. Nothing "
+                     f"refuses. `nullius config mode certain` to turn them back on.")
     if unit:
         lines.append(f"Open unit: {unit['slug']} ({unit['kind']}) -- "
                      f"{unit['question']}")
