@@ -94,6 +94,14 @@ and written to a committed file. Matching is on normalised text.
 **Verified.** *"one site bounds generality"* discharged, then *"one site, bounds generality"*
 refused.
 
+**And this is the one place a fuzzy match refuses.** Three stores hold things already decided
+and all three match on normalised text: the scope boundary, `falsified.md`, and this. The
+other two print a lead and act on nothing, for the reason `bears_on` gives -- a wrong match
+hides the one thing you most needed reminding of. This one blocks, because the direction of
+error is reversed: the author discharged it themselves, in writing, so a wrong match costs one
+sentence re-typed, while a missed match costs the round-after-round re-raising this mechanism
+exists to end. The asymmetry is deliberate and it is the only one.
+
 ## The draft declares its own boundary
 
 A plan that survives review states what it deliberately does not cover, with a reason per row,

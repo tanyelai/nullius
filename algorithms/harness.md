@@ -121,7 +121,11 @@ the same crude instrument `scope` uses and will miss a re-proposal phrased in ne
 
 - **The severity classes are uncalibrated.** They rank; they do not measure. Calibrating them
   needs a hundred or two labelled examples and an agreement measure, and that has not been done.
-- **Attribution is four regexes.** They will miss a style nobody thought of, silently.
+- **The credited-name check is four regexes.** They will miss a style nobody thought of,
+  silently. Not to be confused with the hedging check, which shares the word *attribution* in
+  the code and does the opposite thing: it reports a weak claim rendered as a bare assertion
+  and never refuses. One refuses a name with no work behind it; the other reports a claim
+  with no hedge in front of it.
 - **Era proximity is a proxy** for field specificity and will misjudge an old canon.
 - **Coverage is whatever the public indexes hold**, unevenly by field. *No such result was
   found* is a statement about a search, and the search is logged so the claim can be re-run
