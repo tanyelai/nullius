@@ -5,9 +5,12 @@ set -uo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 N="$ROOT/bin/nullius"
-S="${1:?usage: run.sh <01..06>}"
+S="${1:?usage: run.sh <01..07>}"
 WORK="$(mktemp -d)"; OUT="$ROOT/evals/results/$S-$(date -u +%Y-%m-%d).md"
 mkdir -p "$ROOT/evals/results"
+: > "$OUT"   # not tee -a into yesterday: a same-day re-run used to
+             # concatenate, and a reader taking the last table read a
+             # failed run as green
 pass=0; fail=0; blocked=0
 say() { printf '%s\n' "$*" | tee -a "$OUT" >/dev/null; }
 log() { printf '%s\n' "$*"; say "$@"; }
@@ -27,7 +30,6 @@ expect() {
     allow)  [ "$rc" -eq 0 ] && { pass=$((pass+1)); log "- [x] allowed · $label"; } \
                             || { fail=$((fail+1)); log "- [ ] **REFUSED, should allow** · $label"; \
                                  say '  ```'; say "  ${out:0:300}"; say '  ```'; } ;;
-    report) printf '%s' "$out" | grep -qiE "$3" >/dev/null 2>&1 ;;
   esac
 }
 nl() { python3 "$N" "$@"; }
