@@ -3,9 +3,37 @@
 Versions follow [semantic versioning](https://semver.org). Until `1.0.0` the ledger format
 and the CLI surface may change; when they do, the change is listed here with what it breaks.
 
-## Unreleased
+## 0.8.0
 
-**Two of four agents documented interfaces the CLI refuses.**
+**Two broken agents, an eval record that read a failure as green, and a third less prose.**
+
+### The prose
+
+- **`invariants/*.md`: 1,933 -> 1,158 words.** Every rule survives -- the bold rules were
+  diffed before and after, 39 in and 39 out, and the one genuine loss, *a reviewer-proof
+  paper does not exist*, was restored. What went is the argument around each rule, which
+  `WHY.md` and `algorithms/` already carry. All four tables stay: they are the vocabulary,
+  not prose. `voice.md` lost most (560 -> 262) and had been injecting a reference to `prose`,
+  a command deleted two hours earlier. **SessionStart on an empty project: 2,569 -> 1,794
+  words**, below where the day started.
+- **README: 4,841 -> 2,542 words, twenty minutes to eleven.** Twelve sections argued for one
+  mechanism each. They are one table of what refuses and one paragraph of what reports; the
+  arguments were already in `WHY.md` and `algorithms/`.
+- **CHANGELOG: two entries at 1,413 and 811 words** against a historical median near 430. A
+  changelog says what changed and why it was wrong before; those re-argued the design.
+- **`paragraphs()` treated a figure's alt text as prose.** The 82-word alt text atop this
+  README counted as its opening paragraph, so `check` called the file *no short version at
+  the top* when its first sentence is thirty words. It also inflated the cross-file
+  duplication count used to argue for this cut: **34 pairs measured, 11 real**. The headline
+  number was partly an artifact of the instrument that produced it.
+- **Also cut:** `WHY.md` section 12, which was credentials and a build order; section 5's
+  table, which is `warrant.md`'s; `algorithms/README.md`'s prose, which was `CONTRIBUTING`'s;
+  `examples/README.md`'s account of files that no longer exist; and
+  `evals/results/06-2026-09-02.md`, which held two runs concatenated with a failure first.
+
+Repository prose: 43,974 -> 39,341 words.
+
+### The machinery
 
 A second pair of clean-context reviews, one on the prose and one on everything that is not
 `bin/nullius`. The prose one measured what the tool's own repetition detector found when
@@ -50,35 +78,6 @@ Claude Code hook event and that the entry in `hooks/hooks.json` is inert. It is 
 per the official documentation, and it fires. The constraint re-injection that
 [REFERENCES.md](REFERENCES.md) cites `chen2026` for does happen. Acting on that finding
 unchecked would have deleted a working mechanism, which is the whole argument for checking.
-
-## Unreleased
-
-**The invariants are 40% shorter, the README is half its length, and one of my own
-measurements was wrong.**
-
-- **`invariants/*.md`: 1,933 -> 1,158 words.** Every rule survives -- the bold rules were
-  diffed before and after, 39 in and 39 out, and the one genuine loss, *a reviewer-proof
-  paper does not exist*, was restored. What went is the argument around each rule, which
-  `WHY.md` and `algorithms/` already carry. All four tables stay: they are the vocabulary,
-  not prose. `voice.md` lost most (560 -> 262) and had been injecting a reference to `prose`,
-  a command deleted two hours earlier. **SessionStart on an empty project: 2,569 -> 1,794
-  words**, below where the day started.
-- **README: 4,841 -> 2,542 words, twenty minutes to eleven.** Twelve sections argued for one
-  mechanism each. They are one table of what refuses and one paragraph of what reports; the
-  arguments were already in `WHY.md` and `algorithms/`.
-- **CHANGELOG: two entries at 1,413 and 811 words** against a historical median near 430. A
-  changelog says what changed and why it was wrong before; those re-argued the design.
-- **`paragraphs()` treated a figure's alt text as prose.** The 82-word alt text atop this
-  README counted as its opening paragraph, so `check` called the file *no short version at
-  the top* when its first sentence is thirty words. It also inflated the cross-file
-  duplication count used to argue for this cut: **34 pairs measured, 11 real**. The headline
-  number was partly an artifact of the instrument that produced it.
-- **Also cut:** `WHY.md` section 12, which was credentials and a build order; section 5's
-  table, which is `warrant.md`'s; `algorithms/README.md`'s prose, which was `CONTRIBUTING`'s;
-  `examples/README.md`'s account of files that no longer exist; and
-  `evals/results/06-2026-09-02.md`, which held two runs concatenated with a failure first.
-
-Repository prose: 43,974 -> 39,341 words.
 
 ## 0.7.0
 
