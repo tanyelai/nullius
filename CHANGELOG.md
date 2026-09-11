@@ -3,6 +3,30 @@
 Versions follow [semantic versioning](https://semver.org). Until `1.0.0` the ledger format
 and the CLI surface may change; when they do, the change is listed here with what it breaks.
 
+## 0.8.2
+
+**A door.**
+
+Measured against the published guidance for what a Claude Code plugin is -- skills, slash
+commands, subagents, hooks -- this one shipped two of four, and the consequence was testable:
+plugin installed, folder without a `.nullius/`, **SessionStart emitted zero characters.** The
+whole vocabulary arrived only after a project existed, and creating one required already
+knowing the command. It worked in practice because a user types *set up nullius* and the
+model reasons its way there, which is luck rather than design.
+
+- **`skills/nullius/SKILL.md`.** Fires on setting the harness up and on the work it gates:
+  is this idea already published, cover this literature, read this paper, resolve this
+  citation, draft against this venue, review this draft, interpret this result. Sixty lines.
+  It does not restate the command vocabulary, which SessionStart already injects inside a
+  project; what it carries is the part a session cannot get anywhere else -- the `init` path
+  from `CLAUDE_PLUGIN_ROOT`, the two files only the user can write, and which unit kind fits
+  which question.
+- **The README promised a `/nullius` slash command that has never existed.** Six reviews
+  today went past that line. It now says what is actually there.
+
+Still two of four: there is no slash command, because the skill covers discovery and a
+command to reprint a vocabulary already injected would earn nothing.
+
 ## 0.8.1
 
 **One mistyped letter turned every gate off.**

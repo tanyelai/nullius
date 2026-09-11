@@ -151,7 +151,10 @@ that fires at startup hands the session the whole vocabulary.
 | handing it to someone | `report` · `audit` |
 
 That is a third of them. `nullius --help` lists all forty-two with their flags, `--help` on
-any one spells out that command's, and `/nullius` carries the rest of the vocabulary. The
+any one spells out that command's. There is no `/nullius` slash command; this line used to
+say there was. What reaches a session instead is a skill, which fires when you ask for work
+the harness gates, and the whole vocabulary, which arrives at every session start inside a
+project. The
 reference lives there rather than here, because a table kept by hand goes stale and this one
 had already started to.
 
