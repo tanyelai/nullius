@@ -177,11 +177,16 @@ judgement anywhere in it:
 Three more are **counts**. A count is a fact; the threshold you compare it to is a choice,
 and the two must not be confused:
 
-| count | the fact | the choice |
-| --- | --- | --- |
-| screening | how many found, screened, included | whether unscreened must reach zero |
-| vocabularies | how many distinct query vocabularies were logged | whether three is enough |
-| format | words or pages against the declared limit | the limit, which the venue sets |
+| count | the fact | the choice | and so |
+| --- | --- | --- | --- |
+| screening | how many found, screened, included | none: a survey unit means every retrieved work is looked at | blocks |
+| format | words against a limit somebody declared | the limit, which is yours or the venue's | blocks |
+| vocabularies | how many distinct query vocabularies were logged | whether three is enough | reports |
+
+Only the third has a number this tool picked, so only the third reports. The first two compare
+a count against a line somebody else drew: zero, and whatever limit was declared. That is why
+section 8 lists both in its blocking column, and an earlier version of this table implied
+otherwise.
 
 **And one was described here as built and is not.** Walking a claim's citations backwards to
 see whether the trail ever reaches primary evidence would be the cheapest real epistemic left,
@@ -377,7 +382,7 @@ into a nuisance.
 | the acceptance question is still open, or closed with no locator | fewer vocabularies than suggested |
 | a citation is unresolved, or retracted | single-source claims present |
 | a claim sits above its source's read depth | a status reached through author *names* rather than identifiers |
-| a status is stronger than source independence earns | a weak claim written as a bare assertion |
+| a status is stronger than source independence earns | a weak claim written as a bare assertion, which is the *hedging* check and reports; the *credited-name* check, two rows up, refuses |
 | a source kind cannot carry the status claimed of it | passages that repeat one point, and a long draft with no figure |
 | a survey unit left items unscreened | the extension-loop signal |
 | over the format budget with no trade named | a read depth attested by the session rather than by the source |
