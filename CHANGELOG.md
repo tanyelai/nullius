@@ -3,9 +3,11 @@
 Versions follow [semantic versioning](https://semver.org). Until `1.0.0` the ledger format
 and the CLI surface may change; when they do, the change is listed here with what it breaks.
 
-## Unreleased
+## 0.8.1
 
-- **One mistyped letter turned every gate off.** `mode` was a free string where `certain` was
+**One mistyped letter turned every gate off.**
+
+- **`mode` is an enum of two, validated.** `mode` was a free string where `certain` was
   magic and anything else silently behaved as report-only, with no validation anywhere:
   `nullius config mode certian` was accepted and the stop gate went from exit 2 to exit 0
   without a word. It is an enum of two now, `certain` and `advice`, and a session in `advice`
