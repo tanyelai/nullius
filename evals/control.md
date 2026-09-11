@@ -127,7 +127,24 @@ contained an invented DOI, and the merge of two empty index answers raised inste
 refusing. That is the first thing this file has established, and it was established before
 any arm was run.
 
-## It has been run once, and it did not go the way this file assumed
+## It has been run twice
+
+[results/control-2026-09-11.md](results/control-2026-09-11.md) on an easy topic and
+[results/control-2026-09-11b.md](results/control-2026-09-11b.md) on a hard one. Read the
+second first; it is the one that separates the arms.
+
+Across six arms, **zero fabricated identifiers**, including in the three with no harness at
+all. The gate this repository is named for has had nothing to catch twice, and one of the two
+topics was chosen because its identifiers should not have been memorised.
+
+What did separate the arms on the hard topic: credited names with nothing resolvable behind
+them (bare 4, advice 1, tool 0), and length against a 350-word task (bare +15%, advice +81%,
+tool +3%). **The advice arm was the most verbose of the three**, having just read 1,933 words
+that include *lead with the answer, then stop*. The likely reason is worth stating plainly:
+advice about thoroughness produces thoroughness performance, and the instruction to be brief
+lost to the instructions implying completeness.
+
+## The first run, and what it did not go the way of
 
 [results/control-2026-09-11.md](results/control-2026-09-11.md). One task, three arms, one run
 each. Every arm scored clean on every measure `audit` covers, including the bare one: the
