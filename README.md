@@ -503,41 +503,20 @@ yours.
 
 ## Where the rest of it is
 
-This file is how to run the thing. Everything else has its own home, and none of it is
-summarised back here.
+This file is how to run the thing. The rest is not summarised here, which used to be claimed
+one line above a summary of it.
 
-**[WHY.md](WHY.md) is the argument**: what goes wrong by default, why more instructions do not
-fix it, what plays the part a compiler plays in software, and what this is not. It also holds
-the one thing you have to supply yourself, in §10: the tool ships knowing nothing about your
-field, so `field.md`, `venues/<venue>.md` and `program.md` are files you write, and they are
-what make a critique *calibrated* rather than idealised. `falsified.md` is the one people
-underestimate.
-
-**[algorithms/](algorithms/) is the interesting half.** Every mechanism in this tool replaced
-something that looked reasonable and did not work, and each entry carries the measurement that
-killed the naive version: the query that matched 15,277 works against the one that matched 811,
-the citation walk that offered a 1962 statistics paper as the canon of a field two decades
-younger, the guard that called a document clean while every reference in it was unverified.
-Written as schemas rather than prose where the mechanism has any structure, one file per stage,
-and open at the end of each on where it is still weak. If one is wrong, the measurement is the
-thing to attack.
-
-[evals/](evals/) runs seven scenarios against live indexes: one per use case, each on a
-different AI subject, plus the path where the index refuses to answer at all. It is not a
-benchmark and seven runs are not calibration; it measures whether each path completes and
-whether the gates fire on real material rather than only on the fixtures. Two defects came out
-of the first pass, both recorded under `## Found by running this` in the scenario that found
-them.
-
-[examples/](examples/) has three worked fields: clinical machine learning, language model
-evaluation, and quantitative social science. The `field.md` files are real and you
-should argue with them; the venue files are skeletons, because a checklist invented for a real
-conference would break the tool's own rule that it may not require what it cannot cite.
-
-[REFERENCES.md](REFERENCES.md) is where the design's own claims are sourced. Every mechanism
-here answers a failure somebody has already characterised, and every identifier in that file
-was resolved with `nullius cite` rather than written from memory, the same bar the tool
-holds a draft to.
+- **[WHY.md](WHY.md)** -- the argument: what goes wrong by default, why more instructions do
+  not fix it, and what this is not. Section 10 is the one thing you supply yourself.
+- **[algorithms/](algorithms/)** -- one file per mechanism, each carrying the measurement that
+  killed the naive version and a note on where it is still weak.
+- **[evals/](evals/)** -- seven scenarios against live indexes, and
+  [control.md](evals/control.md), which is the arm that actually tests the claim and has now
+  been run twice.
+- **[examples/](examples/)** -- three worked fields. The `field.md` files are real and you
+  should argue with them.
+- **[REFERENCES.md](REFERENCES.md)** -- where this design's own claims are sourced. Every
+  identifier there was resolved with `nullius cite`.
 
 ## Contributing
 

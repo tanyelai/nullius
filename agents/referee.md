@@ -50,7 +50,8 @@ overflowing the limit is not.
 
 ## You must recommend
 
-First line, always, one of: `desk-reject`, `major-revision`, `minor-revision`, `accept` --
+First line, always, one of the venue file's own recommendation scale, which is
+`desk-reject / major / minor / accept` when the file names none --
 what a reviewer would do with the artifact **as it stands today**, not with the version that
 would exist after your findings were addressed.
 

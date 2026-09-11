@@ -3,6 +3,54 @@
 Versions follow [semantic versioning](https://semver.org). Until `1.0.0` the ledger format
 and the CLI surface may change; when they do, the change is listed here with what it breaks.
 
+## Unreleased
+
+**Two of four agents documented interfaces the CLI refuses.**
+
+A second pair of clean-context reviews, one on the prose and one on everything that is not
+`bin/nullius`. The prose one measured what the tool's own repetition detector found when
+pointed at the repository for the first time: 34 cross-file paragraph pairs sharing half
+their content words or more, and a README that `check` reads as 4,568 words, twenty minutes,
+no short version at the top.
+
+- **`agents/referee.md` mandated `major-revision` and `minor-revision`.** `DEFAULT_SCALE` is
+  `desk-reject / major / minor / accept`, so an agent obeying its own file was refused by
+  `nullius verdict` on every review. It now names the venue file's scale, which the same file
+  said two paragraphs earlier.
+- **`agents/librarian.md` had the `screen` arguments in the wrong order**, documenting
+  `screen <search> <index> <include|exclude>` where the index is a flag. An agent following it
+  failed on every screening call.
+- **The eval runner never truncated its output file.** `tee -a` into a name keyed on the date
+  means a same-day re-run concatenates, and `results/06-2026-09-02.md` is two runs in one
+  file: the first ends `| 8 | 1 | 0 |` with a gate that should have refused and did not, the
+  second ends `| 9 | 0 | 0 |`. A reader taking the last table read a failed run as green.
+- **The bytecode check added this morning reported an untruth.** It said *tracked* and
+  globbed the working tree, so an untracked, gitignored `.pyc` turned preflight red on a
+  clean repository. That is the `5 passed, 1 failed` seen earlier today and waved away as
+  transient. It was not transient. It reads `git ls-files` now.
+- **Three byte-identical venue skeletons, and two duplicate eval results.** The three
+  `examples/*/venues/EXAMPLE.md` had the same md5 as each other and as `templates/venue.md`,
+  which `init` already writes, so copying a worked field into a project overwrote a copy of
+  itself. `results/04-` and `05-2026-09-10.md` differed from their 09-02 twins by a timestamp
+  and one citation count.
+- **`examples/README.md` claimed index presets `init` does not pick.** True for
+  `clinical-ml`, false for the other two: `FIELD_INDEXES` has no key matching *language
+  models* or *social science*.
+- **About 900 words of restated argument.** WHY.md section 6 was `invariants/status.md` with
+  the column headers reworded, and section 7's boundary subsection was the third telling of
+  what `algorithms/critique.md` carries with its parse schema. The injected files are
+  canonical because they are the copy a session actually sees. The duplication was not only
+  bloat: today's correction to the folklore claim reached two of the four places it was
+  stated, and section 6 was still describing a citation walk that does not exist.
+- **The README's `Where the rest of it is` section** opened by saying nothing is summarised
+  back here and then summarised five files for thirty-five lines.
+
+**A finding checked and rejected.** The machinery review reported that `PostCompact` is not a
+Claude Code hook event and that the entry in `hooks/hooks.json` is inert. It is a valid event,
+per the official documentation, and it fires. The constraint re-injection that
+[REFERENCES.md](REFERENCES.md) cites `chen2026` for does happen. Acting on that finding
+unchecked would have deleted a working mechanism, which is the whole argument for checking.
+
 ## 0.7.0
 
 **A cut, four claims that were not true, and one agent.**

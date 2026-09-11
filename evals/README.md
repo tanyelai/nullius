@@ -26,9 +26,12 @@ control, human labels and an agreement measure. None of that exists here, and
 
 Read a green run as *nothing broke on this path today*, not as evidence the tool works.
 
-The arm that would be evidence is designed in [control.md](control.md) and has not been run.
-It is the one comparison that matters, advice against enforcement, and it needs real sessions
-rather than this runner.
+The arm that would be evidence is [control.md](control.md), and it has now been run twice:
+[an easy topic](results/control-2026-09-11.md) and [a hard one](results/control-2026-09-11b.md).
+Six arms, zero fabricated identifiers, including in the three with no harness at all. What
+separated the arms on the hard topic was credited names with nothing behind them and length
+against the brief, and the arm reading 1,933 words of standards was the most verbose of the
+three.
 
 ## One thing these runs taught about reading them
 

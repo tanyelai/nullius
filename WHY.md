@@ -112,23 +112,9 @@ in the loop *could* fail, so the default filled the gap.
 | **hedging collapse** | "may suggest" in the review becomes "shows" in the discussion, with no new evidence in between |
 | **prose faults mixed with science faults** | one list where "unclear sentence" sits beside "the control is wrong", and nothing can be triaged |
 
-Four of these are the expensive ones, and the rest of this document is mostly about them.
-
-**It skims the literature and does not know it.** The prose form hides it: one query and forty
-look identical on the page.
-
-**It trusts a paper the way the paper describes itself.** An abstract is a marketing document.
-What a study *shows* is in its tables, and the gap between the two is where most of the
-interesting reading happens. By default that gap is collapsed.
-
-**It cannot tell settled from proposed.** One claim carries a decade of independent
-replication and the other carries one paper and one benchmark, and they arrive in the same
-sentence shape. Build three chapters on the second believing it was the first, and you find
-out late.
-
-**Its critique has no floor.** Asked what is missing, it answers. Asked again, it answers
-again, because *more* reads as *more rigorous*. A page limit that was never declared cannot
-object.
+Four of these are the expensive ones and the rest of this document is mostly about them: the
+thin search that hides in prose, the paper trusted the way it describes itself, settled and
+proposed arriving in the same sentence shape, and a critique with no floor.
 
 > **The asymmetry that makes this hard.** Suppress *"what is missing"* and a genuinely
 > absent control section goes unmentioned. Leave it unbounded and the draft doubles and is
@@ -245,27 +231,15 @@ and every claim records whether its depth rested on the source or on the session
 
 ## 6 · Settled versus proposed
 
-Epistemic status is a second axis, and it is the one that costs years when it is missing.
-Warrant asks *how do you know this*. Status asks *how settled is this in the field*. A claim
-can be perfectly warranted and barely established, and that cell is the dangerous one.
+Warrant asks *how do you know this*. Status asks *how settled is this in the field*, and a
+claim can be perfectly warranted and barely established, which is the dangerous cell. Status
+is capped by source independence, computed from author identifiers rather than declared, and
+its rendering is greppable, so the discipline lives in a difference a script can see rather
+than in an adjective the model is asked to feel.
 
-| status | what earns it | how it may appear in prose |
-| --- | --- | --- |
-| `textbook` | graduate texts treat it as background | bare assertion |
-| `established` | *independent* replication, disjoint author sets | bare assertion, review cited |
-| `contested` | serious work on both sides, both logged | must name both sides |
-| `emerging` | one or two groups, recent | “early evidence suggests”, groups counted |
-| `single-result` | one paper, one setting | attributed and situated, never bare |
-| `folklore` | repeated; the trail never reaches data | marked unsourced, or dropped |
-
-Two things stop status from being self-declared. It is **capped by source independence**,
-the exact parallel to the read-depth cap, and computable from author identifiers the record
-already carries. And its rendering is greppable, so the discipline lives in a difference a
-script can see rather than in an adjective the model is asked to feel.
-
-Pointed the other way, the same axis is what stops your open question from being closed on
-your behalf: a live disagreement rendered as `contested` keeps a door open that a confident
-summary would have quietly shut.
+The six statuses and what each earns are in
+[`invariants/status.md`](invariants/status.md), which is the copy injected into every
+session and therefore the one that has to be right.
 
 ## 7 · Missing, or merely more
 
@@ -301,28 +275,14 @@ cannot invent a requirement it cannot cite.
 
 ### The draft's own boundary
 
-There is a third source of "already decided", and it does not belong to the tool at all.
+A plan that survives review states what it deliberately does not cover, with a reason per
+row, in the plan. Without that, a competent critic names another control every round and the
+study never starts. So the boundary is read out of the draft rather than kept beside it, and
+the symmetry with the venue file is exact: the tool may not require what the venue does not
+ask for, and may not dismiss what the draft does not itself rule out. Neither list is ours.
 
-A plan that is going to survive review states what it deliberately does not cover, with a
-reason per row, in the plan. That section is what makes review converge: without it a
-competent critic names another control every round, each round adds scope, and the study
-never starts.
-
-So the boundary is read out of the draft rather than kept beside it. The symmetry with the
-venue file is exact: the tool may not require what the venue does not ask for, and it may
-not dismiss what the draft does not itself rule out. Neither list is ours.
-
-What the tool does with it is again enumeration rather than judgement. No textual test can
-decide whether a suggestion falls under a boundary row, so a critique cannot write a finding
-until the boundary has been read, and a term overlap between a finding and a row is reported
-as a lead rather than acted on: a wrong match here silences a legitimate finding, which is
-the error worth being careful about.
-
-Two rules stop it becoming a shield. A row that excludes something without saying why is a
-fact the gate refuses on. And the boundary itself is attackable, through a finding whose
-referent is `scope`, which is the only admissible way back in. A design decision is
-reviewable. What is not reviewable is re-raising it round after round as though it had never
-been taken.
+The mechanism, the parse and the two rules that stop it becoming a shield are in
+[algorithms/critique.md](algorithms/critique.md).
 
 ### The budget is a price, not a ceiling
 

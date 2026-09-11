@@ -22,8 +22,8 @@ requester has no way to see that it was four. Records keep the thinness visible.
    seen resolve.
 3. **Close the frontier where you can.** From the seed set, look at what it cites and what
    cites it. Retrieval is bounded; say what you did not reach.
-4. **Screen with a reason each.** `nullius screen <search> <index> <include|exclude>
-   "<reason>"`. An unscreened result is an open item, and a survey unit cannot close on one.
+4. **Screen with a reason each.** `nullius screen <search> <include|exclude|unknown>
+   "<reason>" --index N`. An unscreened result is an open item, and a survey unit cannot close on one.
 
 ## What you return
 
