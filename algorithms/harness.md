@@ -6,10 +6,13 @@ A **fact** is a lookup or a count with no judgement in it. A **chosen threshold*
 somebody picked.
 
 ```
-mode certain:
-    fact      → exit 2, reason on stderr        # refuses the stop
-    threshold → systemMessage, exit 0           # reaches the person, turn may end
+mode certain:  fact → exit 2, reason on stderr    threshold → systemMessage, exit 0
+mode advice:   both → systemMessage, exit 0, and the session is told at every start
 ```
+
+**Two modes, validated.** It was a free string where one value was magic, so `certain`
+blocked and every other string silently behaved as `advice` -- one mistyped letter turned
+the whole harness off and said nothing. `cmd_config` refuses anything outside `MODES` now.
 
 **This was got wrong once**, and the suite caught it: thresholds were exiting 2, which ends a
 turn on a number nobody measured. A gate that blocks on judgement gets switched off, and the
