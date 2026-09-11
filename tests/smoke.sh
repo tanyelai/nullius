@@ -1477,6 +1477,24 @@ TWO
   expect_hook pre-write 2 "and as an absolute path"                      "$D_ABS"
   expect_hook pre-write 0 "while an untracked note is still a note"      "$D_SCRATCH"
 
+  # a figure's alt text spans lines and is not prose. Left in, the 82-word alt
+  # text atop this repository's own README counted as its opening paragraph, so
+  # check reported the file as having no short version when its first sentence
+  # is thirty words -- and two figures captioned alike read as a repeated point.
+  NL="$NULLIUS" python3 - <<'ALT'
+import importlib.machinery, importlib.util, os
+spec = importlib.util.spec_from_loader(
+    "nl", importlib.machinery.SourceFileLoader("nl", os.environ["NL"]))
+nl = importlib.util.module_from_spec(spec); spec.loader.exec_module(nl)
+doc = ("# T\n\n![" + " ".join("altword%d" % i for i in range(90)) + "](a.svg)\n\n"
+       + "A short opening sentence of about a dozen words, which is the way in.\n\n"
+       + " ".join("body%d" % i for i in range(60)) + ".\n")
+ps = nl.paragraphs(doc)
+assert not any("altword" in p for _, p in ps), "alt text counted as a paragraph"
+assert nl.has_short_version(doc), "a short opening was hidden behind the figure"
+ALT
+  [ $? -eq 0 ] && ok || bad "figure alt text is treated as prose"
+
   # 5. a period inside a title is not the end of a sentence
   NL="$NULLIUS" python3 - <<'TERSE'
 import importlib.machinery, importlib.util, os

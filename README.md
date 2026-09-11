@@ -155,62 +155,46 @@ any one spells out that command's, and `/nullius` carries the rest of the vocabu
 reference lives there rather than here, because a table kept by hand goes stale and this one
 had already started to.
 
-## The stopping rule a draft writes for itself
+## What it refuses, and what it only tells you
 
-Review on a plan does not converge on its own. A competent critic can always name another
-control, so without a written boundary each round adds scope and the study never starts.
+Twelve sections used to sit here, one per mechanism, each arguing for itself. The argument is
+[WHY.md](WHY.md)'s job and the mechanisms are in [algorithms/](algorithms/). This is the list.
 
-The answer is not for the tool to decide what is out of scope. It is for **the draft to say
-so, in the draft**, where a reviewer will see it:
+**A fact refuses.** No calibration is needed for any of these to be right.
 
-```latex
-\section{What this study does not do}
-...
-A human persuasion study & Established by others and cited. Attempted underpowered,
-                           it would make the paper about the user study \\
-Causal analysis on frontier models & Impossible without weights. The behavioural arm
-                           runs there and the transfer inference is labelled conditional \\
-```
+| | |
+|---|---|
+| an unresolved or retracted citation, in a tracked draft | a bare `arXiv:` id or a credited surname counts, and so does a shell heredoc |
+| a claim above its source's read depth | `strength <= depth`, and `--quote` grounds the depth in the source |
+| a status above what author independence earns | `established` needs two disjoint author sets |
+| a survey closing with anything unscreened or unwalked | the citation graph is the only thing a closed frontier can rest on |
+| a tight zero never re-run over full text | *the words were wrong* is not *the literature is empty* |
+| an `idea` unit with no killing assumption, no cost, or nothing read past an abstract | |
+| an `interpret` unit that names its decisive number after the results | unless `--post-hoc`, which labels it and carries the label forward |
+| a finding with no referent, or a critique with no verdict | zero fatal and zero material **is** the verdict |
+| a draft still carrying wording an open finding quotes as defective | removing the finding is not removing the sentence |
+| a question you asked yourself and never came back to | `needs` closes `observed`, `unmet` or `carried` |
+| a draft that names a venue going out unread | `unread "<why>"` is the way past, and it is recorded |
+| a tracked draft with no declared length | so an addition has something to be a trade against |
 
-`nullius scope` reads that section out of the tracked draft, from a markdown list, a table,
-or a LaTeX `tabular`. A critique unit **cannot write a finding until the boundary has been
-read**, and cannot close without it. That is the same guarantee the completeness walk gives:
-enumeration, not judgement. No textual test can decide whether a suggestion falls under a
-boundary row, so the tool refuses to guess and refuses to let you not look.
+**A chosen number is reported and marked as chosen.** Fewer vocabularies than suggested; a
+status reached through names rather than identifiers; passages sharing most of their words; a
+long draft with no figure; growth with nothing closed; a read depth the session attested
+rather than the source.
 
-Two things keep the boundary from becoming a shield:
-
-- **Every row has to say why.** A row that excludes something without a reason is a fact the
-  gate refuses on. Out by decision, with the decision missing, is not a boundary.
-- **The boundary itself can be attacked.** `nullius finding <severity> scope "<why this
-  boundary is wrong>"` is admissible, and it is the only way back in. A design decision is
-  reviewable; what is not reviewable is re-raising it round after round as though it had
-  never been taken.
-
-If a finding shares terms with a row, the tool says so and calls it a lead rather than a
-verdict, because a wrong match here suppresses a legitimate finding, and that is the
-direction of error worth being careful about.
+**Two things scope the rest.** `start --thread <name>` says which line of enquiry a unit
+belongs to, and the gates read only that thread. And what crosses a context boundary is what
+is still live on it: a search stops reciting its rows once everything is screened, a buried
+idea is named when it shares a term with your question and counted when it does not. The
+ledger keeps all of it; `compact` deletes only what `fulltext` can refetch.
 
 ## Closing the frontier
 
 ![How the walk chooses where to go and when to stop: the next hop is led by the works most of your own seeds agree on, tie-broken by nearness to their era rather than by citation count, and the walk stops when a hop is 60% already-seen, when the 400-work budget is spent, or when nothing new is left.](assets/walk.svg)
 
-A query finds what shares your words. The citation graph finds what the field itself linked,
-and it is the only thing a claim that the frontier is closed can rest on.
-
-`nullius snowball` walks both directions from the works you **screened in**, not from what a
-query returned: backward into what a seed cites, forward into what cites it.
-
-```
-nullius: walking from <the work you screened in>
-  back: 61 in the graph, 5 retrieved  (capped)
-  forward: 98 in the graph, 5 retrieved  (capped)
-```
-
-`--depth 2` walks again from whatever the first hop's seeds **agreed on**, rather than from
-everything, because following what the field points at repeatedly is what going deeper means.
-
-The payload is not the list. It is the multiplicity:
+A query finds what shares your words. The citation graph finds what the field itself linked.
+`nullius snowball` walks both directions from the works you **screened in**, and the payload
+is not the list, it is the multiplicity:
 
 ```
 hop 1: 1 seed(s)     16 new, 0 already reached
@@ -221,232 +205,11 @@ reached from more than one of 7 seeds, which no query would have told you:
   2/7 (29%)  1998   273  <its standard textbook>
 ```
 
-A work several of your seeds point at is what the field agrees is behind them: the canon, or
-the thing everyone is arguing with. A keyword query will not reliably surface it, because the
-canon is often phrased in older words. And the "already reached" percentage is the saturation
-signal: when a hop stops returning anything new, you have the literature. When it is 6%, you
-do not, and no amount of confident prose changes that.
-
-Everything retrieved lands in a search log like any other, carrying how it was reached
-(`via back from ...`), and gets screened the same way. A `survey` unit cannot close while a
-work you kept has never been walked, which turns *the frontier is closed* from a claim into a
-count. A kept work the index does not carry cannot be walked at all, and that is reported
-rather than skipped.
-
-Where Semantic Scholar has parsed a citing paper's full text it also returns the sentence in
-which the citation appears, and whether the citation was influential. Those are **sparse**:
-present for some papers and not others, so the tool shows them when they exist and never
-counts on them.
-
-## What a correction has to reach
-
-A claim dies in the ledger and goes on standing in the draft, because words do not change
-themselves. Four gates close that gap, and each one exists because it was missed:
-
-| The gate | What it refuses |
-|---|---|
-| **pinned wording** | a `fatal` or `material` finding quotes the sentence it condemns, and that quote is pinned. The draft does not pass `check` while it still contains it. Removing the finding is not the same as removing the sentence |
-| **companions** | `artifact draft.md --includes figures.py` says which files reach the reader *through* the draft. They are checked with it whatever their extension, because a figure caption goes on asserting what the prose has stopped asserting |
-| **staleness** | `falsify` marks every tracked draft unchecked. The unit does not close until each has been read against what died |
-| **the shell** | `Bash` is matched as well as `Write|Edit`. A quoted heredoc carries its own body, so it is checked exactly like a write; a redirect from a program cannot be, and is said out loud instead. A gate you can step around by choosing another tool is not a gate |
-
-## What an opinion has to rest on
-
-Three more, against the two ways a screen quietly fails:
-
-| The gate | What it refuses |
-|---|---|
-| **a tight zero** | a query that returned nothing over title and abstract, never re-run with `--loose`. The words were wrong is not the same as the literature is empty |
-| **a failed vocabulary** | works excluded on a search the tool itself reported as a finding about the vocabulary. `screen ... unknown` is the honest third answer, and it reads later as what it was |
-| **an impression** | an `idea` unit where nothing was read past `abstract`. The nearest work is precisely the one an abstract will not settle |
-
-And an `idea` unit does not close with no `considered` on the record: an idea with no rejected
-sibling is a preference rather than a choice, and the reasoning is the first thing lost.
-
-## A thread is a line of enquiry, and the gates read one
-
-Nobody works on one question at a time. `start --thread <name>` says which line this unit
-belongs to, and every search and claim written under it is stamped with that thread.
-
-```bash
-./.nullius/bin/nullius start novelty idea "has anyone measured X" --thread calibration
-```
-
-**The gates then read that thread and no other.** Unfiltered, one search logged in March
-satisfied *silence is a failed search* for every idea unit after it, and one failed
-vocabulary blocked every unrelated idea after that. A project with two live questions is the
-ordinary case rather than an exotic one.
-
-Nothing needs migrating: a record written before threads existed reads as `main`.
-
-## What is on disk, and what comes back
-
-They are different decisions and this tool used to make them once, so the only way to read
-less was to record less. The ledger keeps everything and `report` walks everything. What
-crosses a context boundary is what is still **live** on the thread in front of you:
-
-| | |
-|---|---|
-| a search | recites its kept works while anything is unscreened. After that its counts are in `coverage` and its rows stay there |
-| a buried idea | named when it shares a term with the question you are asking, counted when it does not. Never silently dropped, which the old cap at eight was |
-| what is unknown | until it is `observed` or `unmet`; `carried` keeps it coming back |
-
-`nullius compact` is the only thing that deletes, and it deletes only what can be rebuilt:
-cached full text, which `fulltext` refetches, and growth samples outside the window any
-detector reads. It will not remove a claim, a finding, a screening decision or a buried
-idea, and there is no flag that will. The file-drawer problem is why this tool writes things
-down in the first place.
-
-## Whose word a read depth rests on
-
-`strength ≤ depth` is the tool's flagship cap and both sides of it are typed by whoever is
-at the keyboard. With a person reading a paper that is an honest-broker field. In an
-unattended run it is the only unchecked thing left, so it can be settled against the source:
-
-```bash
-./.nullius/bin/nullius note lewis2020 --depth method --quote "we fine-tune the retriever"
-```
-
-The passage is checked verbatim against the cached text or the note is refused, and every
-claim records whether its depth came from the source or from the session. That row is the
-one *nullius in verba* did not have.
-
-## A draft does not go out unread
-
-A `critique` unit has always had to produce a verdict. A `write` unit never had to receive
-one, so a draft could reach the end having been read by nobody. That is the oldest gate in
-science and this repository had every piece of it -- located findings, a venue scale, three
-agents that start in a clean context and do not know whose draft it is -- and never joined
-them.
-
-**A write unit that names a venue does not close while a tracked draft has no recommendation
-on it.** Naming a venue is the act of saying this goes out; a unit without one is drafting,
-and drafting is where the work happens.
-
-```bash
-# have something read it that did not write it, then record what came back
-./.nullius/bin/nullius finding material structural "no limitations section" --at p.md:40
-./.nullius/bin/nullius verdict rework --by referee
-```
-
-**The tool never reads the recommendation.** A `rework` closes the unit exactly as an
-`accept` does. It checks that somebody looked, not that they approved, and what to do about a
-finding stays where it always was.
-
-Two things keep it honest in the other direction. A verdict with no `--by` is reported as
-*the session's own verdict on its own draft*, which is the check this whole tool exists to
-say is not one. And `nullius unread "<why>"` sends it out unread on purpose, recorded and
-travelling with the unit, because a gate with no way past it is a gate people route around.
-
-## Saying a thing once
-
-Length was never the problem. A long document with nothing repeated is fine; a short one
-that makes its point three ways is not, and that is the thing a model does and a person
-does not. It is also, unlike elegance, partly measurable, and `nullius check` reports it
-alongside everything else it reads:
-
-```
-$ nullius check proposal.md
-proposal.md: 108 words, 0 citation key(s), 0 bare identifier(s), 0 attributed name(s)
-  chosen proposal.md: 1 passage pair(s) share most of their content words, which is
-      78%  line 3 "The central difficulty is that speculative d..."
-              line 9 "Nobody has characterised whether draft and ..."
-```
-
-Three signals, all of them counts:
-
-| | |
-|---|---|
-| **one point, twice** | passage pairs sharing most of their content words. Containment rather than overlap, because the failure is a point restated *more briefly* somewhere else |
-| **no way in** | past a threshold, a document with no summary and no short opening paragraph |
-| **no shape** | past the same threshold, a document with no figure, table or diagram at all |
-
-**Every one of these is a lead, never a verdict, and none of them refuses anything.** Two
-paragraphs on one subject legitimately share vocabulary, and a tool that deleted the second
-would be editing rather than checking. They reach the stop through the channel marked as
-chosen rather than measured, alongside the other numbers somebody picked.
-
-## How long is it allowed to be
-
-A different question, and a smaller one. The mirror of an old gate is now closed. A declared budget with no draft tracked against
-it has always been a fact this refuses. **A tracked draft with no declared length now is
-too**, because without a number there is nothing the writing can exceed and no point at
-which an addition becomes a trade.
-
-```
-./.nullius/bin/nullius start proposal write "draft it" --artifact p.md --words 900
-./.nullius/bin/nullius config default_words 900     # or once, as the house norm
-```
-
-Three places satisfy it: the unit, the venue file, or the project's house norm. **The tool
-never picks the number.** It has no view on how long your work should be, and a default it
-chose would be exactly that. What it refuses is for nobody to have chosen, which is the same
-move as the acceptance question, the killing assumption and the scope boundary.
-
-Every write to a counted draft then says where it puts you, rather than waiting for the
-stop:
-
-```
-nullius: this write puts the tracked draft(s) at 1,040 of 900 words.
-  Over. An addition here is a trade: name what it costs, or subtract.
-```
-
-**What this does not reach.** Anything not tracked as an artifact, including a session's
-prose in the terminal. Track a slide deck or a memo and it is covered; leave it untracked
-and only [`invariants/voice.md`](invariants/voice.md) applies, which is an instruction and
-therefore the weaker kind of constraint. This repository is candid about that difference
-everywhere else and should be here too.
-
-## What not knowing has to become
-
-Every other gate here can refuse. None of them could say *not yet, and here is the door*, and
-so the one thing a careful person does most often had nowhere to go. `nullius needs` records
-it as a countable state instead of a sentence:
-
-```bash
-./.nullius/bin/nullius needs "run it once on data the model never saw" \
-    --for c003 --cost "one afternoon of retraining"
-```
-
-It outlives the unit that found it, it comes back at every session start, and it closes three
-ways and no others:
-
-| | |
-|---|---|
-| `observed` | you got the observation. Say what it was |
-| `unmet` | it could not be got. Say why, and it travels with the conclusion rather than being dropped when the paragraph is written |
-| `carried` | still open, and you are saying where it now lives |
-
-**Staying open is fine, and `carried` is how you say so.** What the unit cannot close on is a
-question it asked itself and then walked past, which is the same guarantee the venue walk and
-the reviewer points give: enumeration, not judgement.
-
-This is also why `--warrant assumed` is refused. An assumption is an open question wearing
-another word, and now there is somewhere for it to be one.
-
-## When a draft is only getting longer
-
-![Three refusals on a critique loop that would otherwise never close: an ask with no
-terminating answer, a finding that cites none of the four admissible referents, and a draft
-that grew for three turns with nothing that generates work closed. Fatal and material findings
-still keep the loop open.](assets/critique.svg)
-
-Growth is not the signal. A draft that grew while four material findings were fixed is a
-draft being worked on. Growth **with nothing closed** is the other thing:
-
-```
-p.md: 3 turns, 4201 to 7001 words, and no finding that generates work closed in
-that span. Growth is not the signal; growth with nothing closed is. If the last
-real gap is shut, the answer is a verdict rather than another pass.
-```
-
-Length is sampled per artifact at the stop, and only when the measured state moves, so the
-series counts turns rather than keystrokes. Alongside it runs a count of `fatal` and
-`material` findings actually closed with `nullius resolve`, across every unit the project
-has run. The detector compares the two over a window of three turns.
-
-It is a **chosen threshold**, not a fact: three turns and a quarter of growth are numbers
-somebody picked. So it reports to you and never ends a turn.
+A work several seeds point at is what the field agrees is behind them, and a keyword query
+will not reliably surface it because the canon is phrased in older words. The already-reached
+percentage is the saturation signal: at 6% you do not have the literature, and no amount of
+confident prose changes that. [algorithms/graph.md](algorithms/graph.md) has the walk, its
+stopping rule, and the measurement that killed the naive version.
 
 ## Handing it to someone
 

@@ -1,11 +1,9 @@
 # Algorithms
 
-Each entry replaced something that looked reasonable and did not work. Where a number appears
-it was measured on a live index or a real document, because a mechanism justified by an
-intuition cannot be argued with and therefore cannot be improved.
-
-One file per stage. Search is the most worked-out because it is where the tool has spent the
-most real use; the others will fill in as they get tested.
+One file per stage. Each entry carries the naive thing that was tried, the measurement that
+killed it, the mechanism as a schema, and where it is still weak. If you disagree with one,
+the measurement is the thing to attack. [CONTRIBUTING.md](../CONTRIBUTING.md) says what a new
+entry needs.
 
 | | |
 |---|---|
@@ -15,15 +13,3 @@ most real use; the others will fill in as they get tested.
 | [critique](critique.md) | which findings are admissible, and when to stop |
 | [loops](loops.md) | what may end one, and where not knowing goes |
 | [harness](harness.md) | what blocks, what reports, and what survives |
-
-## Adding one
-
-An entry needs four parts, in this order:
-
-1. **Naive.** The reasonable thing that was tried first.
-2. **Measured.** What happened, with the number. Not "returned noise": *matched 15,277 works
-   and the top one was about healthcare*.
-3. **Instead.** The mechanism, as a schema rather than prose where it has any structure.
-4. **Weak.** Where it still fails. An entry with no weakness listed has not been used enough.
-
-If you disagree with one, the measurement is the thing to attack.

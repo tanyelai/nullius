@@ -4111,12 +4111,20 @@ SUMMARY_HEADINGS = [r"abstract", r"summary", r"tl;?dr", r"in (one|a) (paragraph|
 def paragraphs(text):
     """(line number, words) for each block worth comparing. Headings, code and
     lists are skipped: a list repeating a heading is not the failure here."""
-    out, buf, start, fenced = [], [], 1, False
+    out, buf, start, fenced, alt = [], [], 1, False, False
     for i, line in enumerate(text.splitlines(), 1):
         if line.strip().startswith("```"):
             fenced = not fenced
             continue
         if fenced:
+            continue
+        # A figure's alt text spans lines and is not prose. Left in, the 82-word
+        # alt text at the top of this repository's own README counted as its
+        # opening paragraph, so the file was reported as having no short version
+        # when its first sentence is thirty words -- and two figures captioned
+        # alike in two files read as a duplicated argument.
+        if alt or line.lstrip().startswith("!["):
+            alt = ")" not in line.split("](")[-1] if "](" in line else True
             continue
         if not line.strip() or line.lstrip().startswith(("#", "|", "-", "*", ">")):
             if buf:
