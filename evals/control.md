@@ -127,6 +127,24 @@ contained an invented DOI, and the merge of two empty index answers raised inste
 refusing. That is the first thing this file has established, and it was established before
 any arm was run.
 
+## It has been run once, and it did not go the way this file assumed
+
+[results/control-2026-09-11.md](results/control-2026-09-11.md). One task, three arms, one run
+each. Every arm scored clean on every measure `audit` covers, including the bare one: the
+failure the headline gate prevents did not occur anywhere. The arms did differ, and not here
+-- arm B adopted the status vocabulary with nothing enforcing it, and arm C produced a ledger
+of claims with warrants, statuses and grounded read depths.
+
+**The distinguishing measure was the ledger, and the instrument does not score the ledger.**
+That is not an oversight to patch quickly: scoring the artifact alone is exactly what makes
+the three arms comparable, and the moment a measure reads arm C's ledger it is measuring
+something arms A and B cannot have. The honest form of that measure is whether a third party
+can check a claim in the draft, which is answerable for all three and is not in the nine.
+
+Read the run's own last section before designing the second one. It lists four reasons the
+result is weak, and the fourth is that the experiment was designed by the author of the thing
+under test.
+
 ## What is still missing
 
 The remaining six measures. Four of them read a ledger, which arm A does not have, so they
