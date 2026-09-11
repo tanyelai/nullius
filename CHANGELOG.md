@@ -51,176 +51,109 @@ per the official documentation, and it fires. The constraint re-injection that
 [REFERENCES.md](REFERENCES.md) cites `chen2026` for does happen. Acting on that finding
 unchecked would have deleted a working mechanism, which is the whole argument for checking.
 
+## Unreleased
+
+**The invariants are 40% shorter, the README is half its length, and one of my own
+measurements was wrong.**
+
+- **`invariants/*.md`: 1,933 -> 1,158 words.** Every rule survives -- the bold rules were
+  diffed before and after, 39 in and 39 out, and the one genuine loss, *a reviewer-proof
+  paper does not exist*, was restored. What went is the argument around each rule, which
+  `WHY.md` and `algorithms/` already carry. All four tables stay: they are the vocabulary,
+  not prose. `voice.md` lost most (560 -> 262) and had been injecting a reference to `prose`,
+  a command deleted two hours earlier. **SessionStart on an empty project: 2,569 -> 1,794
+  words**, below where the day started.
+- **README: 4,841 -> 2,542 words, twenty minutes to eleven.** Twelve sections argued for one
+  mechanism each. They are one table of what refuses and one paragraph of what reports; the
+  arguments were already in `WHY.md` and `algorithms/`.
+- **CHANGELOG: two entries at 1,413 and 811 words** against a historical median near 430. A
+  changelog says what changed and why it was wrong before; those re-argued the design.
+- **`paragraphs()` treated a figure's alt text as prose.** The 82-word alt text atop this
+  README counted as its opening paragraph, so `check` called the file *no short version at
+  the top* when its first sentence is thirty words. It also inflated the cross-file
+  duplication count used to argue for this cut: **34 pairs measured, 11 real**. The headline
+  number was partly an artifact of the instrument that produced it.
+- **Also cut:** `WHY.md` section 12, which was credentials and a build order; section 5's
+  table, which is `warrant.md`'s; `algorithms/README.md`'s prose, which was `CONTRIBUTING`'s;
+  `examples/README.md`'s account of files that no longer exist; and
+  `evals/results/06-2026-09-02.md`, which held two runs concatenated with a failure first.
+
+Repository prose: 43,974 -> 39,341 words.
+
 ## 0.7.0
 
 **A cut, four claims that were not true, and one agent.**
 
-Two clean-context reviews were run with a lens nobody had applied: what does not earn its
-place, and do the pieces agree with each other. Both put the same thing first. Nothing here
-adds a feature.
+Two reviews with a lens nobody had applied: what does not earn its place, and do the pieces
+agree. Both put `mode block` first.
 
-- **`mode block` is gone.** Undocumented, untested, and its one distinct behaviour made
-  chosen thresholds refuse the stop -- which `algorithms/harness.md` records as a mistake
-  already made once, four lines above the code doing it again. `certain` is now the only
-  mode that blocks and anything else reports.
-- **Two unit kinds are gone.** `explain` appeared in exactly one place, `UNIT_KINDS`, and no
-  gate branched on it: choosing it did nothing. `referee` was handled identically to
-  `critique` at every site and shared a name with the agent, so a reader had to work out
-  which of two things was meant. A venue-specific review is `critique --venue <name>`.
-- **`prose` is gone, four hours after it shipped.** It was 85% of `check`, which already
-  printed the word count, the passage pairs, their percentages and line numbers, and the
-  same closing sentence. The signals stayed -- `prose_signals` feeds `check_artifact` -- and
-  the fourth path-taking command went.
-- **A permanent signal, a dead config key, an unread file.** The single-source report fired
-  on nearly every claim forever and told you what `STATUS_NEEDS_GROUPS` had already refused.
-  `budget_overrun_ratio` had one occurrence in the repository, its own definition. `terms.md`
-  was created by `init` and read by nothing.
-- **The folklore walk does not exist.** WHY.md described it in the present tense across three
-  sections and README said nothing was left stubbed. `folklore` is a status you can type;
-  nothing has ever walked a citation trail looking for primary evidence. Written as unbuilt
-  rather than quietly dropped, because a reader who believed the earlier sentence was relying
-  on a check that was never running.
-- **The referent is checked, the locator is not.** WHY.md sections 7 and 10 described a
-  finding as citing a resolved reference. `cmd_finding` checks that the referent is one of
-  four and that `--at` is non-empty; the locator is stored and printed and never matched
-  against the venue file or a claim id. The termination guarantee is that the admissible
-  kinds are finite, which is smaller than the claim and is still the thing that closes the
-  loop.
-- **`program.md` is read by nothing**, and the promise that a thread failing to trace to it
-  would be flagged has never been implemented. Said, rather than implied away.
-- **`done --force` needs a sentence.** Every other way past a gate here -- `unread`,
-  `frontier`, `settled` -- refuses without one. This was a bare flag.
-
-Left standing on purpose: the growth-sampling subsystem, which is 110 lines producing one
-non-blocking signal and is also the only thing measuring change over turns rather than
-state; and the two gates keyed on `fatal|material`, because the severity is the author's own
-declaration and holding somebody to what they declared is the `accept` pattern, not the tool
-judging.
-
-- **A `reader` agent, and two lenses rather than a second critic.** An elegance agent was
-  designed and then mostly declined: `parsimony` (which parts could be deleted and the claim
-  still hold) and `baseline` (what is the simplest thing that would also produce this) are
-  lenses, and the `skeptic` is a lens-taking agent, so they are two rows in its table rather
-  than a new file. Both are told that the honest answer is usually that it is fine, because
-  anything can be described as having one part too many and a critic that can always find
-  something has stopped being one. The `novelty` lens now reads the search log before forming
-  a view; a judgement about a literature made without looking at what was searched for is the
-  impression this tool is built against.
-  `reader` is the genuinely missing one: it reads a single source at `brief`, `working` or
-  `full` depth and returns what the source establishes, what it does not, and what could not
-  be accounted for. It looks like it breaks the `librarian`'s prohibition on summarising and
-  does not -- that rule is about a *set* of works, where a summary hides how thin the set
-  was. Every point here carries a passage the agent has run `nullius quote` on before
-  returning it, so a fabricated point cannot produce one that verifies, and with no cached
-  text it refuses to start.
-- **The release workflow can be pinned to the commit you approved.** It checks out `main` at
-  run time, and approval happens before any step runs, so 0.6.0 was dispatched at one commit
-  and released three commits later. Nothing bad shipped and the tag identifies its content
-  either way, but *approve* meant something other than it looked like. Pass `sha` alongside
-  `version` and the run refuses unless `main` is still there.
+- **Cut:** `mode block`, undocumented and untested, whose one behaviour made chosen
+  thresholds refuse the stop -- the mistake `harness.md` records making once already.
+  `explain`, which appeared in one place and no gate branched on. `referee` as a unit kind,
+  handled identically to `critique` and colliding with the agent's name. `prose`, four hours
+  old and 85% of `check`. The single-source signal, which fired on nearly every claim and
+  reported what the independence arithmetic already refused. `budget_overrun_ratio` and
+  `terms.md`, each with one occurrence: their own definitions.
+- **Four claims the code did not support.** The folklore walk is described in three sections
+  of WHY.md and nothing has ever walked a citation trail. A finding's locator is stored and
+  printed, never resolved, so the termination guarantee is that admissible kinds are finite.
+  `program.md` is read by nothing. `done --force` was the one way past a gate needing no
+  sentence.
+- **`reader`, and two lenses rather than a second agent.** An elegance critic was designed
+  with six lenses and mostly declined: five duplicated existing lenses or were aspirations
+  rather than failure modes. `parsimony` and `baseline` are rows in the `skeptic`'s table.
+  A uniqueness agent was declined outright: whether something has been done is retrieval and
+  the `idea` unit already does it against identifiers that resolve. `reader` explains one
+  source at `brief`, `working` or `full`, every point carrying a passage it has run
+  `nullius quote` on, and refuses to start without cached text.
+- **A release can be pinned to the commit approved.** 0.6.0 was dispatched at one commit and
+  released three later, because approval happens before any step runs.
 
 ## 0.6.0
 
-**A thread, a lifecycle, and a channel that leads with the answer.**
+**A thread, a lifecycle, a channel that leads with the answer, and three false claims.**
 
-Four independent reviews, each with a clean context and one lens, went at this repository
-against the standard it sets for itself. Two returned `dies`. What follows is what they
-found and what it cost to fix. Every claim below was verified against the code before it
-was acted on, including the two that turned out to be false statements in the documentation.
+Four clean-context reviews, one lens each, went at this repository against the standard it
+sets for itself. Two returned `dies`.
 
-- **A thread is a first-class key.** `start --thread <name>` scopes a line of enquiry, and
-  every search and claim written under it is stamped. The gates then read that thread and no
-  other. Unfiltered, one search logged in March satisfied "silence is a failed search" for
-  every idea unit after it, and one failed vocabulary blocked every unrelated idea after
-  that; verified in an isolated project, a brand-new `idea` unit with zero references and
-  zero claims reported finishable. Records written before threads existed read as `main`, so
-  nothing migrates.
-- **Surfacing is a lifecycle query, not the whole ledger.** Storage and surfacing were one
-  decision, so the only way to read less was to record less. A driven project with 40
-  finished searches emitted 3,796 words at every SessionStart and one with 80 emitted 8,116,
-  because the cap on kept works was per search and not across them. Now a search recites its
-  rows only while something is unscreened, a buried idea is named when it shares a term with
-  the question and **counted** when it does not, and the same 40-search ledger emits 2,223
-  words. Twelve buried ideas used to arrive as eight with nothing saying four were missing.
-- **`compact`**, the only thing here that deletes, and it deletes only what can be rebuilt:
-  cached full text and growth samples outside the detector's window. Not a claim, a finding,
-  a screening decision or a buried idea, and no flag will.
-- **The gate leads with the state and `status --why` has the reasoning.** A stop that
-  emitted around 400 words now emits 71. The reasoning is written for the model, which
-  chooses its next action from it; a person reading six refusals wants the six states. This
-  is `voice.md` applied to the tool's own output for the first time: it budgeted the draft
-  and never itself.
-- **A file the unit does not track is a scratch note.** The write gate fired on any `.md` in
-  the project, so `Vaswani et al. say otherwise, check later` in a thinking file exited 2 and
-  you could not keep one. An invented identifier is still refused there; an unattributed
-  surname is now a lead, which is the call `check_artifact` already made for companions and
-  for the same reason.
-- **`note --quote` grounds a read depth in the source.** `strength <= depth` is the flagship
-  cap and both sides of it were typed by whoever was at the keyboard. A passage checked
-  verbatim against the cached text settles it instead, and every claim records whether its
-  depth came from the source or from the session. WHY.md section 1 gains the row the motto
-  never had: not the author's word, not the field's, not yours, but whoever is typing.
-- **`start --force` archives the unit it displaces.** It used to write straight over the top,
-  so findings, points, alternatives and the accept answer went with it, and
-  `closed_work_count` reads that log, so the growth detector then miscounted for every unit
-  after.
-- **Three false statements in the documentation.** WHY.md said "no prompt prepended" while
-  `hook_session_start` prepends five prose files and a command reference. It said the
-  read-depth cap works because the difference is textual and a script can decide it; no
-  script here reads either sentence. And `falsify` told the user its record was "injected
-  before a write", which it never was: `falsified.md` is read at session start only.
-- **A generated binary was in the tree.** The tests import `bin/nullius` as a module to unit
-  test one function, which writes a 300kB `.pyc` beside it, and `git add -A` put one in
-  0.5.1. Untracked, ignored, prevented at the source with `PYTHONDONTWRITEBYTECODE`, and
-  preflight now refuses it, since the repository's rule about figures applies to everything.
-- **A draft does not go out unread.** A `critique` unit has always had to produce a verdict
-  and a `write` unit never had to receive one, so a draft could reach the end read by
-  nobody. Every piece of the oldest gate in science was already here -- located findings, a
-  venue scale, three agents that start in a clean context and do not know whose draft it is
-  -- and nothing joined them: the enforced half was arithmetic, the smart half was advice,
-  and section 3 of WHY.md says what happens to advice. A write unit **that names a venue**
-  now does not close while a tracked draft has no recommendation on it. Naming a venue is
-  the act of saying this goes out; a unit without one is drafting, and firing on every write
-  unit would tax thinking. The tool never reads the recommendation -- a `rework` closes the
-  unit exactly as an `accept` does -- so this requires a judgement without depending on one,
-  which is the venue walk one level up. `verdict --by` records who read it, a verdict with
-  no reader named is reported as the session's own verdict on its own draft, and
-  `unread "<why>"` is the way past, recorded and travelling.
-- **`prose`, because the failure is repetition and not length.** A long document with
-  nothing repeated is fine; a short one making its point three ways is not, and that is what
-  a model does and a person does not. Three signals, all counts: passage pairs sharing most
-  of their content words (containment rather than overlap, because the failure is a point
-  restated *more briefly* elsewhere), a document past a threshold with no figure, table or
-  diagram at all, and one with no summary and no short opening paragraph. Every one is a
-  lead and none refuses: two paragraphs on one subject legitimately share vocabulary, and a
-  tool that deleted the second would be editing rather than checking. They reach the stop
-  through the channel marked chosen. `voice.md` is rewritten around saying a thing once,
-  giving the reader a way in and a way out, and using a figure when the thing has a shape.
-- **A tracked draft has to say how long it may be.** A declared budget with no draft
-  tracked against it has been a fact this refuses since the first release; its mirror was
-  missing, so a tracked draft with no declared length had no length it could exceed and
-  nothing could notice an eight-hundred-word answer arriving at four thousand. Three places
-  satisfy it -- the unit, the venue file, or `config default_words` as the house norm -- and
-  the tool never picks the number, because a default it chose would be the tool deciding how
-  long your work is. What it refuses is for nobody to have decided, which is the acceptance
-  question and the killing assumption again. Every write to a counted draft now also says
-  where it puts you rather than waiting for the stop.
-- **Five defects a fifth review found in the four changes above**, before any of it
-  shipped. Grounding survived a depth change, so `--depth abstract --quote "..."` then
-  `--depth replicated` produced a claim recording that the source attested a depth nothing
-  had checked, which is the exact narrator the feature exists to name. Session start stopped
-  showing kept works precisely while screening was unfinished, because the fallback tested
-  whether any search was live rather than whether there was anything to show. Screening a
-  search logged before threads existed relabelled it onto whatever thread was open, which is
-  the rewriting-under-you that reading an absent thread as `main` exists to avoid. A tracked
-  draft written as `./draft.md` compared unequal to `draft.md` and quietly became a scratch
-  note. And `terse` cut at the first period, so a work titled *Scaling laws vs. emergent
-  abilities* ended a sentence at "vs."
-- **Section 11 is rewritten.** It declined the AI-Scientist programme outright on grounds
-  that turned out to be a prospect-driven survey of what that programme still needs, plus a
-  second work carried by bare title with no identifier anywhere in the repository. The
-  position now turns on what is actually true: an unattended run is tolerable in proportion
-  to how checkable its output is.
+- **`--thread <name>` scopes a line of enquiry.** Searches and claims are stamped with it and
+  the gates read only that thread. Unfiltered, one search in March satisfied *silence is a
+  failed search* for every idea unit after it, and a brand-new `idea` unit with zero
+  references reported finishable. Records written before threads read as `main`.
+- **Surfacing is a lifecycle query.** Storage and surfacing were one decision, so the only
+  way to read less was to record less. Forty finished searches emitted 3,796 words at every
+  session start; eighty emitted 8,116. Now a search recites its rows only while something is
+  unscreened and a buried idea is named when it shares a term with the question and counted
+  when it does not. The same ledger emits 2,223 words and no longer grows.
+- **The stop gate leads with the states; `status --why` has the reasoning.** Six refusals went
+  from about 400 words to 71.
+- **A file the unit does not track is a scratch note.** The write gate fired on any `.md`, so
+  a half-formed thought naming a surname exited 2 and you could not keep a thinking file. An
+  invented identifier is still refused there.
+- **`note --quote` grounds a read depth in the source.** Both sides of `strength <= depth`
+  were typed by whoever was at the keyboard. Claims now record which vouched for the depth,
+  and WHY.md section 1 gains the narrator its table never had.
+- **`compact`, `start --force` archives, and `audit`.** `compact` deletes only what can be
+  rebuilt. `--force` used to write over the displaced unit, losing its findings and
+  miscounting the growth detector after. `audit` resolves what a document names with no
+  project, which `evals/control.md` needs to score arms alike.
+- **Three false statements.** WHY.md said *no prompt prepended* while `hook_session_start`
+  prepends five files; it said a script decides the read-depth difference, and no script
+  reads either sentence; `falsify` said its record was injected before a write, which it
+  never was. Section 11 declined the AI-Scientist programme on grounds that were a
+  prospect-driven survey of what that programme needs, plus a work cited by bare title.
+- **Five defects a fifth review found in the four above, before any shipped.** Grounding
+  survived a depth change, so a claim recorded that the source attested a depth nothing
+  checked. Session start stopped showing kept works precisely while screening was
+  unfinished. Screening relabelled a pre-threads search onto the open thread. A tracked
+  draft written `./draft.md` became a scratch note. `terse` cut *Scaling laws vs. emergent
+  abilities* at "vs."
+- **An invented DOI raised instead of refusing, and 0.4.0 shipped it.** Both indexes
+  answering empty is the case for every fabricated identifier, and the merge of their
+  answers guarded each one-sided case and fell through both into `dict(None)`. The suite is
+  offline and the live evals only ever asked for identifiers that exist, so both directions
+  had never been applied to the network path.
+- **A 300kB `.pyc` reached 0.5.1**, because the tests import `bin/nullius` as a module.
 
 ## 0.5.1
 

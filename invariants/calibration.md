@@ -1,36 +1,28 @@
 # Calibration
 
-**No study is complete, and saying so is not a finding.** Every empirical result is
-conditional on its sample, its instrument and its window. A study whose limits are stated is
-finished; one whose limits are unstated is unfinished. The work of critique is deciding which
-limits are *fatal to the claim* and which are *the ordinary conditionality of evidence* --
-and the second kind is discharged by one honest sentence, not by more experiments.
+**No study is complete, and saying so is not a finding.** The work of critique is separating
+limits that are *fatal to the claim* from *the ordinary conditionality of evidence*.
 
-**A finding must have a referent.** It names a required section from the venue file, a claim
-whose warrant is empty, two locations that conflict, or a row in the draft's own scope
-boundary. A finding naming none of the four is *enhancement* -- it would be stronger with
-more -- and enhancement is inadmissible, because it is the one kind that never runs out. The
-tool checks that the referent is one of the four and that a locator is present; it does not
-resolve the locator, so the guarantee is that the admissible kinds are finite.
+**A finding must have a referent**: a required section, a claim with an empty warrant, two
+conflicting locations, or a row in the draft's scope boundary. Naming none of the four is
+*enhancement*, which is true of everything ever written and never runs out.
 
 | class | means | discharged by |
 |---|---|---|
 | `fatal` | the conclusion does not follow, or the design cannot answer the question | redesign, or withdrawing the claim |
-| `material` | this venue's reviewer will require it | doing it, and paying its price if the budget is spent |
-| `defensible` | a property of the study, not a defect in it | **one sentence in Limitations, then closed permanently** |
+| `material` | this venue's reviewer will require it | doing it, and paying its price |
+| `defensible` | a property of the study, not a defect | **one sentence in Limitations, closed permanently** |
 | `taste` | wording, ordering, polish | ignored unless asked for |
 
 **`defensible` closes forever.** A later pass may not re-raise what an earlier one discharged.
 
-**Zero `fatal` and zero `material` is a verdict, not a shorter list.** At that point say so
-and stop. Continuing to produce findings past that point is not rigour; it is pressure.
+**Zero `fatal` and zero `material` is a verdict, not a shorter list.** Producing findings past
+that point is pressure, not rigour.
 
-**Compare to the field, never to the ideal.** `n=30` is a defect only where the field's norm
-is larger, and the norm lives in `field.md` and `venues/`. A finding that cannot name the
-norm it violates is taste.
+**Compare to the field, never to the ideal.** A finding that cannot name the norm it violates
+is taste. The norm lives in `field.md` and `venues/`.
 
-**A reviewer-proof paper does not exist.** The target is venue-appropriate. "Add X and it
-will pass review" is a prediction, and a prediction with no base rate is not a finding.
+**A reviewer-proof paper does not exist.** The target is venue-appropriate. *Add X and it
+will pass review* is a prediction, and a prediction with no base rate is not a finding.
 
-**Over budget, an addition is a trade.** Name what gets cut to make room. A real gap is still
-reported over budget -- suppressing it is the opposite failure -- but it arrives priced.
+**Over budget, an addition is a trade.** A real gap is still reported; it arrives priced.

@@ -210,12 +210,8 @@ separately from what their tables show.
 Then the cap. A paper note records how far you actually got, and **a claim may not exceed the
 read depth of its source.**
 
-| read depth | “they report X” | “X holds” | “their method shows why” | “this generalises” |
-| --- | :-: | :-: | :-: | :-: |
-| `abstract` | ok | refused | refused | refused |
-| `skim` | ok | ok | refused | refused |
-| `method` | ok | ok | ok | refused |
-| `replicated` | ok | ok | ok | ok |
+The four depths and what each licenses are in
+[`invariants/warrant.md`](invariants/warrant.md), the copy injected into every session.
 
 This works where an instruction does not because the class is **recorded before the claim
 exists**, so the comparison is arithmetic on two ledger fields rather than a judgement about
@@ -231,11 +227,10 @@ and every claim records whether its depth rested on the source or on the session
 
 ## 6 · Settled versus proposed
 
-Warrant asks *how do you know this*. Status asks *how settled is this in the field*, and a
-claim can be perfectly warranted and barely established, which is the dangerous cell. Status
-is capped by source independence, computed from author identifiers rather than declared, and
-its rendering is greppable, so the discipline lives in a difference a script can see rather
-than in an adjective the model is asked to feel.
+The second axis, and the one that costs years when it is missing. What makes it enforceable
+rather than exhortative: status is capped by source independence, which is author-identifier
+arithmetic, and its rendering is greppable, so the discipline lives in a difference a script
+can see rather than in an adjective the model is asked to feel.
 
 The six statuses and what each earns are in
 [`invariants/status.md`](invariants/status.md), which is the copy injected into every
@@ -458,33 +453,16 @@ wrong in its own. So the tool ships knowing nothing, and the norms are configura
   hold; the ones resting on the session's own word have to be grounded too, which is what
   `--quote` is for, or carried into the output as attested rather than checked.
 
-## 12 · Where this is
+## 12 · Where this came from
 
-Two tracks, run at the same time. A few thousand hours inside Claude Code as a founding AI
-engineer, and an active research line alongside it.
+Two tracks at once: engineering inside Claude Code, and an active research line. The harness
+idea sharpened on the engineering side first for a plain reason. There a rule that fails to
+hold shows up as a red build in seconds, so *instructions lose under load* becomes visible
+quickly and then repeatedly, until it stops looking like a series of accidents. Research has
+the same failures and hides them for months, in a reviewer's comment or a reinvention nobody
+catches. Working in both is what made the shape recognisable.
 
-The harness idea was sharpened on the engineering side first, for a plain reason: there the
-feedback is fast and unforgiving. A rule that fails to hold shows up as a red build in
-seconds, so the pattern *instructions lose under load* becomes visible quickly and then
-repeatedly, until it stops looking like a series of accidents.
-
-Research has the same failures and hides them for much longer. A shallow search does not fail
-loudly. It fails in a reviewer's comment six months later, or in a reinvention nobody ever
-catches. Working in both is what made the shape recognisable, and the failures listed in this
-document are ones hit first-hand in reading, drafting and analysis rather than inferred from
-engineering by analogy.
-
-What the two do not share is a compiler, and that is the one real gap. Software gets *it
-builds* for free; research has no equivalent, which is why the question this whole document
-answers is what plays that part instead. The answer is smaller than one would like, and where
-it is thin the text says so rather than rounding up.
-
-The build order follows the confidence. The prose spine and the ledger first, because they
-change behaviour immediately and cost nothing to revise. The blocking gates second, because
-that is where hallucinated citations stop being possible. The literature spine third, because
-it is the largest piece of genuine capability and the one worth doing slowly. The calibration
-engine last, because it is the part most likely to be wrong on first contact with a real
-draft.
+What the two do not share is a compiler, which is the gap section 4 answers.
 
 ---
 
