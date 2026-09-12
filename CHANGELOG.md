@@ -3,7 +3,7 @@
 Versions follow [semantic versioning](https://semver.org). Until `1.0.0` the ledger format
 and the CLI surface may change; when they do, the change is listed here with what it breaks.
 
-## Unreleased
+## 0.8.4
 
 **A worktree had the harness switched off, and the acks talked to nobody.**
 
