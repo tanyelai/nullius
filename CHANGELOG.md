@@ -3,7 +3,9 @@
 Versions follow [semantic versioning](https://semver.org). Until `1.0.0` the ledger format
 and the CLI surface may change; when they do, the change is listed here with what it breaks.
 
-## Unreleased
+## 0.8.3
+
+**Where you are before what is wrong, and a README that shows the detail to whoever asks.**
 
 - **The README shows the detail to whoever asks for it.** 2,888 words with no way to skim
   became 1,213 visible and 1,864 behind folds, about five minutes on the front page instead
@@ -21,10 +23,6 @@ and the CLI surface may change; when they do, the change is listed here with wha
 Both the fold and the before/after table are lifted from
 [i-have-adhd](https://github.com/ayghri/i-have-adhd), which puts ten rules on the front page
 and the full text one link away.
-
-## 0.8.3
-
-**The gate says where you are and what to do, before what is wrong.**
 
 - It listed the facts
   refusing and left the reader to work out which command answered the first one, and whether
