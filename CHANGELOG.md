@@ -3,6 +3,18 @@
 Versions follow [semantic versioning](https://semver.org). Until `1.0.0` the ledger format
 and the CLI surface may change; when they do, the change is listed here with what it breaks.
 
+## Unreleased
+
+- **A timeout is not an absence, and `audit` treated it as a crash.** Four arXiv lookups
+  timed out during the third control run and `TimeoutError` is an `OSError`, which sat
+  outside the exceptions the three-bucket logic catches, so one slow index ended the whole
+  audit rather than putting four identifiers in the bucket that exists for precisely this.
+  On the retry all eleven resolved.
+- **[The control arm, run a third time.](evals/results/control-2026-09-12.md)** The 40% cut
+  to the invariants roughly halved how far the advice arm overshot its brief: +81% to +31%,
+  and the gap to the bare arm from +229 words to +97. It did not close it. Six arms across
+  three runs, still not one fabricated citation.
+
 ## 0.8.4
 
 **A worktree had the harness switched off, and the acks talked to nobody.**
