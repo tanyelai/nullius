@@ -3,7 +3,9 @@
 Versions follow [semantic versioning](https://semver.org). Until `1.0.0` the ledger format
 and the CLI surface may change; when they do, the change is listed here with what it breaks.
 
-## Unreleased
+## 0.8.5
+
+**A timeout is not an absence, and the control arm run a third time.**
 
 - **A timeout is not an absence, and `audit` treated it as a crash.** Four arXiv lookups
   timed out during the third control run and `TimeoutError` is an `OSError`, which sat
