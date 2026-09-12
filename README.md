@@ -41,9 +41,9 @@ unread paper, the unsearched literature and the unbounded critique into states a
 
 ## What changes
 
-The same question, asked the same afternoon. On the right is
-[a real logged run](evals/results/01-2026-09-02.md): speculative decoding, three
-vocabularies, every number from `nullius coverage`.
+The same question, asked the same afternoon. On the right is `nullius coverage`, unedited,
+from [a logged run](evals/results/01-2026-09-02.md) on 2026-09-02: speculative decoding,
+three vocabularies, real queries against live indexes.
 
 <table>
 <tr><td width="50%">
@@ -74,6 +74,12 @@ walked     0    of 1 kept work on the graph
 The first survives any amount of scrutiny. The second says *32 unscreened* and *walked 0*,
 and no confident sentence makes those go away. That is the whole idea; everything below is
 a mechanism for producing the second when you were going to write the first.
+
+**Read the right-hand column for what it is.** That run is an
+[eval scenario](evals/scenarios/01-gap.md), which screens one search of three on purpose, so
+that the gate has something to refuse and the refusal can be checked. A real afternoon would
+not stop there -- the gate would not let it. The numbers are real and the half-finished state
+is deliberate.
 
 ## Install
 
