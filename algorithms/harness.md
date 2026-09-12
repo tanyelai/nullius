@@ -52,6 +52,33 @@ by raising is still invisible, and the only defence against that is the per-asse
 naming, for each allowing path, what the gate should have said. Seventeen such assertions were
 audited once; nothing keeps a new one honest.
 
+## One ledger, one stream per working copy
+
+**Naive.** The ledger is found by walking up from the working directory, and the open unit is
+one file in it.
+
+**Measured.** A linked git worktree has no committed `.nullius/` -- `work/` is gitignored and
+the rest often is not committed either -- so the walk found nothing and the tool answered
+*no nullius project here*. The session believed it and carried on ungated. That is the
+harness switching itself off without saying so, in its own path resolution.
+
+And once a worktree does reach the checkout's ledger, one `work/current.json` means two
+sessions share one slot: the second `start` replaces the first silently.
+
+```
+find_root: at each level, this directory's .nullius, ELSE this worktree's checkout
+           tested before climbing, so a worktree parked inside another project
+           belongs to the checkout it came from
+
+unit:      work/current/<stream>.json      stream = the working copy
+ledger:    refs, papers, claims, searches  shared, because a resolved DOI is a
+                                           fact about the world and does not branch
+```
+
+**Weak.** Two sessions in the *same* directory still share a stream and still collide;
+nothing here locks. And a worktree that has committed its own `.nullius/` keeps it, which is
+git's semantics rather than ours: the ledger then forks and merging it is a merge of JSON.
+
 ## Hooks read local state only
 
 A hook that makes a network call hangs a session. Resolution happens in a command the user ran
