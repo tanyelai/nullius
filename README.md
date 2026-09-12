@@ -8,24 +8,32 @@ unread paper, the unsearched literature and the unbounded critique into states a
 **cannot finish in**.
 
 > [!NOTE]
-> **Installable and tested. One thing it documents is not built, and it has been evaluated
-> against a control exactly twice.**
+> **This is not finished and it is not meant to be.** It is installable, tested and in real
+> use, and the shape of a research session is not something one person can get right alone.
+> If a gate misfires in your field, if your subdiscipline needs a check that is not here, or
+> if you use it for something I did not think of, that is the most useful thing you can send.
+> [Open an issue](https://github.com/tanyelai/nullius/issues) -- a gate that is wrong for you
+> is a finding, and this repository treats it as one.
 >
 > <details>
-> <summary>what that means, precisely</summary>
+> <summary>what is built, what is not, and what has been measured</summary>
 >
-> The ledger, the gates, multi-index search with fallbacks, the citation walk, the venue walk
-> and the calibration engine all work: 474 assertions in [`tests/smoke.sh`](tests/smoke.sh),
-> offline and in both directions, plus seven end-to-end [scenarios](evals/) against live
-> indexes. [algorithms/](algorithms/) says where each mechanism is weakest.
+> **Built and tested.** The ledger, the gates, multi-index search with fallbacks, the citation
+> walk, the venue walk and the calibration engine: 489 assertions in
+> [`tests/smoke.sh`](tests/smoke.sh), offline and in both directions, plus seven end-to-end
+> [scenarios](evals/) against live indexes. [algorithms/](algorithms/) says where each
+> mechanism is weakest.
 >
-> The folklore walk that [WHY.md](WHY.md) section 4 describes **does not exist**: `folklore`
-> is a status you can record, not a trail anything follows.
+> **Documented and not built.** The folklore walk in [WHY.md](WHY.md) section 4: `folklore` is
+> a status you can record, not a trail anything follows.
 >
-> The control arm has been run twice, on [an easy topic](evals/results/control-2026-09-11.md)
-> and [a hard one](evals/results/control-2026-09-11b.md). Six arms, zero fabricated
-> identifiers, including in the three with no harness at all. What separated them was
-> credited names with nothing behind them and length against the brief.
+> **Measured, three times.** The control arm has been run on
+> [an easy topic](evals/results/control-2026-09-11.md), [a hard one](evals/results/control-2026-09-11b.md)
+> and [once more with the rules cut by 40%](evals/results/control-2026-09-12.md). Nine arms,
+> **zero fabricated citations** -- including in the three with no harness at all. What did
+> separate the arms was credited names with nothing resolvable behind them (0 in the tool arm,
+> 4 and 5 without it) and length against a declared brief. Two samples per arm is not
+> calibration and the write-ups say so.
 >
 > </details>
 >
@@ -33,45 +41,39 @@ unread paper, the unsearched literature and the unbounded critique into states a
 
 ## What changes
 
-Same search. Same afternoon. Same four papers.
+The same question, asked the same afternoon. On the right is
+[a real logged run](evals/results/01-2026-09-02.md): speculative decoding, three
+vocabularies, every number from `nullius coverage`.
 
 <table>
 <tr><td width="50%">
 
 **Before**
 
-> I reviewed the literature on retrieval-augmented generation. The consensus is that
-> it reduces hallucination on knowledge-intensive tasks, though the effect varies by
-> retriever quality.
+> I reviewed the literature on speculative decoding. The consensus is that it
+> preserves output quality while reducing latency, though results vary by
+> draft model.
 
 </td><td width="50%">
 
 **After**
 
 ```
-found        231   screened 0   included 4
-vocabularies 1     of 3 suggested
-groups       1     4 works, 2 shared
-                   authors, not independent
-years        2024-2026
+matched    arxiv 693, europepmc 28,
+           openalex 1512
+retrieved  41   across 3 searches,
+                3 vocabularies
+screened   9    32 unscreened
+included   1    2% of what was retrieved
+walked     0    of 1 kept work on the graph
 ```
 
 </td></tr>
 </table>
 
-The first survives any amount of scrutiny. The second does not. That is the whole idea, and
-everything below is a mechanism for producing the second when you were going to write the
-first.
-
-
-![Where nullius intervenes in a session: it tells you what is open at SessionStart and after
-compaction; refuses a write that cites nothing resolvable, or that still carries wording an
-open finding quotes as defective, whether the write arrives through Write, Edit or a shell
-heredoc, and whether it lands in the draft or in a file the draft speaks through; and refuses
-to end the turn while a fact says otherwise. A fact blocks; a threshold somebody chose is
-reported instead.](assets/gates.svg?v=3)
-
----
+The first survives any amount of scrutiny. The second says *32 unscreened* and *walked 0*,
+and no confident sentence makes those go away. That is the whole idea; everything below is
+a mechanism for producing the second when you were going to write the first.
 
 ## Install
 

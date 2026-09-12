@@ -3,6 +3,20 @@
 Versions follow [semantic versioning](https://semver.org). Until `1.0.0` the ledger format
 and the CLI surface may change; when they do, the change is listed here with what it breaks.
 
+## Unreleased
+
+- **The before/after on the front page used numbers from no run.** This repository's own
+  rule is that a figure stating a number states one that came from a run, and that block did
+  not: it was a plausible `coverage` output nobody had produced. It is
+  [eval 01](evals/results/01-2026-09-02.md) now, logged on 2026-09-02, and it is a better
+  example for being real -- *32 unscreened* and *walked 0* are the kind of thing an invented
+  example would have tidied away.
+- **The status note led with what is missing.** Everything in it was true and none of it was
+  the first thing a reader needs, which is that this is in use, it is not finished, and the
+  shape of a research session is not something one person gets right alone. The caveats are
+  one click down, where they are now more precise: what is built, the one thing documented
+  and not built, and three control runs rather than two.
+
 ## 0.8.5
 
 **A timeout is not an absence, and the control arm run a third time.**
