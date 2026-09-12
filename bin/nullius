@@ -4161,7 +4161,12 @@ def cmd_audit(args):
                 except Unresolved:
                     unresolved.append(shown)
                     continue
-                except (RateLimited, RuntimeError, urllib.error.URLError) as e:
+                except (RateLimited, RuntimeError, urllib.error.URLError,
+                        OSError) as e:
+                    # An index that times out has not said the work is absent.
+                    # TimeoutError is an OSError and was outside this list, so
+                    # one slow index ended the whole audit instead of putting
+                    # one identifier in the bucket that exists for exactly this.
                     unchecked.append(f"{shown} ({type(e).__name__})")
                     continue
                 memo[(kind, value)] = rec

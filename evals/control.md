@@ -127,6 +127,17 @@ contained an invented DOI, and the merge of two empty index answers raised inste
 refusing. That is the first thing this file has established, and it was established before
 any arm was run.
 
+## It has been run three times
+
+The third is [results/control-2026-09-12.md](results/control-2026-09-12.md), which cut the
+standards arm B reads from 1,933 words to 1,313 and changed nothing else. Its overshoot
+against a 350-word brief went from +81% to +31%, and the gap to the arm with no standards at
+all went from +229 words to +97. Halved by both measures, and still positive: reading
+standards about rigour makes the output longer than reading nothing.
+
+Credited names with nothing behind them, across two runs: bare 4 then 5, advice 1 then 1,
+tool 0 then 0. Identical ordering, and the tool arm zero in both.
+
 ## It has been run twice
 
 [results/control-2026-09-11.md](results/control-2026-09-11.md) on an easy topic and
