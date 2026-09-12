@@ -8,21 +8,61 @@ unread paper, the unsearched literature and the unbounded critique into states a
 **cannot finish in**.
 
 > [!NOTE]
-> **Status: installable, and one thing is still described and unbuilt.** The ledger, the gates, multi-index
-> search with fallbacks, the citation walk, the venue walk and the calibration engine all
-> work: 456 assertions in
-> [`tests/smoke.sh`](tests/smoke.sh), offline and in both directions, plus seven
-> end-to-end [scenarios](evals/) against live indexes. What remains is calibration, and
-> [algorithms/](algorithms/) says where each mechanism is weakest, including that none of
-> them has been evaluated against a control, except once, on one task, where
-> [every arm scored clean](evals/results/control-2026-09-11.md) including the one with no
-> harness. The folklore walk that
-> [WHY.md](WHY.md) section 4 describes does not exist: `folklore` is a status you can record,
-> not a trail anything follows.
+> **Installable and tested. One thing it documents is not built, and it has been evaluated
+> against a control exactly twice.**
 >
-> The argument is in **[WHY.md](WHY.md)**: what goes wrong, why better instructions do
-> not fix it, and what a harness has to constrain instead. Read that first if you want
-> to know whether this is for you.
+> <details>
+> <summary>what that means, precisely</summary>
+>
+> The ledger, the gates, multi-index search with fallbacks, the citation walk, the venue walk
+> and the calibration engine all work: 474 assertions in [`tests/smoke.sh`](tests/smoke.sh),
+> offline and in both directions, plus seven end-to-end [scenarios](evals/) against live
+> indexes. [algorithms/](algorithms/) says where each mechanism is weakest.
+>
+> The folklore walk that [WHY.md](WHY.md) section 4 describes **does not exist**: `folklore`
+> is a status you can record, not a trail anything follows.
+>
+> The control arm has been run twice, on [an easy topic](evals/results/control-2026-09-11.md)
+> and [a hard one](evals/results/control-2026-09-11b.md). Six arms, zero fabricated
+> identifiers, including in the three with no harness at all. What separated them was
+> credited names with nothing behind them and length against the brief.
+>
+> </details>
+>
+> The argument is in **[WHY.md](WHY.md)**. Read it if you want to know whether this is for you.
+
+## What changes
+
+Same search. Same afternoon. Same four papers.
+
+<table>
+<tr><td width="50%">
+
+**Before**
+
+> I reviewed the literature on retrieval-augmented generation. The consensus is that
+> it reduces hallucination on knowledge-intensive tasks, though the effect varies by
+> retriever quality.
+
+</td><td width="50%">
+
+**After**
+
+```
+found        231   screened 0   included 4
+vocabularies 1     of 3 suggested
+groups       1     4 works, 2 shared
+                   authors, not independent
+years        2024-2026
+```
+
+</td></tr>
+</table>
+
+The first survives any amount of scrutiny. The second does not. That is the whole idea, and
+everything below is a mechanism for producing the second when you were going to write the
+first.
+
 
 ![Where nullius intervenes in a session: it tells you what is open at SessionStart and after
 compaction; refuses a write that cites nothing resolvable, or that still carries wording an
@@ -72,6 +112,9 @@ Create `.claude/settings.json` in your research folder with exactly this:
 Restart Claude Code and ask it to set up nullius in the folder, as above.
 </details>
 
+<details>
+<summary>release channel, requirements, and the one email it wants</summary>
+
 **What you get is the `stable` channel.** The marketplace entry pins the plugin to that
 branch, which moves only when a release is cut and approved, so work landing on `main` never
 reaches an installed session. Updates arrive when the version in
@@ -97,7 +140,12 @@ and OpenAlex and Crossref use it to put you in their polite pool rather than the
 cannot reach a commit. Anything else set with `--user` goes there too; everything without it
 lands in the project's own `.nullius/config.json`, which is meant to be committed.
 
+</details>
+
 ## First five minutes
+
+<details>
+<summary>the commands, in the order you meet them</summary>
 
 ```bash
 ./.nullius/bin/nullius start intro-rewrite write "sharpen the framing" \
@@ -146,7 +194,12 @@ nullius: w (idea · calibration) · 3 open, 1 settled
 `nullius status` has the same two lines and then the full list, marked for which reasons are
 facts and which are thresholds somebody chose.
 
+</details>
+
 ## The commands you start with
+
+<details>
+<summary>the sixth of them you need on day one</summary>
 
 Run them as `./.nullius/bin/nullius <command>`, or just ask Claude in plain words: the gate
 that fires at startup hands the session the whole vocabulary.
@@ -167,6 +220,8 @@ the harness gates, and the whole vocabulary, which arrives at every session star
 project. The
 reference lives there rather than here, because a table kept by hand goes stale and this one
 had already started to.
+
+</details>
 
 ## What it refuses, and what it only tells you
 
@@ -209,6 +264,9 @@ ledger keeps all of it; `compact` deletes only what `fulltext` can refetch.
 
 ## Closing the frontier
 
+<details>
+<summary>how the citation walk decides where to go and when to stop</summary>
+
 ![How the walk chooses where to go and when to stop: the next hop is led by the works most of your own seeds agree on, tie-broken by nearness to their era rather than by citation count, and the walk stops when a hop is 60% already-seen, when the 400-work budget is spent, or when nothing new is left.](assets/walk.svg)
 
 A query finds what shares your words. The citation graph finds what the field itself linked.
@@ -230,7 +288,12 @@ percentage is the saturation signal: at 6% you do not have the literature, and n
 confident prose changes that. [algorithms/graph.md](algorithms/graph.md) has the walk, its
 stopping rule, and the measurement that killed the naive version.
 
+</details>
+
 ## Handing it to someone
+
+<details>
+<summary>what `report` writes, and what it refuses to establish</summary>
 
 ![A real search reported as a funnel: 12,549 matched at OpenAlex, 74 retrieved through one
 vocabulary of three, all 74 screened, 3 included, and the 71 discards attributed to two named
@@ -249,7 +312,12 @@ reconstruct from the draft. Feed the markdown to whatever build you already have
 The report closes on what it does not establish, which is most things: not coverage, not
 quality, and not independence where a record carried no author identifiers.
 
+</details>
+
 ## Four agents, and why they run blind
+
+<details>
+<summary>what each is for, and the two prohibitions that matter</summary>
 
 The plugin installs four subagents alongside the CLI. Each one starts in a **clean context**,
 which is the feature rather than an implementation detail: a second opinion is worth something
@@ -282,6 +350,8 @@ abstract is the failure it exists to prevent rather than a smaller version of th
 
 None of the four decides anything. They return findings, and what to do about a finding stays
 yours.
+
+</details>
 
 ## Where the rest of it is
 
