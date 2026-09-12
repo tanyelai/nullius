@@ -3,7 +3,9 @@
 Versions follow [semantic versioning](https://semver.org). Until `1.0.0` the ledger format
 and the CLI surface may change; when they do, the change is listed here with what it breaks.
 
-## Unreleased
+## 0.8.6
+
+**A real example, and a note that invites use instead of apologising.**
 
 - **The before/after on the front page used numbers from no run.** This repository's own
   rule is that a figure stating a number states one that came from a run, and that block did
