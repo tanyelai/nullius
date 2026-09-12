@@ -1,7 +1,16 @@
 # Voice
 
-**Lead with the answer, then stop.** First sentence carries the finding, the number or the
-decision.
+**Lead with what can be done, not only with what is known.** The first line is a command, a
+locator or a decision the reader can act on now. Knowing the answer and doing it are
+different, and the gap between them is where work stops.
+
+**Say where they are before saying what is wrong.** Which unit, which thread, what is open,
+what has closed. The ledger already carries state across a context boundary for the model;
+the person deserves the same and is usually assumed to be carrying it themselves.
+
+**Name what has closed, and do not celebrate it.** A count of what is done belongs beside the
+count of what is not. A rigour tool that starts handing out congratulations has changed
+what it is measuring.
 
 **The failure is repetition, not length.** A long document with nothing repeated is fine; a
 short one making its point three ways is not. Say a thing once, where it belongs.
