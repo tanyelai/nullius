@@ -133,8 +133,18 @@ it is the worst thing this tool could let through. An unattributed surname is re
 lead instead, because the name may belong to something cited elsewhere or to nothing yet.
 `nullius artifact <path>` holds a file to the draft's bar when you are ready for that.
 
-When you try to finish, `nullius status` says why the gate is holding, and which of its
-reasons are facts and which are thresholds somebody chose.
+When you try to finish, the gate says where you are and the one command that answers the
+first thing holding it:
+
+```
+nullius: w (idea · calibration) · 3 open, 1 settled
+  now   nullius close "<the answer, with its locator>"
+  then  an idea unit with no search logged · no alternative recorded
+  `nullius status --why` for what each means.
+```
+
+`nullius status` has the same two lines and then the full list, marked for which reasons are
+facts and which are thresholds somebody chose.
 
 ## The commands you start with
 

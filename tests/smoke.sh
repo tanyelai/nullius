@@ -1173,7 +1173,7 @@ IW="$WORK/inject"; mkdir -p "$IW"
     "how settled is this in the field:status" \
     "Silence is a failed search:scholarship" \
     "No study is complete:calibration" \
-    "Lead with the answer:voice"
+    "Lead with what can be done:voice"
   do
     expect_hook_out session-start says "${probe%%:*}" \
       "session start carries invariants/${probe##*:}.md"  "$I_JSON"
@@ -1223,6 +1223,47 @@ pass=$((pass + i_pass)); fail=$((fail + i_fail))
 
 cd "$WORK" || exit 1     # earlier sections leave the cwd elsewhere, and the
                          # fabricated ledger these two need lives here
+
+# ---- where you are, before what is wrong ----------------------------------
+# The gate listed what refuses and left the reader to work out which command
+# answers the first one, and whether anything had moved since last time. Every
+# fact already names its command; this pulls the first to the front.
+SW="$WORK/stateline"; mkdir -p "$SW"
+( cd "$SW" || exit 1
+  pass=0; fail=0
+  NB() { python3 "$NULLIUS" "$@"; }
+  expect_exit 0 "init" NB init --field t
+  expect_exit 0 "a unit on a named thread" NB start w idea "does it hold" --thread calib
+  expect_hook_out stop says "w (idea . calib)" \
+    "the stop says which unit and which thread"        "{\"cwd\":\"$SW\"}"
+  expect_hook_out stop says "open" \
+    "and how many things are open"                     "{\"cwd\":\"$SW\"}"
+  expect_hook_out stop says "now   nullius accept" \
+    "and lifts the one command that answers the first" "{\"cwd\":\"$SW\"}"
+  expect_grep "now   nullius accept" "status leads with the same action" NB status
+
+  # what has closed appears beside what has not, and only once it exists
+  expect_hook_out stop silent "settled" \
+    "nothing closed yet, so nothing is claimed"        "{\"cwd\":\"$SW\"}"
+  expect_exit 0 "record something unknown"  NB needs "a held-out run"
+  expect_exit 0 "and settle it"             NB settled n001 unmet "no access"
+  expect_hook_out stop says "1 settled" \
+    "and then it is counted"                           "{\"cwd\":\"$SW\"}"
+
+  # a fact with no command in it must not invent one
+  NL="$NULLIUS" python3 - <<'ACT'
+import importlib.machinery, importlib.util, os
+spec = importlib.util.spec_from_loader(
+    "nl", importlib.machinery.SourceFileLoader("nl", os.environ["NL"]))
+nl = importlib.util.module_from_spec(spec); spec.loader.exec_module(nl)
+assert nl.next_action(["no command anywhere in this one"]) is None
+assert nl.next_action([]) is None
+assert nl.next_action(["a thing. `nullius accept \"x\"` -- because"]) == 'nullius accept "x"'
+ACT
+  [ $? -eq 0 ] && ok || bad "next_action invents or drops a command"
+  printf '%s\n' "$pass $fail" > "$SW/.tally" )
+read -r s_pass s_fail < "$SW/.tally"
+pass=$((pass + s_pass)); fail=$((fail + s_fail))
 
 # ---- a thread is the unit of enquiry, and the gates read only one ---------
 # Unfiltered, one search in March satisfied "silence is a failed search" for

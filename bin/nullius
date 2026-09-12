@@ -1652,6 +1652,40 @@ def terse(fact):
     return head if len(head) <= 116 else head[:113].rstrip() + "..."
 
 
+def next_action(facts):
+    """The one command to run now, lifted from the first thing refusing.
+
+    Knowing what is wrong is not the same as doing anything about it, and the
+    gap between the two is where work stops. Every fact here already names the
+    command that answers it; this pulls the first one to the front so the reader
+    does not have to."""
+    for f in facts or []:
+        m = re.search(r"`(nullius [^`]+)`", f)
+        if m:
+            return " ".join(m.group(1).split())
+    return None
+
+
+def where_you_are(store, unit, facts, chosen):
+    """Unit, thread, what is open, what has closed. Restated every time rather
+    than assumed carried: the ledger already crosses a context boundary for the
+    model's sake, and this is the same courtesy pointed at the person."""
+    bits = [unit["slug"], f"{unit['kind']} \u00b7 {unit.get('thread') or MAIN_THREAD}"]
+    head = f"{bits[0]} ({bits[1]})"
+    counts = []
+    if facts:
+        counts.append(f"{len(facts)} open")
+    if chosen:
+        counts.append(f"{len(chosen)} reported")
+    done = closed_work_count(store)
+    if done:
+        counts.append(f"{done} closed")
+    settled = sum(1 for n in store.needs() if n.get("as") in ("observed", "unmet"))
+    if settled:
+        counts.append(f"{settled} settled")
+    return head + (" \u00b7 " + ", ".join(counts) if counts else "")
+
+
 def unit_findings(store):
     """Everything the Stop gate asks. Returns (facts, chosen)."""
     cfg = store.config
@@ -4414,6 +4448,11 @@ def cmd_status(args):
         say(f"budget    {words} / {budget} words  ({source})")
     facts, chosen = unit_findings(store)
     say("")
+    say(where_you_are(store, unit, facts, chosen))
+    act = next_action(facts)
+    if act:
+        say(f"  now   {act}")
+    say("")
     if facts:
         say("the stop gate refuses on these facts:")
         for f in facts:
@@ -4874,14 +4913,15 @@ def hook_stop(payload):
     facts, chosen = unit_findings(store)
     mode = store.config["mode"]
     if facts and mode == "certain":
+        act = next_action(facts)
+        rest = [terse(f) for f in facts[1 if act else 0:]]
         sys.stderr.write(
-            f"nullius: '{store.unit['slug']}' is not finishable. "
-            f"{len(facts)} fact(s):\n  - "
-            + "\n  - ".join(terse(f) for f in facts)
-            + (f"\n  and {len(chosen)} chosen threshold(s) reported, not enforced"
-               if chosen else "")
-            + "\n  `nullius status --why` for what each one means and what to "
-              "run.\n")
+            "nullius: " + where_you_are(store, store.unit, facts, chosen) + "\n"
+            + (f"  now   {act}\n" if act else "")
+            + ("  then  " + " \u00b7 ".join(r.rstrip(".") for r in rest[:4])
+               + (f" \u00b7 +{len(rest) - 4}" if len(rest) > 4 else "") + "\n"
+               if rest else "")
+            + "  `nullius status --why` for what each means.\n")
         return 2
     if facts:
         # A mode that does not block still has to say what it found. Computing the

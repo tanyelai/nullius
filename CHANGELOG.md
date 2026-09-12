@@ -3,6 +3,25 @@
 Versions follow [semantic versioning](https://semver.org). Until `1.0.0` the ledger format
 and the CLI surface may change; when they do, the change is listed here with what it breaks.
 
+## Unreleased
+
+- **The gate says where you are and what to do, before what is wrong.** It listed the facts
+  refusing and left the reader to work out which command answered the first one, and whether
+  anything had moved since the last time. Every fact already names its command, so the first
+  is lifted to the front; the unit, its thread, what is open and what has closed go on the
+  line above. Six refusals went from eight lines to four. `status` opens with the same two.
+  Three rules in `voice.md` follow: lead with what can be done rather than only with what is
+  known, say where they are before saying what is wrong, and name what has closed without
+  celebrating it -- a rigour tool that starts handing out congratulations has changed what
+  it measures.
+
+  The shape is adapted from [i-have-adhd](https://github.com/ayghri/i-have-adhd) by ayghri (MIT),
+  which argues that knowing an answer and doing it are different and that the gap between
+  them is where work stops. The clinical framing is not borrowed: what transfers is that
+  state a reader is assumed to be carrying is state they are not carrying, which is this
+  repository's own argument about context boundaries, pointed at the person instead of the
+  model.
+
 ## 0.8.2
 
 **A door.**
