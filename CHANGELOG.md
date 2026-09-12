@@ -13,6 +13,12 @@ and the CLI surface may change; when they do, the change is listed here with wha
   [eval 01](evals/results/01-2026-09-02.md) now, logged on 2026-09-02, and it is a better
   example for being real -- *32 unscreened* and *walked 0* are the kind of thing an invented
   example would have tidied away.
+- **And the example says what kind of run it is.** Calling it *a real logged run* was true
+  and not enough: it is an eval scenario, which screens one search of three on purpose so the
+  gate has something to refuse. A reader could have taken *32 unscreened* for a normal
+  afternoon. The numbers are real and the half-finished state is deliberate, and the front
+  page now says both. This repository refuses a `single-result` written as a bare assertion;
+  its own front page should not do it either.
 - **The status note led with what is missing.** Everything in it was true and none of it was
   the first thing a reader needs, which is that this is in use, it is not finished, and the
   shape of a research session is not something one person gets right alone. The caveats are
