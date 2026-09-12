@@ -3,6 +3,25 @@
 Versions follow [semantic versioning](https://semver.org). Until `1.0.0` the ledger format
 and the CLI surface may change; when they do, the change is listed here with what it breaks.
 
+## Unreleased
+
+- **The README shows the detail to whoever asks for it.** 2,888 words with no way to skim
+  became 1,213 visible and 1,864 behind folds, about five minutes on the front page instead
+  of thirteen. Headings stay headings, so the structure is still readable at a glance and
+  you open the one you want; nothing was deleted this time, only moved out of the way.
+- **The strongest argument in the repository was on page four of another file.** WHY.md
+  section 4 has the same claim written twice, as prose a reader nods at and as counts they
+  cannot: *I reviewed the literature* against `found 231, screened 0, included 4`. It is now
+  the second thing on the front page, before the install and before the caveats.
+- **The status note led with a hundred and fifty words of caveat.** The caveats are real and
+  stay -- the unbuilt folklore walk, the two control runs, the arms that scored clean
+  without a harness -- but one line up front and the rest behind a fold. It also still said
+  456 assertions, which has been wrong for several commits.
+
+Both the fold and the before/after table are lifted from
+[i-have-adhd](https://github.com/ayghri/i-have-adhd), which puts ten rules on the front page
+and the full text one link away.
+
 ## 0.8.3
 
 **The gate says where you are and what to do, before what is wrong.**
