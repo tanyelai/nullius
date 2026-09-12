@@ -41,7 +41,7 @@ unread paper, the unsearched literature and the unbounded critique into states a
 
 ## What changes
 
-One afternoon, four papers, one query. Written up two ways.
+The same conclusion, written two ways.
 
 <table>
 <tr><td width="50%">
@@ -57,26 +57,29 @@ One afternoon, four papers, one query. Written up two ways.
 **After**, as `nullius coverage` prints it
 
 ```
-matched      1512    openalex
-retrieved    231     1 vocabulary of 3
-screened     0       231 unscreened
-included     4
-groups       1       4 works, 2 shared
-                     authors, not independent
-years        2024-2026
+matched      arxiv 693, openalex 1512
+retrieved    231    across 3 vocabularies
+screened     231    0 unscreened
+included     6      3% of what was retrieved
+walked       6      of 6 kept works
+saturation   61%    on the last hop walked
+groups       2      across 6 reference(s)
+read         4      of 6 opened at any depth
+years        2019-2026
 ```
 
 </td></tr>
 </table>
 
-Both describe the same afternoon. The first cannot be argued with. The second says the
-search ran one vocabulary, that 231 results were never looked at, that the four papers kept
-are not independent of each other, and that nothing before 2024 was found. No amount of
-confident prose makes any of that go away.
+**Neither is more cautious than the other. The second can be checked.** It says the claim
+rests on six papers from two independent author sets, chosen from 231 that were all actually
+looked at; that the citation walk was still returning 39% new work when it stopped, so the
+frontier is not closed; and that four of the six were opened past their abstract. A reader
+can now disagree with a number instead of with a tone.
 
-**That is the whole idea.** Everything below is a mechanism for producing the second when
-you were about to write the first: the counts come from a search log the tool wrote while
-you worked, and a `survey` unit will not close while `unscreened` is above zero.
+And `established` stops being a word you choose. It is arithmetic on those two author sets,
+and a survey unit will not close while `unscreened` is above zero, so the second column is
+the state the tool leaves you in rather than one you have to be disciplined enough to write.
 
 ## Install
 
