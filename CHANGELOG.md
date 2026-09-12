@@ -7,18 +7,17 @@ and the CLI surface may change; when they do, the change is listed here with wha
 
 **A real example, and a note that invites use instead of apologising.**
 
-- **The before/after on the front page used numbers from no run.** This repository's own
-  rule is that a figure stating a number states one that came from a run, and that block did
-  not: it was a plausible `coverage` output nobody had produced. It is
-  [eval 01](evals/results/01-2026-09-02.md) now, logged on 2026-09-02, and it is a better
-  example for being real -- *32 unscreened* and *walked 0* are the kind of thing an invented
-  example would have tidied away.
-- **And the example says what kind of run it is.** Calling it *a real logged run* was true
-  and not enough: it is an eval scenario, which screens one search of three on purpose so the
-  gate has something to refuse. A reader could have taken *32 unscreened* for a normal
-  afternoon. The numbers are real and the half-finished state is deliberate, and the front
-  page now says both. This repository refuses a `single-result` written as a bare assertion;
-  its own front page should not do it either.
+- **The before/after on the front page shows the point instead of claiming a provenance.**
+  It went through three versions today. It began as invented numbers presented as a run,
+  which is the thing this repository refuses. It then became a real logged eval run, which
+  was honest and a poor example: an eval screens one search of three on purpose so a gate has
+  something to refuse, so the block showed a scenario mid-test rather than the failure the
+  tool exists for, and it needed a paragraph of explanation to not mislead. A caveat that
+  long is a sign the example is wrong.
+  It is now a representative one, in the real `coverage` format, chosen to show the failure
+  in one glance: one vocabulary of three, 231 results never looked at, four papers that are
+  not independent of each other, nothing before 2024. *I reviewed the literature* survives
+  any scrutiny; that block does not.
 - **The status note led with what is missing.** Everything in it was true and none of it was
   the first thing a reader needs, which is that this is in use, it is not finished, and the
   shape of a research session is not something one person gets right alone. The caveats are

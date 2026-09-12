@@ -41,9 +41,7 @@ unread paper, the unsearched literature and the unbounded critique into states a
 
 ## What changes
 
-The same question, asked the same afternoon. On the right is `nullius coverage`, unedited,
-from [a logged run](evals/results/01-2026-09-02.md) on 2026-09-02: speculative decoding,
-three vocabularies, real queries against live indexes.
+One afternoon, four papers, one query. Written up two ways.
 
 <table>
 <tr><td width="50%">
@@ -51,35 +49,34 @@ three vocabularies, real queries against live indexes.
 **Before**
 
 > I reviewed the literature on speculative decoding. The consensus is that it
-> preserves output quality while reducing latency, though results vary by
-> draft model.
+> preserves output quality while reducing latency, though the effect varies
+> with draft model quality.
 
 </td><td width="50%">
 
-**After**
+**After**, as `nullius coverage` prints it
 
 ```
-matched    arxiv 693, europepmc 28,
-           openalex 1512
-retrieved  41   across 3 searches,
-                3 vocabularies
-screened   9    32 unscreened
-included   1    2% of what was retrieved
-walked     0    of 1 kept work on the graph
+matched      1512    openalex
+retrieved    231     1 vocabulary of 3
+screened     0       231 unscreened
+included     4
+groups       1       4 works, 2 shared
+                     authors, not independent
+years        2024-2026
 ```
 
 </td></tr>
 </table>
 
-The first survives any amount of scrutiny. The second says *32 unscreened* and *walked 0*,
-and no confident sentence makes those go away. That is the whole idea; everything below is
-a mechanism for producing the second when you were going to write the first.
+Both describe the same afternoon. The first cannot be argued with. The second says the
+search ran one vocabulary, that 231 results were never looked at, that the four papers kept
+are not independent of each other, and that nothing before 2024 was found. No amount of
+confident prose makes any of that go away.
 
-**Read the right-hand column for what it is.** That run is an
-[eval scenario](evals/scenarios/01-gap.md), which screens one search of three on purpose, so
-that the gate has something to refuse and the refusal can be checked. A real afternoon would
-not stop there -- the gate would not let it. The numbers are real and the half-finished state
-is deliberate.
+**That is the whole idea.** Everything below is a mechanism for producing the second when
+you were about to write the first: the counts come from a search log the tool wrote while
+you worked, and a `survey` unit will not close while `unscreened` is above zero.
 
 ## Install
 
