@@ -179,7 +179,10 @@ expect_exit 0 "track the draft" python3 "$NULLIUS" artifact good.md
 python3 -c "open('good.md','a').write(' word'*400)"
 python3 - <<'PY'
 import json, pathlib
-p = pathlib.Path(".nullius/work/current.json"); u = json.loads(p.read_text())
+# the open unit is keyed per working copy now, so a linked worktree does not
+# silently replace the checkout's; this test pokes the file directly and has to
+# know where it is
+p = pathlib.Path(".nullius/work/current/main.json"); u = json.loads(p.read_text())
 u["budget"] = {"words": 50}; p.write_text(json.dumps(u, indent=2))
 PY
 expect_hook stop 2 "stop refuses an untraded overrun" "$CWD_JSON"
@@ -1725,6 +1728,67 @@ V
   printf '%s\n' "$pass $fail" > "$UW/.tally" )
 read -r u_pass u_fail < "$UW/.tally"
 pass=$((pass + u_pass)); fail=$((fail + u_fail))
+
+# ---- one ledger, one stream per working copy -------------------------------
+# A linked worktree has no committed .nullius/ (work/ is gitignored and the rest
+# often is not committed either), so nullius used to answer "no nullius project
+# here" and a session believed it: the harness switching itself off without
+# saying so. And once the worktree does find the checkout's ledger, one
+# work/current.json meant the last `start` silently replaced the other session's.
+if command -v git >/dev/null 2>&1; then
+WT="$WORK/wt"; mkdir -p "$WT"
+( cd "$WT" || exit 1
+  pass=0; fail=0
+  NW() { python3 "$NULLIUS" "$@"; }
+  git init -q co && cd co && git commit -q --allow-empty -m init
+  expect_exit 0 "init in the checkout" NW init --field t
+  expect_exit 0 "a unit on the checkout" NW start dev read "the checkout's question"
+  git worktree add -q -b feat/a ../wtA >/dev/null 2>&1
+  [ -d ../wtA ] && ok || bad "could not make a worktree"
+
+  cd ../wtA
+  expect_grep "project.*/co" "a worktree resolves to the checkout, not to nothing" NW status
+  expect_grep "none open" "and starts with no unit of its own, not the checkout's" NW status
+  expect_exit 0 "and opens its own unit without --force" NW start wta read "the worktree's question"
+  expect_grep "question  the worktree" "which is the one it sees" NW status
+  cd ../co
+  expect_grep "question  the checkout" "and the checkout keeps its own" NW status
+  [ -f .nullius/work/current/main.json ] && [ -f .nullius/work/current/wta.json ] \
+    && ok || bad "the two units are not keyed separately"
+  [ -d ../wtA/.nullius ] && bad "the worktree grew a second ledger" || ok
+
+  # the ledger itself does not branch: a resolved identifier is a fact about the
+  # world, not about a checkout
+  python3 - <<'REFS'
+import json, pathlib
+pathlib.Path(".nullius/refs.json").write_text(json.dumps({"a2021": {
+    "openalex": None, "doi": "10.1234/a", "title": "A", "year": 2021,
+    "type": "article", "venue": "J", "peer_reviewed": True, "retracted": False,
+    "authors": [], "institutions": [], "cited_by": 1, "oa_url": None,
+    "referenced_works": [], "resolved_at": "now", "index": "openalex"}}))
+REFS
+  cd ../wtA
+  expect_grep "1 reference" "and the worktree reads the same references" NW status
+
+  # a unit written before streams existed is read once, not orphaned
+  cd ../co && NW done --force "test" >/dev/null 2>&1
+  rm -rf .nullius/work/current
+  python3 - <<'LEGACY'
+import json, pathlib
+pathlib.Path(".nullius/work").mkdir(parents=True, exist_ok=True)
+pathlib.Path(".nullius/work/current.json").write_text(json.dumps({
+    "slug": "old", "kind": "read", "question": "written before streams",
+    "thread": "main", "venue": "", "budget": {}, "accept": None,
+    "accept_closed": False, "artifacts": [], "trade": None, "started": "then"}))
+LEGACY
+  expect_grep "question  written before streams" "a pre-streams unit is still found" NW status
+  expect_exit 0 "and touching it migrates it" NW accept "does it migrate"
+  [ -f .nullius/work/current/main.json ] && ok || bad "it did not migrate"
+  [ -f .nullius/work/current.json ] && bad "the legacy copy was left behind" || ok
+  printf '%s\n' "$pass $fail" > "$WT/.tally" )
+read -r w_pass w_fail < "$WT/.tally"
+pass=$((pass + w_pass)); fail=$((fail + w_fail))
+else echo "  skip  git is not on PATH, so the worktree checks did not run"; fi
 
 echo
 echo "  $pass passed, $fail failed"

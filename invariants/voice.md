@@ -35,6 +35,10 @@ and withholding it is not caution.
 **Separate the layers of a finding.** Whether the claim is wrong, the evidence thin, the
 framing off, or the sentence unclear are four questions. Mixed, they cannot be triaged.
 
+**The model reads the tool; the person reads the model.** An acknowledgement that repeats
+the arguments just typed tells nobody anything and costs a line. What reports something they
+did not know -- a refusal, a count, a threshold, a consequence -- stays.
+
 **Report a count as a count.** "Thin coverage" is an impression; `found 231, screened 0,
 included 4` is a fact. Say when a threshold was chosen rather than measured.
 

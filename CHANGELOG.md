@@ -3,6 +3,35 @@
 Versions follow [semantic versioning](https://semver.org). Until `1.0.0` the ledger format
 and the CLI surface may change; when they do, the change is listed here with what it breaks.
 
+## Unreleased
+
+**A worktree had the harness switched off, and the acks talked to nobody.**
+
+Both are failures a sibling harness hit first, checked here rather than assumed to carry.
+
+- **A linked worktree got "no nullius project here".** `work/` is gitignored and the rest of
+  `.nullius/` often is not committed either, so walking up from a worktree found nothing and
+  the session carried on ungated. `find_root` now tests, at each level, this directory's
+  `.nullius/` and then this directory's checkout -- before climbing, so a worktree parked
+  inside another project belongs to the checkout it came from rather than to whatever it was
+  parked under.
+- **And then one `work/current.json` meant two sessions shared a slot**, so the second
+  `start` replaced the first in silence. The open unit is keyed per working copy now,
+  `work/current/<stream>.json`, while references, notes, claims and searches stay shared: a
+  resolved DOI is a fact about the world and does not branch. A unit written before this is
+  read once and migrated on the next write.
+- **Acknowledgements that only repeat what you typed are gone.** `'{name}' -> {disposition}`,
+  `{severity} / {referent} at {at}`, `{recommendation}`, `[{n}] {text}`, and the word
+  *recorded* on its own. Where the line reported something -- how many findings now generate
+  work, how many reviewer points still have nothing said about them, how many of the walk's
+  absences have a word about them -- it says that instead. The rule is not ours and right: the
+  model reads the tool and the person reads the model, so an ack that restates the arguments
+  costs a line and tells nobody anything.
+
+Still true and not fixed: two sessions in the *same* directory share a stream and still
+collide, and a worktree that has committed its own `.nullius/` keeps a forked ledger. Both
+are in [algorithms/harness.md](algorithms/harness.md).
+
 ## 0.8.3
 
 **Where you are before what is wrong, and a README that shows the detail to whoever asks.**

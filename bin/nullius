@@ -264,11 +264,66 @@ def indexes_for_field(field):
     return None
 
 
+def worktree_origin(d):
+    """The checkout a linked git worktree was made from, or None.
+
+    A worktree's `.git` is a file pointing into the main checkout's
+    `.git/worktrees/<name>`, and the ledger usually lives in the checkout rather
+    than in the worktree: `.nullius/work/` is gitignored, so a worktree that has
+    not committed the rest gets nothing at all."""
+    marker = d / ".git"
+    if not marker.is_file():
+        return None
+    try:
+        line = marker.read_text(encoding="utf-8", errors="replace").strip()
+    except OSError:
+        return None
+    if not line.startswith("gitdir:"):
+        return None
+    p = Path(line.split(":", 1)[1].strip())
+    # .git/worktrees/<name> -> the checkout is two levels up from .git
+    for parent in p.parents:
+        if parent.name == ".git":
+            return parent.parent
+    return None
+
+
+MAIN_STREAM = "main"
+
+
+def stream_of(cwd, root):
+    """Which working copy this invocation is in.
+
+    One ledger, many streams. A linked worktree shares the checkout's references,
+    notes and claims -- a resolved DOI is a fact about the world and does not
+    branch -- but its open unit is its own, because two sessions working at once
+    are working on different things and the last `start` should not silently
+    replace the other one's."""
+    d = Path(cwd).resolve()
+    for cand in [d, *d.parents]:
+        if cand == Path(root).resolve():
+            return MAIN_STREAM
+        if worktree_origin(cand):
+            return slugify(cand.name, 40) or MAIN_STREAM
+    return MAIN_STREAM
+
+
 def find_root(start=None):
+    """The nearest project, where a linked worktree counts as its checkout's.
+
+    One pass rather than two, and the worktree is tested at each level before
+    climbing past it: a worktree that happens to sit inside another project
+    belongs to the checkout it was made from, not to whatever it was parked
+    under. Without this a worktree with no committed ledger answered "no nullius
+    project here" and a session believed it, which is the harness switching
+    itself off without saying so."""
     d = Path(start or os.getcwd()).resolve()
     for cand in [d, *d.parents]:
         if (cand / STATE_DIR / "config.json").is_file():
             return cand
+        origin = worktree_origin(cand)
+        if origin and (origin / STATE_DIR / "config.json").is_file():
+            return origin.resolve()
     return None
 
 
@@ -281,9 +336,10 @@ def require_root():
 
 
 class Store:
-    def __init__(self, root):
+    def __init__(self, root, cwd=None):
         self.root = Path(root)
         self.dir = self.root / STATE_DIR
+        self.stream = stream_of(cwd or os.getcwd(), self.root)
 
     def p(self, *parts):
         return self.dir.joinpath(*parts)
@@ -347,16 +403,29 @@ class Store:
             fh.write(json.dumps(claim, ensure_ascii=False) + "\n")
 
     @property
+    def unit_path(self):
+        return f"work/current/{self.stream}.json"
+
+    @property
     def unit(self):
-        return self.read_json("work/current.json", None)
+        u = self.read_json(self.unit_path, None)
+        if u is None and self.stream == MAIN_STREAM:
+            # written before streams existed, and read once so an open unit does
+            # not disappear under somebody mid-task
+            u = self.read_json("work/current.json", None)
+        return u
 
     def save_unit(self, unit):
-        self.write_json("work/current.json", unit)
+        self.write_json(self.unit_path, unit)
+        legacy = self.p("work/current.json")
+        if legacy.is_file() and self.stream == MAIN_STREAM:
+            legacy.unlink()
 
     def clear_unit(self):
-        f = self.p("work/current.json")
-        if f.is_file():
-            f.unlink()
+        for f in (self.p(self.unit_path), self.p("work/current.json")):
+            if f.is_file() and (f.name != "current.json"
+                                or self.stream == MAIN_STREAM):
+                f.unlink()
 
     def needs(self):
         f = self.p("needs.jsonl")
@@ -1410,7 +1479,10 @@ def cmd_section(args):
                                      "venue": venue, "section": args.name,
                                      "when": now()}
     store.write_json("sections.json", disp)
-    say(f"nullius: '{args.name}' -> {args.disposition}")
+    n = len(section_dispositions(store, unit.get("venue")))
+    say(f"nullius: {n} of the walk's absences "
+        f"{'has' if n == 1 else 'have'} a word about "
+        f"{'it' if n == 1 else 'them'} now")
 
 
 # ------------------------------------------------------------------ checks
@@ -2290,8 +2362,7 @@ def cmd_accept(args):
     unit["accept"] = args.question
     unit["accept_closed"] = False
     store.save_unit(unit)
-    say(f"nullius: accepted. This unit is finishable when that question is "
-        f"answered with a locator.")
+    say("nullius: finishable once that question is answered with a locator.")
 
 
 def cmd_close(args):
@@ -2449,7 +2520,9 @@ def cmd_finding(args):
         "severity": args.severity, "referent": args.referent, "text": args.text,
         "at": args.at, "when": now()})
     store.save_unit(unit)
-    say(f"nullius: {args.severity} / {args.referent} at {args.at}")
+    work = sum(1 for f in unit["findings"]
+               if f["severity"] in GENERATES_WORK and not f.get("resolved"))
+    say(f"nullius: {len(unit['findings'])} finding(s), {work} that generate work")
     if args.severity == "defensible":
         f = store.p("discharged.md")
         prev = f.read_text(encoding="utf-8") if f.is_file() else (
@@ -2508,8 +2581,8 @@ def cmd_verdict(args):
     unit["verdict"] = {"recommendation": args.recommendation, "when": now(),
                        "by": args.by or "the session"}
     store.save_unit(unit)
-    say(f"nullius: {args.recommendation}"
-        + (f", read by {args.by}" if args.by else ""))
+    if args.by:
+        say(f"nullius: read by {args.by}")
     if not args.by:
         say("  no reader named, so this records the session's own verdict on its "
             "own draft. `--by referee` or `--by <a person>` when it was somebody "
@@ -2554,7 +2627,9 @@ def cmd_point(args):
     points[args.settle]["as"] = args.text
     points[args.settle]["why"] = args.why or ""
     store.save_unit(unit)
-    say(f"nullius: [{args.settle}] {args.text}")
+    open_pts = sum(1 for pt in points if not pt.get("as"))
+    say(f"nullius: {open_pts} reviewer point(s) still with nothing said about them"
+        if open_pts else "nullius: every reviewer point has an answer now")
 
 
 def cmd_unread(args):
@@ -3201,8 +3276,7 @@ def cmd_considered(args):
     f.write_text(prev.rstrip() + f"\n\n## Not taken: {args.option}\n\n"
                  f"- **why not:** {args.why_not}\n- **unit:** {unit['slug']}\n"
                  f"- **when:** {today()}\n", encoding="utf-8")
-    say(f"nullius: recorded. {len(unit['considered'])} alternative(s) on the record "
-        f"for '{unit['slug']}'.")
+    say(f"nullius: {len(unit['considered'])} alternative(s) on the record.")
 
 
 def cmd_needs(args):
@@ -4629,7 +4703,7 @@ def hook_session_start(payload):
     root = find_root(payload.get("cwd"))
     if root is None:
         return 0
-    store = Store(root)
+    store = Store(root, payload.get('cwd'))
     plugin = Path(__file__).resolve().parent.parent
     unit = store.unit
     cfg = store.config
@@ -4770,7 +4844,7 @@ def hook_pre_write(payload):
     root = find_root(payload.get("cwd"))
     if root is None:
         return 0
-    store = Store(root)
+    store = Store(root, payload.get('cwd'))
     cfg = store.config
     ti = payload.get("tool_input") or {}
     target = ti.get("file_path") or ""
@@ -4873,7 +4947,7 @@ def hook_pre_bash(payload):
     root = find_root(payload.get("cwd"))
     if root is None:
         return 0
-    store = Store(root)
+    store = Store(root, payload.get('cwd'))
     cfg = store.config
     cmd = (payload.get("tool_input") or {}).get("command") or ""
     if not cmd:
@@ -4906,7 +4980,7 @@ def hook_stop(payload):
     root = find_root(payload.get("cwd"))
     if root is None:
         return 0
-    store = Store(root)
+    store = Store(root, payload.get('cwd'))
     if store.unit is None:
         return 0
     sample_growth(store)
