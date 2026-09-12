@@ -14,10 +14,13 @@ and the CLI surface may change; when they do, the change is listed here with wha
   something to refuse, so the block showed a scenario mid-test rather than the failure the
   tool exists for, and it needed a paragraph of explanation to not mislead. A caveat that
   long is a sign the example is wrong.
-  It is now a representative one, in the real `coverage` format, chosen to show the failure
-  in one glance: one vocabulary of three, 231 results never looked at, four papers that are
-  not independent of each other, nothing before 2024. *I reviewed the literature* survives
-  any scrutiny; that block does not.
+  The fourth version is the one that was wrong in the most interesting way: it showed a
+  session with `screened 0`, meaning nothing had been looked at. That is a state the gate
+  refuses, so the front page was advertising *the tool will tell you that you did nothing* --
+  an After column worse than its Before. The example now shows a **finished** session: 231
+  screened, six kept from two independent author sets, four of them read past the abstract,
+  and a citation walk that stopped at 61% saturation, which says the frontier is open. The
+  claim is the same in both columns. The second one can be argued with.
 - **The status note led with what is missing.** Everything in it was true and none of it was
   the first thing a reader needs, which is that this is in use, it is not finished, and the
   shape of a research session is not something one person gets right alone. The caveats are
