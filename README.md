@@ -3,9 +3,15 @@
 > **nullius in verba.** “Take nobody's word for it.”
 > The Royal Society's motto since 1660.
 
-A harness for research work in [Claude Code](https://claude.com/claude-code). It turns the
-unread paper, the unsearched literature and the unbounded critique into states a session
-**cannot finish in**.
+A harness for research work in [Claude Code](https://claude.com/claude-code). Open a unit of
+work and it turns the unread paper, the unsearched literature and the unbounded critique into
+states that unit **cannot close in**.
+
+The qualifier is load-bearing and was measured rather than assumed: the gates hang off an open
+unit, so a session asked only to answer a question opens none and finishes freely. That is
+[the fourth control run](evals/results/control-2026-09-13.md)'s first finding, and it is the
+honest statement of what this does. It does not make a careless session careful. It makes a
+careful one auditable.
 
 > [!NOTE]
 > **This is not finished and it is not meant to be.** It is installable, tested and in real
