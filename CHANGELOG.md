@@ -60,8 +60,16 @@ and the CLI surface may change; when they do, the change is listed here with wha
   the After was a receipt, so the table replaced a claim with a log rather than with a better
   claim. Both columns are now verbatim output from the fourth control run, both carry a
   conclusion, and the left one is not a straw man -- it found a 2026 replication the harnessed
-  session missed, because a web search reaches this year and a bibliographic index does not.
-  The example says so.
+  session missed. The example says so.
+- **The harness arm missed three recent works, and not for the reason it looked like.** The
+  obvious reading was that a web search reaches this year and a bibliographic index lags.
+  Checked before releasing, and wrong: the 2025 scoping review it missed is in OpenAlex at
+  `10.1017/langcog.2025.13`, the 2026 replication at `10.1073/pnas.2538139123`, and the arm's
+  own 639 records include eighteen works from 2024 on. None of the three was ever **retrieved**
+  by any of its twenty vocabularies, every one of which names a paradigm, a population or a
+  mechanism. **Recency is not one of the vocabularies `librarian.md` asks for**, nothing counts
+  it, and nothing refuses without it. Recorded as an open gap rather than patched, because the
+  fix is a gate and a gate wants a run behind it.
 
 ## 0.8.6
 
