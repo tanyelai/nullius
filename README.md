@@ -77,7 +77,17 @@ unasked, a closing note:
 </table>
 
 Both sessions ran into paywalls. One of them said so where a reader would see it. *46% known
-per hop* is a figure you can argue with; *the literature suggests* is not. The whole run,
+per hop* is a figure you can argue with; *the literature suggests* is not.
+
+**Neither column invents anything.** Every identifier in both resolves, as in all thirteen arms
+across four runs: the gate this repository is named for has never once had something to catch.
+Both columns also reach the same *direction*. What they do not reach is the same
+**confidence** -- the left calls the early-vision question *clear* and one 2026 paper
+*decisive*; the right calls the same question **unsettled**, and of the thirteen claims it
+recorded, not one reaches `established`. Only one of them is entitled to its own confidence,
+and **you cannot tell which from the prose.**
+
+That is the failure this is built for, and it is not the one people expect. The whole run,
 including the one thing the left column did better, is in
 [the fourth control arm](evals/results/control-2026-09-13.md).
 
@@ -158,9 +168,11 @@ Verbatim, dashes normalised to this repository's convention. 551 words.
 *(The prose is verbatim; the nine source lines are the document's own, with each link shown as
 its host rather than in full. The three DOIs are bolded.)*
 
-**This is not a bad answer.** It is current, it is hedged in the right places, and it is the
-only one of the two that found the 2026 replication. Three things are worth checking against
-it, and all three are facts rather than tone:
+**This is not a bad answer.** It is current, it is hedged in several of the right places, and it
+is the only one of the two that found the 2026 replication. Nothing in it is invented. What is
+worth checking against it are facts rather than tone, and they fall in two groups.
+
+**What a reader cannot trace.**
 
 - **Three of the nine links carry a DOI.** The other six are a third-party mirror, a PubMed
   listing with a repository postprint beside it, a PMC record, a publisher's article page and
@@ -172,8 +184,31 @@ it, and all three are facts rather than tone:
   makes resolvable. The three that cannot are Bae, Martinovic and **Winawer** -- the canonical
   one, and unresolvable for the reason directly above: its only link is the mirror.
 
+**What it asserts past its evidence.** Each of these is answered by a source the right column
+holds and this one does not.
+
+- **One replication is called *decisive*.** It is one paper. Across the thirteen claims the
+  right column recorded, the statuses come out ten `single-result`, two `emerging`, one
+  `contested` and **no `established` at all**, because a status here is arithmetic over author
+  independence and one study does not move it.
+- **The load-bearing negative claim carries no source at all.** *"The right-visual-field
+  lateralisation has repeatedly come out bilateral or absent"* -- no citation. It is true, and
+  the right column is where you find out why: `brederoo2019`, nine powered near-exact
+  replications with Bayesian analysis.
+- **Its central inference is stated as clean when the literature says it is not.** Occupying the
+  language system makes the effect vanish, *"what you expect if people are covertly labelling,
+  not seeing differently."* Pilling et al. 2003, *Is color "categorical perception" really
+  perceptual?*, report that it survives verbal interference when the interference type is
+  unpredictable, so the dual task is not a clean diagnostic. The right column says so in the
+  same breath in which it makes the argument.
+- **The history is missing, and it changes the story.** This reads as a case built and then
+  recently collapsed. Kay and Kempton 1984 had already placed the effect in naming rather than
+  in seeing, in an experiment built to block exactly that route. Its first author is Paul Kay,
+  of *Basic Color Terms* -- the monograph that [eval 08](evals/scenarios/08-relativity.md)
+  finds at four of five seeds on the citation graph and that no keyword search returned.
+
 None of that is visible from the prose, which reads as settled throughout. It is visible from
-`nullius audit`, which reads the document and nothing else.
+`nullius audit`, which reads the document and nothing else, and from the column beside it.
 
 </details>
 
