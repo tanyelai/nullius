@@ -434,6 +434,16 @@ expect_exit 2 "an unknown one does not" python3 "$NULLIUS" check bare-unknown.te
 printf 'As reported in 10.1234/bad.\n' > bare-retracted.tex
 expect_exit 2 "a bare identifier for a retracted work is refused" \
   python3 "$NULLIUS" check bare-retracted.tex
+# A DOI inside a publisher URL is the shape a session with no ledger actually
+# writes, and it read as no identifier at all: the lookbehind that stops a DOI
+# being matched mid-token also stopped every `host/doi/10.x/y`. Found by auditing
+# a control arm that had named nine works and scored zero.
+printf 'See https://www.pnas.org/doi/10.5555/known for it.\n' > bare-publisher.tex
+expect_exit 0 "a DOI inside a publisher URL is seen, and passes when resolved" \
+  python3 "$NULLIUS" check bare-publisher.tex
+printf 'See https://onlinelibrary.wiley.com/doi/10.9999/nope for it.\n' > bare-publisher-bad.tex
+expect_exit 2 "and an unresolved one inside a publisher URL is refused" \
+  python3 "$NULLIUS" check bare-publisher-bad.tex
 
 # ------------------------- walked, but outside the limit --------------------
 # Also from real use: a positioning draft the venue does not count still has to
