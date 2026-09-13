@@ -5,7 +5,7 @@ set -uo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 N="$ROOT/bin/nullius"
-S="${1:?usage: run.sh <01..07>}"
+S="${1:?usage: run.sh <01..08>}"
 WORK="$(mktemp -d)"; OUT="$ROOT/evals/results/$S-$(date -u +%Y-%m-%d).md"
 mkdir -p "$ROOT/evals/results"
 : > "$OUT"   # not tee -a into yesterday: a same-day re-run used to
@@ -306,6 +306,119 @@ d=json.load(open(g[0]))
 sys.exit(0 if d['unreachable']==[] and d['indexes']==['openalex'] else 1)" 2>/dev/null; then
     pass=$((pass+1)); log "- [x] refused · a healthy walk claims no fallback and no refusal"
   else fail=$((fail+1)); log "- [ ] **false refusal** · a healthy walk reported a substitution"; fi
+  ;;
+08) # a canon older than its vocabulary --- colour terms and linguistic relativity
+  nl init --field "linguistics and the philosophy of language" >/dev/null
+  IDX="$(nl config indexes)"
+  say "## the indexes this field gets"; say '```'; say "  $IDX"; say '```'
+  note "## expectations"
+  expect_grep_out "openalex" "openalex is selected for a humanities field" "$IDX"
+  # The only scenario here whose field gets no preprint server. Every other one
+  # runs on arXiv, so nothing had tested that the guess can say no.
+  if printf '%s' "$IDX" | grep -q arxiv; then
+    fail=$((fail+1)); log "- [ ] **arXiv selected** · this field does not use a preprint server"
+  else pass=$((pass+1)); log "- [x] excluded · arXiv, which this literature does not use"; fi
+  nl start rel survey "does the language you speak change what you can see" >/dev/null
+  nl accept "is the frontier closed on the colour-term case" >/dev/null
+  say ""; say "## three vocabularies, and how little they share"; say '```'
+  nl lit '"linguistic relativity" color perception' --vocabulary mine --limit 8 2>&1 | head -12 | tee -a "$OUT" >/dev/null
+  sleep 5
+  nl lit '"basic color terms" cross-linguistic' --vocabulary field --limit 8 2>&1 | head -12 | tee -a "$OUT" >/dev/null
+  sleep 5
+  nl lit '"color naming" "communicative efficiency"' --vocabulary adjacent --limit 8 2>&1 | head -10 | tee -a "$OUT" >/dev/null
+  say '```'
+  note "## expectations, continued"
+  nl close "closed" >/dev/null
+  expect_fact "never screened" "the stop, with work still unscreened"
+  # Two per vocabulary, so the seed set spans all three rather than whichever one
+  # ranked best. Agreement across seeds drawn from one query is agreement with
+  # itself, one level above the circularity graph.md already fixed.
+  for f in .nullius/searches/*.json; do g=$(basename "$f" .json)
+    nl screen "$g" include "a cross-linguistic result on colour" --index 0 >/dev/null 2>&1
+    nl screen "$g" include "a cross-linguistic result on colour" --index 1 >/dev/null 2>&1
+    nl screen "$g" exclude "not a cross-linguistic result on colour" --all-remaining >/dev/null 2>&1
+  done
+  expect_fact "never been walked" "the stop, while a kept work has never been walked"
+  # A source no index carries, which is where the popular version of this
+  # question lives. Nothing else in this suite exercises the manual record.
+  expect allow "a trade book recorded as the book it is" \
+    nl cite "https://us.macmillan.com/books/9780312610494/throughthelanguageglass" \
+       --kind book --title "Through the Language Glass: Why the World Looks Different in Other Languages" \
+       --author "Guy Deutscher" --year 2010
+  BK=$(python3 -c "
+import json
+d=json.load(open('.nullius/refs.json'))
+print(next((k for k,v in d.items() if v.get('type')=='book'), ''))" 2>/dev/null)
+  [ -n "$BK" ] && expect refuse "a claim from a source with no note against it" \
+    nl claim "language determines what can be perceived" --warrant authors-claim \
+       --status single-result --strength reports --source "$BK"
+  say ""; say "## the walk"; say '```'
+  WALK="$(nl snowball --both --until-saturated --limit 12 --no-context 2>&1)"
+  printf '%s\n' "$WALK" | tail -22 | tee -a "$OUT" >/dev/null
+  say '```'
+  note "## what the walk found and the queries did not"
+  # Asserted structurally, not by title: OpenAlex reranks between runs, so a test
+  # pinned to a heading is a test that flakes. What must hold is the shape --
+  # the graph reaches works no vocabulary returned.
+  ONLY=$(python3 -c "
+import json, glob
+lit, walk = set(), set()
+for f in glob.glob('.nullius/searches/*.json'):
+    d = json.load(open(f))
+    tgt = walk if d.get('vocabulary') == 'snowball' else lit
+    for r in d.get('results', []):
+        t = (r.get('title') or '').strip().lower()[:48]
+        if t: tgt.add(t)
+print(len(walk - lit))" 2>/dev/null)
+  if [ "${ONLY:-0}" -gt 20 ]; then
+    pass=$((pass+1)); log "- [x] found · $ONLY works the graph reached that no vocabulary returned"
+  else
+    fail=$((fail+1)); log "- [ ] **the walk added nothing** · only ${ONLY:-0} works beyond the queries"
+  fi
+  # The documented weakness, exercised for the first time. graph.md: era proximity
+  # "will misjudge a field whose canon genuinely is old". Here the work at the
+  # highest multiplicity IS the field's founding monograph, and it is flagged.
+  TOP=$(python3 -c "
+import json, glob
+g = glob.glob('.nullius/searches/*snowball*.json')
+if not g: print('none'); raise SystemExit
+d = json.load(open(g[0]))
+top = max(d['results'], key=lambda r: r.get('seeds_reaching') or 0)
+print(f\"{top.get('seeds_reaching')} seeds | {top.get('year')} | \"
+      f\"{(top.get('title') or '')[:44]}\")" 2>/dev/null)
+  say ""; say "The work the most of your seeds agree on: \`$TOP\`"
+  expect_grep_out "reached from more than one of" \
+    "the walk reports agreement as a share of your seeds, not a count" "$WALK"
+  expect_grep_out "ancestor?" \
+    "and marks what is far older than the seeds -- wrong here, and it says it is a lead" "$WALK"
+  for f in .nullius/searches/*.json; do g=$(basename "$f" .json)
+    nl screen "$g" exclude "reached by the walk, screened in bulk for this run" --all-remaining >/dev/null 2>&1; done
+  # The walk seeds from five and six works were kept, so one is still unwalked.
+  # Either it gets walked or it gets closed by decision, and `frontier` is the
+  # second -- the only visible way to say a walk is not worth it. Nothing else
+  # in this suite exercises it.
+  expect_fact "never been walked" "the stop, with a kept work the walk never seeded from"
+  UNWALKED=$(python3 -c "
+import json, glob, os
+state = json.load(open('.nullius/snowball.json')) if os.path.exists('.nullius/snowball.json') else {}
+for f in glob.glob('.nullius/searches/*.json'):
+    d = json.load(open(f))
+    for r in d.get('results', []):
+        if r.get('screened') == 'include' and r.get('openalex'):
+            if r['openalex'].rsplit('/', 1)[-1] not in state:
+                print((r.get('title') or '')[:40]); raise SystemExit" 2>/dev/null)
+  if [ -n "$UNWALKED" ]; then
+    expect allow "closing that one by decision, with a reason on the record" \
+      nl frontier "$UNWALKED" "outside the colour-term case this unit covers"
+  else
+    pass=$((pass+1)); log "- [x] allowed · every kept work was walked, so nothing needed closing"
+  fi
+  expect refuse "an acceptance answer with no locator"  nl close "closed"
+  expect allow "closing with one, now the search has done its work" \
+    nl close "three vocabularies and one walk, see coverage:included"
+  expect allow "the stop, once the walk's own results are screened too" \
+    bash -c "printf '%s' '{\"cwd\":\"$PWD\"}' | python3 '$N' _hook stop"
+  say ""; say "## coverage"; say '```'; nl coverage 2>&1 | head -14 | tee -a "$OUT" >/dev/null; say '```'
   ;;
 *) echo "no scenario $S"; exit 1 ;;
 esac
