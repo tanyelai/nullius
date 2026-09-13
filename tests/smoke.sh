@@ -1363,6 +1363,42 @@ assert m["authors"] == b["authors"], "identified authors win over named ones"
 assert m["index"] == "crossref+openalex", "the merge says who answered"
 MERGE
 
+# ---- a draft with no unit behind it ----------------------------------------
+# The gates hang off an open unit, so a session that never opens one was a
+# session nothing checked. control-2026-09-13.md measured that: a research
+# answer written into a nullius project with no unit, no search and no
+# reference, which the stop gate allowed because there was no unit state to
+# refuse. Both directions matter here -- a project is also where you answer
+# unrelated questions, and refusing every unit-less session would be worse
+# than the hole.
+( mkdir -p "$SW/loose" && cd "$SW/loose" || exit 1
+  pass=0; fail=0                    # the subshell inherits the running tally
+  python3 "$NULLIUS" init --field "linguistics" >/dev/null 2>&1
+  J="{\"cwd\":\"$PWD\"}"
+  expect_hook stop 0 "a unit-less session that wrote nothing still finishes" "$J"
+  # the shell path, which is how the measured session actually wrote its answer
+  printf '%s' "{\"cwd\":\"$PWD\",\"tool_input\":{\"command\":\"cat > answer.md <<'EOF'\nwords\nEOF\"}}" \
+    | python3 "$NULLIUS" _hook pre-bash >/dev/null 2>&1
+  printf 'words\n' > answer.md
+  expect_hook stop 2 "a draft written with no unit open refuses the stop" "$J"
+  expect_exit 1 "scratch refuses a file declared without a reason" \
+    python3 "$NULLIUS" scratch answer.md
+  expect_exit 0 "scratch records it with one" \
+    python3 "$NULLIUS" scratch answer.md "a thinking file, not an answer"
+  expect_hook stop 0 "and the stop is allowed once it is dispositioned" "$J"
+  # the other exit: claim it under a unit
+  printf 'more\n' > second.md
+  printf '%s' "{\"cwd\":\"$PWD\",\"tool_input\":{\"file_path\":\"second.md\",\"content\":\"more\"}}" \
+    | python3 "$NULLIUS" _hook pre-write >/dev/null 2>&1
+  expect_hook stop 2 "a second unclaimed draft refuses again" "$J"
+  python3 "$NULLIUS" start u2 write "what is this" >/dev/null 2>&1
+  expect_exit 0 "artifact claims it" python3 "$NULLIUS" artifact second.md
+  python3 "$NULLIUS" scratch 2>&1 | grep -q "no draft is waiting" && ok \
+    || bad "artifact did not clear the unclaimed draft"
+  printf '%s\n' "$pass $fail" > "$SW/.tally" )
+read -r l_pass l_fail < "$SW/.tally"
+pass=$((pass + l_pass)); fail=$((fail + l_fail))
+
 # ---- a slow index is not a crash -------------------------------------------
 # control-2026-09-12 recorded this class against `audit`: TimeoutError is an
 # OSError and is NOT a URLError, so a socket timeout arrives unwrapped. It was
