@@ -28,12 +28,13 @@ literature where it is severe.
    | field | `"basic color terms" cross-linguistic` | 25 | 8 |
    | adjacent | `"color naming" "communicative efficiency"` | 4 | 4 |
 
-   **The three sets are nearly disjoint**, and the adjacent one is the smallest and carries
-   the highest-impact work in the retrieved set at 31 citations per year. A vocabulary that
-   returns four works is not a failed search.
+   **The three sets are nearly disjoint**, and the adjacent one is the smallest while carrying
+   the highest-impact work on the subject anywhere in the run, at 31 citations per year. The
+   only row above it, at 32, is a vision-science textbook that screening throws out. A
+   vocabulary that returns four works is not a failed search.
 
-3. Screen all of it. Nineteen retrieved, five kept across all three vocabularies, fourteen
-   excluded by three recorded rules.
+3. Screen all of it. Nineteen retrieved from the queries, six kept across all three
+   vocabularies, thirteen excluded by three recorded rules.
 4. `snowball --both --until-saturated` from those five.
 5. Read the multiplicity, not the citation count.
 
@@ -60,8 +61,9 @@ canon**. One walk, and 456 works the graph reached that no vocabulary returned:
   2/5 (40%)  2003    329  Resolving the question of color naming univers
 ```
 
-Berlin and Kay at **four of five seeds**, from three vocabularies that do not share a word
-with each other. That is the claim in [algorithms/graph.md](../../algorithms/graph.md) --
+Berlin and Kay at **four of five seeds**, and those five are drawn from three vocabularies that
+do not share a word with each other. That is the claim in
+[algorithms/graph.md](../../algorithms/graph.md) --
 *a canon is usually phrased in older words than the papers citing it* -- holding on a
 literature outside the one it was written for.
 
@@ -89,7 +91,7 @@ case look good, which is worse than a proxy that says what it is.
 
 ## Must refuse
 
-- Closing a `survey` while anything retrieved is unscreened, the walk's own 210 rows included.
+- Closing a `survey` while anything retrieved is unscreened, the walk's own 475 rows included.
 - Closing while a work screened in has never been walked.
 - A claim from the trade book below, or from any source, with no note against it.
 - `established` on this question from one author group. The dispute has at least two and the
@@ -99,8 +101,9 @@ case look good, which is worse than a proxy that says what it is.
 
 - `ancestor?` on the field's founding monograph. A lead, not a verdict.
 - A kept work carrying no index record, so the graph cannot be walked from it.
-- Saturation as a proxy for coverage. It reached the target on hop 3 with 48 works still
-  arriving new; *converged* and *covered* are not the same claim.
+- Saturation as a proxy for coverage. This run never reached the target at all and stopped on
+  the work cap with 82 arriving new on the last hop, which the stop reason says in those words:
+  *this is not convergence, and the two are different claims.*
 
 ## Must allow
 
