@@ -19,7 +19,7 @@ unread paper, the unsearched literature and the unbounded critique into states a
 > <summary>what is built, what is not, and what has been measured</summary>
 >
 > **Built and tested.** The ledger, the gates, multi-index search with fallbacks, the citation
-> walk, the venue walk and the calibration engine: 491 assertions in
+> walk, the venue walk and the calibration engine: 492 assertions in
 > [`tests/smoke.sh`](tests/smoke.sh), offline and in both directions, plus eight end-to-end
 > [scenarios](evals/) against live indexes. [algorithms/](algorithms/) says where each
 > mechanism is weakest.
@@ -27,13 +27,15 @@ unread paper, the unsearched literature and the unbounded critique into states a
 > **Documented and not built.** The folklore walk in [WHY.md](WHY.md) section 4: `folklore` is
 > a status you can record, not a trail anything follows.
 >
-> **Measured, four times.** The control arm has been run on
+> **Measured, five times.** The control arm has been run on
 > [an easy topic](evals/results/control-2026-09-11.md), [a hard one](evals/results/control-2026-09-11b.md),
-> [once more with the rules cut by 40%](evals/results/control-2026-09-12.md), and
-> [once outside AI entirely](evals/results/control-2026-09-13.md). Thirteen arms,
-> **zero fabricated citations** -- including in those with no harness at all. What did separate
-> the arms was credited names with nothing resolvable behind them and length against a declared
-> brief. The fourth run also found that **the harness engages on the prompt, not on being
+> [once more with the rules cut by 40%](evals/results/control-2026-09-12.md),
+> [once outside AI entirely](evals/results/control-2026-09-13.md), and
+> [once on a literature three months old](evals/results/control-2026-09-13b.md). Fifteen arms,
+> **zero fabricated citations** -- including in those with no harness at all. What separates the
+> arms is what a reader can resolve: on the young literature the unharnessed session cited the
+> paper at the centre of the dispute through a vendor's blog, and half its links were not papers
+> at all. The fourth run also found that **the harness engages on the prompt, not on being
 > installed**: asked only to answer, a session in a nullius project opened no unit, searched
 > nothing, and the stop gate had nothing to refuse. Small samples, and the write-ups say so.
 >
@@ -43,8 +45,55 @@ unread paper, the unsearched literature and the unbounded critique into states a
 
 ## What changes
 
-One question, two sessions, same model. One had this installed; the other was launched with
-nothing. Neither prompt mentions nullius. Both answers are verbatim.
+One question put to two sessions -- one with this installed, one launched with nothing, same
+model, neither prompt naming the tool. Twice, on two kinds of literature that fail differently.
+
+### A literature three months old
+
+> *Do large reasoning models actually reason, or do they pattern-match? How settled is the
+> answer? Do the literature search properly before you answer. About 350 words.*
+
+Both answers are good, and both lean on the same central paper. The difference is what happens
+when you try to go and read it.
+
+<table>
+<tr><td width="50%">
+
+**Without**
+
+> Apple's **"The Illusion of Thinking"** reported accuracy collapse on puzzles past a
+> complexity threshold.
+
+The link goes to `arize.com/blog/` -- a monitoring vendor's marketing post *about* the paper.
+
+**Five of its ten links are not papers**: that blog, a conference poster page, a company's own
+publication venue, a benchmark product page, a Substack. **No DOI anywhere in the document.**
+
+</td><td width="50%">
+
+**With**
+
+> **Shojaee et al. (2025, NeurIPS)** report *"complete accuracy collapse beyond certain
+> complexities"*
+
+The same work, resolved to *Advances in Neural Information Processing Systems*, carrying a DOI,
+flagged peer-reviewed, read to `method` depth -- and that quotation **checked verbatim** against
+the cached text, along with four others.
+
+</td></tr>
+</table>
+
+One session routed a NeurIPS paper through a vendor's blog. The other could not: `cite` resolves
+a work or refuses it, and a blog post is not a work.
+
+And **nine of the eighteen sources it found are not peer reviewed** -- eight arXiv, one Research
+Square -- which it marks on every one. That is the true shape of this literature and the part
+the popular account never states. [The run.](evals/results/control-2026-09-13b.md)
+
+### A literature forty years old
+
+Where the sources are refereed and the dispute is old, the failure is quieter. Both answers are
+verbatim.
 
 > *Does the language you speak change what you can see? How settled is the answer? Do the
 > literature search properly before you answer. About 350 words.*
@@ -76,20 +125,16 @@ unasked, a closing note:
 </td></tr>
 </table>
 
-Both sessions ran into paywalls. One of them said so where a reader would see it. *46% known
-per hop* is a figure you can argue with; *the literature suggests* is not.
+Both sessions ran into paywalls; one said so where a reader would see it. *46% known per hop*
+is a figure you can argue with, and *the literature suggests* is not.
 
-**Neither column invents anything.** Every identifier in both resolves, as in all thirteen arms
-across four runs: the gate this repository is named for has never once had something to catch.
-Both columns also reach the same *direction*. What they do not reach is the same
-**confidence** -- the left calls the early-vision question *clear* and one 2026 paper
-*decisive*; the right calls the same question **unsettled**, and of the thirteen claims it
-recorded, not one reaches `established`. Only one of them is entitled to its own confidence,
-and **you cannot tell which from the prose.**
-
-That is the failure this is built for, and it is not the one people expect. The whole run,
-including the one thing the left column did better, is in
-[the fourth control arm](evals/results/control-2026-09-13.md).
+**Neither column invents anything** -- every identifier in both resolves, as in all fifteen arms
+across five runs. Both reach the same *direction*. What they do not reach is the same
+**confidence**: the left calls the early-vision question *clear* and one 2026 paper *decisive*;
+the right calls it **unsettled**, and of its thirteen recorded claims not one reaches
+`established`. Only one of them earned its confidence, and **you cannot tell which from the
+prose.** That is the failure this is built for, and it is not the one people expect.
+[The run.](evals/results/control-2026-09-13.md)
 
 <details>
 <summary>the whole of what the <b>left</b> column produced, for this question</summary>
