@@ -1363,6 +1363,39 @@ assert m["authors"] == b["authors"], "identified authors win over named ones"
 assert m["index"] == "crossref+openalex", "the merge says who answered"
 MERGE
 
+# ---- a slow index is not a crash -------------------------------------------
+# control-2026-09-12 recorded this class against `audit`: TimeoutError is an
+# OSError and is NOT a URLError, so a socket timeout arrives unwrapped. It was
+# fixed at that one site and the class was never swept for. A `lit` run against
+# a slow arXiv then died with a traceback, discarding the openalex and crossref
+# results it had already collected. Every network helper now converts it.
+python3 - "$NULLIUS" <<'SLOW' && ok || bad "a socket timeout escapes a network helper"
+import importlib.machinery, importlib.util, sys, urllib.request
+spec = importlib.util.spec_from_loader(
+    "nl", importlib.machinery.SourceFileLoader("nl", sys.argv[1]))
+nl = importlib.util.module_from_spec(spec); spec.loader.exec_module(nl)
+
+def timeout(*a, **k):
+    raise TimeoutError("the socket timed out")
+urllib.request.urlopen = timeout
+
+for name, call in (("http_json",   lambda: nl.http_json("https://example.org/x")),
+                   ("http_text",   lambda: nl.http_text("https://example.org/x")),
+                   ("arxiv_lookup", lambda: nl.arxiv_lookup("2101.00001"))):
+    try:
+        call()
+    except RuntimeError:
+        pass                      # converted, which is what callers handle
+    except TimeoutError:
+        sys.exit(f"{name} let TimeoutError escape")
+    else:
+        sys.exit(f"{name} swallowed a timeout and returned")
+
+# arxiv_search is the one that returns empty rather than raising, by design:
+# an index that did not answer contributes nothing and the run says so.
+assert nl.arxiv_search("anything", 1) == [], "arxiv_search must return empty"
+SLOW
+
 # ---- auditing a document no ledger ever saw --------------------------------
 # `check` audits a draft against a ledger. The arms in evals/control.md produce
 # drafts that never had one, and scoring one arm from its ledger and another

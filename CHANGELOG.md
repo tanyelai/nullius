@@ -5,7 +5,35 @@ and the CLI surface may change; when they do, the change is listed here with wha
 
 ## 0.8.7
 
-**A literature outside AI, and the finding that the harness engages on the prompt.**
+**Two control runs, a literature outside AI, and the finding that the harness engages on the
+prompt.**
+
+- **[The control arm, run a fifth time](evals/results/control-2026-09-13b.md), on a literature
+  three months old.** The fourth run was on forty years of refereed work and the arms differed
+  in what a reader could verify, which is a real difference and a quiet one. This one asks
+  whether large reasoning models reason or pattern-match: preprint-dominated, contested, with a
+  popular account well ahead of the evidence. The difference gets loud. The unharnessed session
+  cites *The Illusion of Thinking* -- **the paper the whole dispute is about** -- through
+  `arize.com/blog/`, a monitoring vendor's marketing post about it, and **five of its ten links
+  are not papers**: that blog, a conference poster page, a company's own publication venue, a
+  benchmark product page and a Substack. No DOI anywhere in it. The harness arm holds the same
+  work resolved to NeurIPS, peer-reviewed, read to `method` depth, quoted verbatim against
+  cached text. A blog post is not a work, so `cite` cannot turn one into a citation.
+- **The independence arithmetic said yes for the first time.** Across four earlier runs no claim
+  ever reached `established`. Here one did, on two independent groups both measuring, and the
+  contested heart of the dispute is recorded as `contested` over the two papers that disagree. A
+  gate that only ever refuses is a gate nobody can calibrate.
+- **Nine of eighteen sources in that run are not peer reviewed and the ledger says so on every
+  one.** It reaches the prose: *"Lawsen (2025, preprint)"*, *"Shojaee et al. (2025, NeurIPS)"*.
+  The unharnessed answer names no venue for any source at all.
+- **A slow index crashed `lit` instead of being one index that did not answer.** `TimeoutError`
+  is an `OSError` and is *not* a `URLError`, so a socket timeout arrived unwrapped and escaped
+  as a traceback, discarding the results the other indexes had already returned. This is the
+  same defect class [control-2026-09-12](evals/results/control-2026-09-12.md) records against
+  `audit`, which was fixed at that one site and never swept for: `http_json`, `http_text`,
+  `arxiv_search` and `arxiv_lookup` all had it. Found by using the tool, not by reading it.
+  Covered offline by patching `urlopen` to time out and asserting every helper converts rather
+  than raising.
 
 - **[The control arm, run a fourth time](evals/results/control-2026-09-13.md), on a question
   in the philosophy of language rather than in AI.** Four cells this time, because the prompt
