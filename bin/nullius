@@ -218,7 +218,14 @@ DEFAULT_CONFIG = {
         r"arxiv[:\s/]\s*(\d{4}\.\d{4,5})",
         r"arxiv\.org/(?:abs|pdf)/(\d{4}\.\d{4,5})",
         r"(?<![\w/.])(10\.\d{4,9}/[^\s,;)\]}\"']+)",
-        r"doi\.org/(10\.\d{4,9}/[^\s,;)\]}\"']+)",
+        # The lookbehind above excludes a preceding slash, so a DOI inside a URL
+        # needs its own pattern. This was `doi\.org/` only, which is the one URL
+        # shape a model does not write: a session with no ledger cites
+        # `pnas.org/doi/10.1073/...` and `onlinelibrary.wiley.com/doi/10.1002/...`,
+        # and every one of those read as zero identifiers named. That undercounts
+        # exactly the arm with no harness, which is the direction that flatters
+        # this repository, so it is the one worth getting right.
+        r"/(10\.\d{4,9}/[^\s,;)\]}\"']+)",
     ],
     "attribution_cues": ["et al", "report", "reports", "reported", "suggest",
                          "suggests", "claim", "claims", "find", "finds", "found",

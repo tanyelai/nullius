@@ -3,6 +3,59 @@
 Versions follow [semantic versioning](https://semver.org). Until `1.0.0` the ledger format
 and the CLI surface may change; when they do, the change is listed here with what it breaks.
 
+## 0.8.7
+
+**A literature outside AI, and the finding that the harness engages on the prompt.**
+
+- **[The control arm, run a fourth time](evals/results/control-2026-09-13.md), on a question
+  in the philosophy of language rather than in AI.** Four cells this time, because the prompt
+  was varied as well as the arm, and the prompt is what decided the result. Asked only to
+  answer the question, a session **inside a nullius project opened no unit, logged no search,
+  resolved nothing, and the stop gate allowed it** -- correctly, since with no unit open there
+  is no unit state to refuse. Asked one sentence more (*do the literature search properly*),
+  the same setup ran 20 searches, resolved 21 references and wrote 19 notes. So three earlier
+  runs have been measuring the advice arm while calling it the tool arm, and what `mode
+  certain` buys over `mode advice` is still untested.
+- **The arm that scored best on the instrument scored best by writing nothing checkable.** In
+  a nullius project with no unit open, the session had read the invariants, knew the rule that
+  refuses a credited surname with nothing resolved behind it, and satisfied it by crediting
+  nobody: zero identifiers, zero names, a clean row on every measure `audit` computes, and not
+  one source a reader can chase. The arm with no harness at all named five people you can
+  search for. `audit` counts unbacked names and cannot count absent ones.
+- **`audit` was undercounting the arm with no harness, in the direction that flatters this
+  repository.** A draft carrying nine working links scored **zero identifiers named**. The
+  lookbehind that stops a DOI matching mid-token also stops every DOI inside a publisher URL,
+  and the one special case written for it covered `doi.org/` -- the single URL shape a session
+  with no ledger does not write. `pnas.org/doi/10.1073/...` and
+  `onlinelibrary.wiley.com/doi/10.1002/...` read as nothing at all. Fixed, with the case in
+  both directions in `smoke.sh`, and the identifier counts for the unharnessed arms in runs
+  one to three should be read as floors.
+- **[A new scenario, and deliberately not an AI subject.](evals/scenarios/08-relativity.md)**
+  There are now eight scenarios, and the first seven test the tool against one literature's
+  habits: a canon fifteen years old, everything on arXiv, founding papers phrased in today's
+  words.
+  Whether the language you speak changes what you can see breaks all three. It exercises four
+  paths nothing else reached -- a field whose indexes exclude arXiv, a trade book the indexes
+  do not carry, a kept work closed by decision with `frontier`, and the weakness
+  `algorithms/graph.md` had declared and never run: **era proximity misjudges a field whose
+  canon genuinely is old.** Berlin and Kay 1969 arrives at the highest multiplicity in the
+  walk and is flagged `ancestor?`. The flag firing is correct and the label is wrong, and the
+  scenario asserts the first while recording the second.
+- **Two runs of the same walk stopped for different reasons.** Same three queries, same limit,
+  same depth, different two-works-per-vocabulary seed sets: one converged at hop 3 on 60%
+  saturation with 210 works reached, the other never converged and spent the budget at 475.
+  Saturation was not monotonic either -- 12, 38, 44, **7**, 46, 32 -- so one hop's number is
+  not a curve. `graph.md` fixed circularity between the walk and its seeds; nothing yet checks
+  whether the seeds are independent of **each other**, and that is now measured rather than
+  suspected.
+- **The front page shows two real sessions instead of a funnel.** 0.8.6 settled on `coverage`
+  output as the After column, which was honest and mismatched: the Before was a conclusion and
+  the After was a receipt, so the table replaced a claim with a log rather than with a better
+  claim. Both columns are now verbatim output from the fourth control run, both carry a
+  conclusion, and the left one is not a straw man -- it found a 2026 replication the harnessed
+  session missed, because a web search reaches this year and a bibliographic index does not.
+  The example says so.
+
 ## 0.8.6
 
 **A real example, and a note that invites use instead of apologising.**

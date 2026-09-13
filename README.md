@@ -19,21 +19,23 @@ unread paper, the unsearched literature and the unbounded critique into states a
 > <summary>what is built, what is not, and what has been measured</summary>
 >
 > **Built and tested.** The ledger, the gates, multi-index search with fallbacks, the citation
-> walk, the venue walk and the calibration engine: 489 assertions in
-> [`tests/smoke.sh`](tests/smoke.sh), offline and in both directions, plus seven end-to-end
+> walk, the venue walk and the calibration engine: 491 assertions in
+> [`tests/smoke.sh`](tests/smoke.sh), offline and in both directions, plus eight end-to-end
 > [scenarios](evals/) against live indexes. [algorithms/](algorithms/) says where each
 > mechanism is weakest.
 >
 > **Documented and not built.** The folklore walk in [WHY.md](WHY.md) section 4: `folklore` is
 > a status you can record, not a trail anything follows.
 >
-> **Measured, three times.** The control arm has been run on
-> [an easy topic](evals/results/control-2026-09-11.md), [a hard one](evals/results/control-2026-09-11b.md)
-> and [once more with the rules cut by 40%](evals/results/control-2026-09-12.md). Nine arms,
-> **zero fabricated citations** -- including in the three with no harness at all. What did
-> separate the arms was credited names with nothing resolvable behind them (0 in the tool arm,
-> 4 and 5 without it) and length against a declared brief. Two samples per arm is not
-> calibration and the write-ups say so.
+> **Measured, four times.** The control arm has been run on
+> [an easy topic](evals/results/control-2026-09-11.md), [a hard one](evals/results/control-2026-09-11b.md),
+> [once more with the rules cut by 40%](evals/results/control-2026-09-12.md), and
+> [once outside AI entirely](evals/results/control-2026-09-13.md). Thirteen arms,
+> **zero fabricated citations** -- including in those with no harness at all. What did separate
+> the arms was credited names with nothing resolvable behind them and length against a declared
+> brief. The fourth run also found that **the harness engages on the prompt, not on being
+> installed**: asked only to answer, a session in a nullius project opened no unit, searched
+> nothing, and the stop gate had nothing to refuse. Small samples, and the write-ups say so.
 >
 > </details>
 >
@@ -41,45 +43,41 @@ unread paper, the unsearched literature and the unbounded critique into states a
 
 ## What changes
 
-The same conclusion, written two ways.
+One question, two sessions, same model. One had this installed; the other was launched with
+nothing. Neither prompt mentions nullius. Both answers are verbatim.
+
+> *Does the language you speak change what you can see? How settled is the answer? Do the
+> literature search properly before you answer. About 350 words.*
 
 <table>
 <tr><td width="50%">
 
-**Before**
+**Without**
 
-> I reviewed the literature on speculative decoding. The consensus is that it
-> preserves output quality while reducing latency, though the effect varies
-> with draft model quality.
+> Almost certainly not at the level of seeing. ... The strongest neural evidence for the
+> first claim **has just collapsed.**
+
+551 words for a 350-word brief. Nine works linked, **3** with a resolvable identifier. Six
+people credited, three a reader can chase. Nothing about what the search missed.
 
 </td><td width="50%">
 
-**After**, as `nullius coverage` prints it
+**With**
 
-```
-matched      arxiv 693, openalex 1512
-retrieved    231    across 3 vocabularies
-screened     231    0 unscreened
-included     6      3% of what was retrieved
-walked       6      of 6 kept works
-saturation   61%    on the last hop walked
-groups       2      across 6 reference(s)
-read         4      of 6 opened at any depth
-years        2019-2026
-```
+> Narrowly yes; in the way the question is usually meant, no.
+
+331 words, and its receipts under a rule. **14** DOIs, all 14 resolving. Then, unasked:
+
+> The graph walk stopped at **46% known per hop**, so the literature was still opening up
+> when the budget ran out ... every source was read **to abstract depth only**.
 
 </td></tr>
 </table>
 
-**Neither is more cautious than the other. The second can be checked.** It says the claim
-rests on six papers from two independent author sets, chosen from 231 that were all actually
-looked at; that the citation walk was still returning 39% new work when it stopped, so the
-frontier is not closed; and that four of the six were opened past their abstract. A reader
-can now disagree with a number instead of with a tone.
-
-And `established` stops being a word you choose. It is arithmetic on those two author sets,
-and a survey unit will not close while `unscreened` is above zero, so the second column is
-the state the tool leaves you in rather than one you have to be disciplined enough to write.
+Both sessions hit the same paywalls. One of them said so where a reader would see it. *46%
+known per hop* is a figure you can argue with; *the literature suggests* is not. The whole run,
+including the one thing the left column did better, is in
+[the fourth control arm](evals/results/control-2026-09-13.md).
 
 ## Install
 
@@ -370,7 +368,7 @@ one line above a summary of it.
   not fix it, and what this is not. Section 10 is the one thing you supply yourself.
 - **[algorithms/](algorithms/)** -- one file per mechanism, each carrying the measurement that
   killed the naive version and a note on where it is still weak.
-- **[evals/](evals/)** -- seven scenarios against live indexes, and
+- **[evals/](evals/)** -- eight scenarios against live indexes, and
   [control.md](evals/control.md), which is the arm that actually tests the claim and has now
   been run twice.
 - **[examples/](examples/)** -- three worked fields. The `field.md` files are real and you

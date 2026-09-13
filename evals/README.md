@@ -1,9 +1,15 @@
 # Evals
 
-Seven scenarios, one per use case, each on a different AI subject picked at random and none of
-them one the author works in. Every scenario says what a healthy run produces **and what would
-count as a failure in both directions**: the tool blocking something it should allow, and
-passing something it should refuse.
+Eight scenarios, one per use case. Seven are on AI subjects picked at random, none of them one
+the author works in. Every scenario says what a healthy run produces **and what would count as
+a failure in both directions**: the tool blocking something it should allow, and passing
+something it should refuse.
+
+The eighth is deliberately not an AI subject, and that is its whole reason for existing. Seven
+scenarios on one kind of literature test the tool against one literature's habits: a canon
+fifteen years old, everything on arXiv, and founding papers phrased in today's words.
+[08](scenarios/08-relativity.md) breaks all three, and it is the first run to exercise a
+weakness [algorithms/graph.md](../algorithms/graph.md) had declared and never tested.
 
 ## What this can measure
 
@@ -18,7 +24,7 @@ passing something it should refuse.
 
 ## What this cannot measure
 
-It is not a benchmark and seven runs are not calibration. In particular it says **nothing** about
+It is not a benchmark and eight runs are not calibration. In particular it says **nothing** about
 whether the severity classes are right, whether a critique the tool permits is a good critique,
 or whether a researcher using this ends up with better work than one who does not. Those need a
 control, human labels and an agreement measure. None of that exists here, and
@@ -60,3 +66,4 @@ the scenario; re-run it later. The runner records it either way.
 | [05](scenarios/05-critique.md) | review what 04 produced, and stop | the output of 04 |
 | [06](scenarios/06-interpret.md) | interpret a result without moving the goalposts | influence functions at scale |
 | [07](scenarios/07-fallback.md) | keep working when an index refuses | the tool itself |
+| [08](scenarios/08-relativity.md) | cover a literature whose canon is older than its vocabulary | whether language changes what you see |
