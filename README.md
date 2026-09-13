@@ -3,15 +3,17 @@
 > **nullius in verba.** “Take nobody's word for it.”
 > The Royal Society's motto since 1660.
 
-A harness for research work in [Claude Code](https://claude.com/claude-code). Open a unit of
-work and it turns the unread paper, the unsearched literature and the unbounded critique into
-states that unit **cannot close in**.
+A harness for research work in [Claude Code](https://claude.com/claude-code). It turns the
+unread paper, the unsearched literature and the unbounded critique into states a session
+**cannot finish in** -- including the state of having written an answer and opened no unit at
+all.
 
-The qualifier is load-bearing and was measured rather than assumed: the gates hang off an open
-unit, so a session asked only to answer a question opens none and finishes freely. That is
-[the fourth control run](evals/results/control-2026-09-13.md)'s first finding, and it is the
-honest statement of what this does. It does not make a careless session careful. It makes a
-careful one auditable.
+That last clause was bought rather than claimed. The gates hang off an open unit, so for four
+releases a session asked only to answer a question opened none and finished freely;
+[the fourth control run](evals/results/control-2026-09-13.md) measured exactly that and the
+front page had been promising otherwise. A draft written here with no unit behind it now
+refuses the stop, with two ways out: open a unit and track it, under every gate that then
+applies, or say in one command that it was a thinking file and why.
 
 > [!NOTE]
 > **This is not finished and it is not meant to be.** It is installable, tested and in real
@@ -25,7 +27,7 @@ careful one auditable.
 > <summary>what is built, what is not, and what has been measured</summary>
 >
 > **Built and tested.** The ledger, the gates, multi-index search with fallbacks, the citation
-> walk, the venue walk and the calibration engine: 492 assertions in
+> walk, the venue walk and the calibration engine: 500 assertions in
 > [`tests/smoke.sh`](tests/smoke.sh), offline and in both directions, plus eight end-to-end
 > [scenarios](evals/) against live indexes. [algorithms/](algorithms/) says where each
 > mechanism is weakest.
@@ -41,9 +43,11 @@ careful one auditable.
 > **zero fabricated citations** -- including in those with no harness at all. What separates the
 > arms is what a reader can resolve: on the young literature the unharnessed session cited the
 > paper at the centre of the dispute through a vendor's blog, and half its links were not papers
-> at all. The fourth run also found that **the harness engages on the prompt, not on being
-> installed**: asked only to answer, a session in a nullius project opened no unit, searched
-> nothing, and the stop gate had nothing to refuse. Small samples, and the write-ups say so.
+> at all. The fourth run also found that **the harness engaged on the prompt rather than on
+> being installed**: asked only to answer, a session in a nullius project opened no unit,
+> searched nothing, and the stop gate had nothing to refuse. That is the hole this release
+> closes, and it is the clearest thing five runs have bought. Small samples, and the write-ups
+> say so.
 >
 > </details>
 >
@@ -530,6 +534,12 @@ actually happens. An invented identifier is still refused there, because that is
 it is the worst thing this tool could let through. An unattributed surname is reported as a
 lead instead, because the name may belong to something cited elsewhere or to nothing yet.
 `nullius artifact <path>` holds a file to the draft's bar when you are ready for that.
+
+**What is refused is a draft nobody decided about.** Write one here with no unit open and the
+stop gate will not let the session end: either `nullius artifact <path>` under a unit, which
+brings every gate above with it, or `nullius scratch <path> "<why>"`, which says it was a
+thinking file and records that you said so. Answering an unrelated question in the same folder
+is untouched, because nothing was drafted.
 
 When you try to finish, the gate says where you are and the one command that answers the
 first thing holding it:

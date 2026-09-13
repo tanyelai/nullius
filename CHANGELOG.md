@@ -58,6 +58,22 @@ prompt.**
   `onlinelibrary.wiley.com/doi/10.1002/...` read as nothing at all. Fixed, with the case in
   both directions in `smoke.sh`, and the identifier counts for the unharnessed arms in runs
   one to three should be read as floors.
+- **The gates were optional, in the one way nobody checks.** Not by stepping around a gate --
+  by never entering the state a gate applies to. `hook_stop` opened with
+  `if store.unit is None: return 0`, so a session that wrote a research answer into a nullius
+  project and opened no unit passed every check there was, which is what the fourth control run
+  measured. **A draft written here with no unit behind it now refuses the stop.** Recorded at
+  write time on both paths, Write|Edit and the shell heredoc, because the measured session used
+  the heredoc. Two exits: `nullius artifact <path>` under an open unit, and every unit gate then
+  applies, or the new `nullius scratch <path> "<why>"`, which says it was a thinking file and
+  puts that on the record. Refusing *every* unit-less session would be the wrong fix -- a
+  research folder is also where you answer unrelated questions -- so what is refused is the one
+  thing that is unmistakably the work. Both directions in `smoke.sh`, including that a unit-less
+  session which wrote nothing still finishes.
+- **The front page had been promising this for four releases.** *"states a session cannot finish
+  in"* was the first sentence of the repository and was not true as written. It is now, for the
+  case it names, and the sentence says what it does not reach: research that produced no draft,
+  or a draft written outside the project.
 - **Score nothing until the arm's process has exited.** The harness arm was read and audited
   while it was still working, at 611 words with fourteen DOIs inline. It then cut itself to
   355, moved the identifiers into `nullius report` and left a 68-word provenance note in their

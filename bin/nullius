@@ -2729,6 +2729,7 @@ def cmd_artifact(args):
                 comps[rel].append(cp)
                 added.append(cp)
         comps[rel] = sorted(comps.get(rel, []))
+    clear_unclaimed(store, rel)
     excluded = set(unit.get("excluded", []))
     if args.excluded:
         excluded.add(rel)
@@ -3589,6 +3590,68 @@ def cmd_lit(args):
 
 def snowball_state(store):
     return store.read_json("snowball.json", {})
+
+
+def unclaimed_drafts(store):
+    """Drafts written in this project while no unit was open.
+
+    The gates hang off a unit, so a session that never opens one is a session
+    nothing checks: evals/results/control-2026-09-13.md measured exactly that,
+    a research answer written into a nullius project with no unit, no search
+    and no reference, which the stop gate allowed because there was no unit
+    state to refuse. Refusing every unit-less session is wrong -- a project is
+    also where you answer unrelated questions -- so what is refused is the one
+    thing that is unmistakably research: a draft nobody claimed."""
+    return store.read_json("unclaimed.json", {})
+
+
+def note_unclaimed(store, rel):
+    """Recorded at write time because the stop gate cannot see what was written."""
+    if store.unit is not None:
+        return
+    d = unclaimed_drafts(store)
+    d.setdefault(rel, now())
+    store.write_json("unclaimed.json", d)
+
+
+def clear_unclaimed(store, rel, how=None):
+    d = unclaimed_drafts(store)
+    if rel in d:
+        d.pop(rel)
+        store.write_json("unclaimed.json", d)
+        return True
+    return False
+
+
+def cmd_scratch(args):
+    """The honest other answer to the stop gate's refusal. Not everything written
+    in a research folder is research, and a thinking file is where the work
+    actually happens. What is refused is a draft nobody decided about, not a
+    draft somebody decided was scratch."""
+    store = Store(require_root())
+    d = unclaimed_drafts(store)
+    if not args.path:
+        if not d:
+            say("nullius: no draft is waiting on a decision.")
+            return
+        say("drafts written with no unit open:")
+        for rel, when in sorted(d.items()):
+            say(f"  {rel}   since {when[:10]}")
+        say("  each is `nullius artifact <path>` under an open unit, or "
+            "`nullius scratch <path> \"<why>\"`.")
+        return
+    rel = os.path.relpath(Path(args.path).resolve(), store.root)
+    if not args.why:
+        die("say why it is not research. A file declared scratch without a "
+            "reason is a file nobody decided about, which is the state this "
+            "refuses.")
+    scratch = store.read_json("scratch.json", {})
+    scratch[rel] = {"why": args.why, "when": now()}
+    store.write_json("scratch.json", scratch)
+    clear_unclaimed(store, rel)
+    say(f"nullius: {rel} recorded as a scratch note -- {args.why}")
+    say("  the gates still refuse an unresolved identifier in it. What they no "
+        "longer ask is which unit it belongs to.")
 
 
 def frontier_stops(store):
@@ -4776,6 +4839,11 @@ def hook_session_start(payload):
         lines.append("No unit is open, so nothing about the current work is "
                      "being checked. For anything past reading one paper: "
                      "`nullius start <slug> <kind> \"<question>\"`.")
+        loose = unclaimed_drafts(store)
+        if loose:
+            lines.append(f"  and {len(loose)} draft(s) here are waiting on that "
+                         f"decision, which the stop gate will refuse on: "
+                         + ", ".join(sorted(loose)[:4]))
 
     # Storage and surfacing are different decisions and this used to make them
     # once: everything ever written came back, every session, so the only way to
@@ -4880,6 +4948,7 @@ def hook_pre_write(payload):
         return 0
     rel = os.path.relpath(Path(target).resolve(), store.root) \
         if Path(target).is_absolute() else target
+    note_unclaimed(store, rel)
     # A file the unit has not claimed is a scratch note, and a scratch note is
     # where research is actually done. An invented identifier is still refused
     # there -- it is a fact and it is the worst thing this tool can let through.
@@ -4979,6 +5048,8 @@ def hook_pre_bash(payload):
         return 0
     facts, unseen = [], []
     for target, body in shell_writes(cmd, cfg):
+        if is_draft(target, cfg):
+            note_unclaimed(store, target)
         if body is None:
             unseen.append(target)
         else:
@@ -5007,6 +5078,24 @@ def hook_stop(payload):
         return 0
     store = Store(root, payload.get('cwd'))
     if store.unit is None:
+        loose = unclaimed_drafts(store)
+        if not loose:
+            return 0
+        names = sorted(loose)
+        shown = ", ".join(names[:3]) + (f" +{len(names) - 3}" if len(names) > 3 else "")
+        msg = (f"nullius: {len(names)} draft(s) written here with no unit open: "
+               f"{shown}.\n"
+               f"  A draft with no unit behind it has had no question declared, "
+               f"no search logged and no read depth checked, and nothing records "
+               f"that it did not.\n"
+               f"  now   nullius start <slug> <kind> "
+               f"\"<the question it answers>\"\n"
+               f"  then  nullius artifact {names[0]}\n"
+               f"  or    nullius scratch {names[0]} \"<why this is not research>\"\n")
+        if store.config["mode"] == "certain":
+            sys.stderr.write(msg)
+            return 2
+        sys.stdout.write(json.dumps({"systemMessage": msg}) + "\n")
         return 0
     sample_growth(store)
     facts, chosen = unit_findings(store)
@@ -5252,6 +5341,10 @@ def build_parser():
 
     s = sub.add_parser("walk", help="every required section, present/thin/absent")
     s.add_argument("--venue"); s.set_defaults(fn=cmd_walk)
+
+    s = sub.add_parser("scratch", help="declare a draft a thinking file, with a reason")
+    s.add_argument("path", nargs="?")
+    s.add_argument("why", nargs="?"); s.set_defaults(fn=cmd_scratch)
 
     s = sub.add_parser("frontier", help="close a walk by decision, with a reason")
     s.add_argument("what", nargs="?", help="a title fragment, a work id, or `all`")

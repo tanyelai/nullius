@@ -66,9 +66,40 @@ every loop here exits on a set becoming empty, never on a judgement of enough:
     the frontier          every kept work has been walked or closed by decision
     the critique          zero fatal and zero material is a verdict
     what is not known     every need has been observed, unmet or carried
+    the loose draft       every draft written here is claimed by a unit or declared scratch
 ```
 
 Replace *is this enough* with *is this set empty* and the loop stops being a matter of taste.
+
+## The loop that had no gate, because it had no unit
+
+**Measured, and it took four releases to notice.** Every gate above hangs off an open unit, and
+`hook_stop` opened with `if store.unit is None: return 0`. So the whole apparatus was optional
+in the one way nobody checks: not by stepping around a gate, but by never entering the state a
+gate applies to. [The fourth control run](../evals/results/control-2026-09-13.md) put a number
+on it -- a research answer written into a nullius project with no unit, no search and no
+resolved reference, and the stop gate allowed it, correctly, because there was no unit state to
+refuse.
+
+**The wrong fix is to refuse every unit-less session.** A research folder is also where you
+answer an unrelated question, read a mail, keep a list. A gate that fires on all of that is one
+the user turns off, and `WHY.md` section 3 is about instructions that lose under load.
+
+**So what is refused is the one thing that is unmistakably the work**: a draft, in this
+project, that nothing claims.
+
+```
+recorded  at write time, on both paths -- Write|Edit and the shell heredoc,
+          because a gate you can step around by choosing another tool is not a gate
+refused   at the stop, while any draft is unclaimed
+exits     nullius artifact <path>    under an open unit, and every unit gate then applies
+          nullius scratch <path> "<why>"   it was a thinking file, and that is on the record
+```
+
+Same shape as the frontier and the reviewer points: a set, two named dispositions, and a
+refusal that names both. What it does not reach is research that produced no draft, or a draft
+written outside the project. Those are still free, and saying so is cheaper than pretending
+otherwise.
 
 ## The third answer, and why it had nowhere to go
 
