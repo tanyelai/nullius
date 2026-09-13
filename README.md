@@ -59,7 +59,7 @@ when you try to go and read it.
 <table>
 <tr><td width="50%">
 
-**Without**
+**Before**
 
 > Apple's **"The Illusion of Thinking"** reported accuracy collapse on puzzles past a
 > complexity threshold.
@@ -71,7 +71,7 @@ publication venue, a benchmark product page, a Substack. **No DOI anywhere in th
 
 </td><td width="50%">
 
-**With**
+**After**
 
 > **Shojaee et al. (2025, NeurIPS)** report *"complete accuracy collapse beyond certain
 > complexities"*
@@ -90,6 +90,99 @@ And **nine of the eighteen sources it found are not peer reviewed** -- eight arX
 Square -- which it marks on every one. That is the true shape of this literature and the part
 the popular account never states. [The run.](evals/results/control-2026-09-13b.md)
 
+<details>
+<summary>the whole of the <b>Before</b> answer, for this question</summary>
+
+Verbatim, dashes normalised to this repository's convention. 309 words, links left whole so the
+count below can be checked.
+
+> # Do large reasoning models reason, or pattern-match?
+>
+> **Short answer:** both, and the field has largely stopped treating it as a binary. What is *not* settled is how far the genuine-computation part generalizes.
+>
+> ## The case for pattern-matching
+>
+> The strongest evidence is degradation under superficial perturbation. [GSM-Symbolic](https://arxiv.org/abs/2410.05229) showed accuracy falling when only names and numbers change, and collapsing further with added irrelevant clauses. Apple's ["The Illusion of Thinking"](https://arize.com/blog/the-illusion-of-thinking-what-the-apple-ai-paper-says-about-llm-reasoning/) reported accuracy collapse on puzzles past a complexity threshold. The [ARC Prize 2025 technical report](https://arxiv.org/html/2601.10904v1) is blunter: models solve reliably only where pretraining knowledge coverage exists plus a verifiable feedback signal, and calls this "fundamentally constrained by knowledge coverage… distinct from human reasoning." Gemini 3 Deep Think spends ~138k tokens on tasks humans solve instantly. On the RL side, [Yue et al.](https://neurips.cc/virtual/2025/poster/119944) found RLVR models beaten by their own base models at high pass@k -- RL sharpens sampling rather than adding capability.
+>
+> ## The case against
+>
+> Several headline results have not held up cleanly. [Lawsen's rebuttal](https://arxiv.org/html/2507.01231v1) showed much of the Hanoi "collapse" was output-token truncation, with models explicitly saying they were stopping for length. A [2026 statistical re-evaluation of GSM-Symbolic](https://arxiv.org/pdf/2605.28700) found only 8 of 20 open models showed significant drops, and that the variants skew toward larger numbers -- calling blanket conclusions "statistically premature." Similarly, CoT-unfaithfulness findings partly reverse under larger token budgets ([ACL 2026](https://arxiv.org/abs/2512.23032)).
+>
+> Mechanistically, Anthropic's [attribution-graph work](https://transformer-circuits.pub/2025/attribution-graphs/biology.html) finds intervention-verified multi-step circuits -- real internal computation, not lookup. And frontier systems have produced genuinely novel mathematics: a [disproof of Erdős's unit-distance conjecture](https://epoch.ai/frontiermath), formally verified.
+>
+> ## Where it stands
+>
+> Melanie Mitchell's read still holds -- ["there's no consensus"](https://aiguide.substack.com/p/the-llm-reasoning-debate-heats-up). Much of the disagreement is definitional: nobody has an operational threshold separating "abstraction" from "very broad interpolation." The defensible position is that these models perform real, non-retrieval computation over representations whose coverage is set by training data -- brittle off-distribution, but not empty.
+
+**Ten links. Five of them are not papers**: `arize.com` (a vendor blog standing in for the
+paper), `neurips.cc` (a poster page, not the paper), `transformer-circuits.pub` (a company's own
+venue), `epoch.ai` (a benchmark product page, and the sole support for the strongest claim in
+the document), `aiguide.substack.com`. The other five are arXiv preprints. **No DOI anywhere,
+and no source presented as peer reviewed.**
+
+</details>
+
+<details>
+<summary>the whole of the <b>After</b> answer, for this question</summary>
+
+Verbatim, dashes normalised. 350 words, against a 350-word brief.
+
+> # Do large reasoning models reason, or pattern-match?
+>
+> **Not settled -- and the dichotomy is part of why it stays that way.**
+>
+> ## What is established
+>
+> Frontier accuracy is not invariant to changes that leave the problem intact. Mirzadeh et al.
+> (2024) show performance declines when only the numeric values in a grade-school maths question
+> change, and that adding "seemingly relevant but ultimately irrelevant information" costs up to
+> 65% across every state-of-the-art model tested. Wu et al. (2024) report that on counterfactual
+> variants of familiar tasks -- base-9 arithmetic, shifted keyboards -- GPT-4 "consistently and
+> substantially underperforms" its default-condition score. Two independent groups, both measured:
+> whatever these systems do is bound to the surface form of a problem in a way competent human
+> reasoning is not.
+>
+> ## What is contested
+>
+> The headline evidence is under live methodological attack. Shojaee et al. (2025, NeurIPS)
+> report "complete accuracy collapse beyond certain complexities", plus a counterintuitive decline
+> in reasoning effort as problems get harder. Lawsen (2025, preprint) argues these findings
+> "primarily reflect experimental design limitations rather than fundamental reasoning failures":
+> output token limits, a rigid automated scorer, and River Crossing instances that are
+> mathematically unsolvable for N≥6 yet scored as model failures. The analogy literature splits the
+> same way -- Lewis and Mitchell (2024) read counterfactual tasks as evidence against general
+> reasoning; Webb et al. (2025, *PNAS Nexus*) run comparable tasks and conclude the opposite.
+>
+> ## Why the question is badly posed
+>
+> Mechanistic work suggests both camps are arguing over a false choice. Nikankin et al. (2024) find
+> that LLMs do arithmetic "using neither robust algorithms nor memorization; rather, they rely on a
+> bag of heuristics" -- many narrow, composable circuits. That is a third thing, and no behavioural
+> benchmark can distinguish it from either pole.
+>
+> ## What would settle it
+>
+> Complexity varied independently of required output length and answer format, on a problem family
+> held out *by construction* from an auditable pretraining corpus. No study here can audit the
+> corpora of the models it tests, so "outside the training distribution" is asserted, never
+> verified. Until that is fixed, collapse curves stay confounded.
+
+**Eighteen sources, every one resolved to a DOI, nine of them peer reviewed and each marked.**
+The venue travels in the sentence: *Lawsen (2025, preprint)*, *Shojaee et al. (2025, NeurIPS)*,
+*Webb et al. (2025, PNAS Nexus)*. Five were read to `method` depth, and the five passages quoted
+above check verbatim against the cached text:
+
+```
+nullius quote mirzadeh2024 "seemingly relevant but ultimately irrelevant information"
+nullius: verbatim in mirzadeh2024.        ... and four more, five for five
+```
+
+Behind it sit five claims with a warrant and a status. One reaches `established` -- the first
+in five control runs -- on two independent groups both measuring; the contested heart of the
+dispute is recorded as `contested` over the two papers that disagree.
+
+</details>
+
 ### A literature forty years old
 
 Where the sources are refereed and the dispute is old, the failure is quieter. Both answers are
@@ -101,7 +194,7 @@ verbatim.
 <table>
 <tr><td width="50%">
 
-**Without**
+**Before**
 
 > Almost certainly not at the level of seeing. ... The strongest neural evidence for the
 > first claim **has just collapsed.**
@@ -111,7 +204,7 @@ people credited, three a reader can chase. Nothing about what the search missed.
 
 </td><td width="50%">
 
-**With**
+**After**
 
 > Narrowly yes; in the way the question is usually meant, no.
 
@@ -130,14 +223,14 @@ is a figure you can argue with, and *the literature suggests* is not.
 
 **Neither column invents anything** -- every identifier in both resolves, as in all fifteen arms
 across five runs. Both reach the same *direction*. What they do not reach is the same
-**confidence**: the left calls the early-vision question *clear* and one 2026 paper *decisive*;
-the right calls it **unsettled**, and of its thirteen recorded claims not one reaches
+**confidence**: *Before* calls the early-vision question *clear* and one 2026 paper
+*decisive*; *After* calls it **unsettled**, and of its thirteen recorded claims not one reaches
 `established`. Only one of them earned its confidence, and **you cannot tell which from the
 prose.** That is the failure this is built for, and it is not the one people expect.
 [The run.](evals/results/control-2026-09-13.md)
 
 <details>
-<summary>the whole of what the <b>left</b> column produced, for this question</summary>
+<summary>the whole of the <b>Before</b> answer, for this question</summary>
 
 Verbatim, dashes normalised to this repository's convention. 551 words.
 
@@ -229,23 +322,23 @@ worth checking against it are facts rather than tone, and they fall in two group
   makes resolvable. The three that cannot are Bae, Martinovic and **Winawer** -- the canonical
   one, and unresolvable for the reason directly above: its only link is the mirror.
 
-**What it asserts past its evidence.** Each of these is answered by a source the right column
+**What it asserts past its evidence.** Each of these is answered by a source *After*
 holds and this one does not.
 
-- **One replication is called *decisive*.** It is one paper. Across the thirteen claims the
-  right column recorded, the statuses come out ten `single-result`, two `emerging`, one
+- **One replication is called *decisive*.** It is one paper. Across the thirteen claims
+  *After* recorded, the statuses come out ten `single-result`, two `emerging`, one
   `contested` and **no `established` at all**, because a status here is arithmetic over author
   independence and one study does not move it.
 - **The load-bearing negative claim carries no source at all.** *"The right-visual-field
   lateralisation has repeatedly come out bilateral or absent"* -- no citation. It is true, and
-  the right column is where you find out why: `brederoo2019`, nine powered near-exact
+  *After* is where you find out why: `brederoo2019`, nine powered near-exact
   replications with Bayesian analysis.
 - **Its central inference is stated as clean when the literature says it is not.** Occupying the
   language system makes the effect vanish, *"what you expect if people are covertly labelling,
   not seeing differently."* Pilling et al. 2003, *Is color "categorical perception" really
   perceptual?*, report that it survives verbal interference when the interference type is
-  unpredictable, so the dual task is not a clean diagnostic. The right column says so in the
-  same breath in which it makes the argument.
+  unpredictable, so the dual task is not a clean diagnostic. *After* says so in the same breath
+  in which it makes the argument.
 - **The history is missing, and it changes the story.** This reads as a case built and then
   recently collapsed. Kay and Kempton 1984 had already placed the effect in naming rather than
   in seeing, in an experiment built to block exactly that route. Its first author is Paul Kay,
@@ -258,7 +351,7 @@ None of that is visible from the prose, which reads as settled throughout. It is
 </details>
 
 <details>
-<summary>the whole of what the <b>right</b> column produced, for this question</summary>
+<summary>the whole of the <b>After</b> answer, for this question</summary>
 
 Verbatim, dashes normalised to this repository's convention. 355 words, and a
 `nullius report` beside it holding the rest.
@@ -319,8 +412,8 @@ row asserts `mechanism`: every source was read to abstract depth and a claim may
 source's read depth. And ten of the thirteen may not be written as a bare assertion, which the
 report states where the session will see it.
 
-That is the half a collaborator cannot reconstruct from the prose, and it is the half the
-column on the left does not have.
+That is the half a collaborator cannot reconstruct from the prose, and it is the half
+*Before* does not have.
 
 </details>
 
