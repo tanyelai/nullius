@@ -563,9 +563,17 @@ def http_json(url, attempts=3):
                     f"and run the same command again. Setting a contact email "
                     f"puts you in the polite pool, which is a different quota.")
             raise RuntimeError(f"{url} returned HTTP {e.code}") from e
-        except urllib.error.URLError as e:
+        except OSError as e:
+            # URLError is an OSError, and so is TimeoutError, which is NOT a
+            # URLError: a socket timeout arrives here unwrapped and used to
+            # escape as a traceback, taking with it whatever the other indexes
+            # had already returned. Same defect class as the one
+            # evals/results/control-2026-09-12.md records against `audit`. It
+            # was fixed at that one site and the class was never swept for.
             raise RuntimeError(f"cannot reach "
-                               f"{urllib.parse.urlsplit(url).netloc}: {e.reason}") from e
+                               f"{urllib.parse.urlsplit(url).netloc}: "
+                               f"{getattr(e, 'reason', None) or type(e).__name__}"
+                               ) from e
     return None
 
 
@@ -578,9 +586,11 @@ def http_text(url):
         if e.code in (403, 404):
             return None
         raise RuntimeError(f"{url} returned HTTP {e.code}") from e
-    except urllib.error.URLError as e:
+    except OSError as e:
+        # As in http_json: a socket timeout is an OSError and not a URLError.
         raise RuntimeError(f"cannot reach "
-                           f"{urllib.parse.urlsplit(url).netloc}: {e.reason}") from e
+                           f"{urllib.parse.urlsplit(url).netloc}: "
+                           f"{getattr(e, 'reason', None) or type(e).__name__}") from e
 
 
 def strip_html(markup):
@@ -736,7 +746,9 @@ def arxiv_search(query, limit, raw=False, counter=None):
     try:
         with urllib.request.urlopen(req, timeout=API_TIMEOUT) as r:
             xml = r.read().decode("utf-8", "replace")
-    except (urllib.error.URLError, urllib.error.HTTPError):
+    except OSError:
+        # HTTPError is a URLError is an OSError, and so is the TimeoutError a
+        # slow arXiv raises, which was the one shape not caught here.
         return []
     if counter is not None:
         m = re.search(r"<opensearch:totalResults[^>]*>(\d+)<", xml)
@@ -839,8 +851,9 @@ def arxiv_lookup(arxiv_id):
     try:
         with urllib.request.urlopen(req, timeout=API_TIMEOUT) as r:
             xml = r.read().decode("utf-8", "replace")
-    except (urllib.error.URLError, urllib.error.HTTPError) as e:
-        raise RuntimeError(f"cannot reach export.arxiv.org: {e}") from e
+    except OSError as e:
+        raise RuntimeError(f"cannot reach export.arxiv.org: "
+                           f"{getattr(e, 'reason', None) or type(e).__name__}") from e
     if "<entry>" not in xml:
         return None
     entry = xml.split("<entry>", 1)[1]
