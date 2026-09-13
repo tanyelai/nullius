@@ -82,7 +82,103 @@ including the one thing the left column did better, is in
 [the fourth control arm](evals/results/control-2026-09-13.md).
 
 <details>
-<summary>the whole of what the right column produced, for this question</summary>
+<summary>the whole of what the <b>left</b> column produced, for this question</summary>
+
+Verbatim, dashes normalised to this repository's convention. 551 words.
+
+> # Does the language you speak change what you can see?
+>
+> **Almost certainly not at the level of seeing. Probably yes at the level of naming, deciding
+> and remembering what you saw. The strongest neural evidence for the first claim has just
+> collapsed.**
+>
+> ## The case that was built
+>
+> Winawer et al. (2007) is canonical. Russian obligatorily splits blue into *siniy* (dark) and
+> *goluboy* (light); English does not. Russian speakers discriminated cross-boundary blues
+> faster than within-boundary ones; English speakers showed no such boundary. Gilbert et al.
+> (2006) found the effect only in the right visual field -- language-side -- which looked like
+> a smoking gun. Thierry et al. (2009) reported a larger visual mismatch negativity for Greek
+> speakers' *ghalazio/ble* contrast: a pre-attentive ERP component, language reaching into
+> vision before awareness.
+>
+> ## The case that came apart
+>
+> Three things went wrong.
+>
+> First, the original study carried its own deflation: the Russian advantage "was eliminated by
+> a verbal, but not a spatial, dual task." Occupy the language system and the effect vanishes
+> -- what you expect if people are *covertly labelling*, not seeing differently.
+>
+> Second, replication. Martinovic, Paramei & MacInnes (2020, *Cognition*) re-ran the Russian
+> blues with tighter colorimetric control and found no categorical facilitation in processing
+> speed. Witzel found robust category effects only in speeded discrimination with untrained
+> observers, and none at green-blue once sensitivity was controlled. The right-visual-field
+> lateralisation has repeatedly come out bilateral or absent.
+>
+> Third, and decisively: Martinovic et al. (2026, *PNAS*) -- "Cognition does not automatically
+> influence perception" -- ran a close replication of Thierry et al. across three EEG
+> experiments and found no robust categorical modulation. The early differences track hue,
+> saturation, luminance contrast and adaptation to it, not linguistic categories.
+>
+> ## How settled
+>
+> Settled enough for a direction, not a full stop. Kapelle & Flecken's 2025 scoping review of
+> 72 studies concludes the effects are **context-dependent and transient**, sitting in top-down
+> stages where participants can anticipate task demands, strongest under memory load --
+> consistent with Bae et al. (2015), where categorical bias is *amplified* by working memory
+> rather than born in vision. Wakui et al. (2025) still find Himba speakers showing categorical
+> effects in visual search for newly acquired colour terms, so learned categories do something.
+> The live question is not *whether* language touches colour cognition but *where in the
+> pipeline* -- and the early end now looks clear.
+>
+> ## Sources
+>
+> - Winawer et al. 2007, *PNAS* -- Russian blues reveal effects of language on color
+>   discrimination → `fermatslibrary.com/s/russian-blues-...`
+> - Gilbert et al. 2006, *PNAS* -- Whorf hypothesis is supported in the right visual field but
+>   not the left → `pnas.org/doi/`**`10.1073/pnas.0509868103`**
+> - Thierry et al. 2009, *PNAS* -- Unconscious effects of language-specific terminology on
+>   preattentive color perception → `pnas.org/doi/`**`10.1073/pnas.0811155106`**
+> - Martinovic, Paramei & MacInnes 2020, *Cognition* -- Russian blues reveal the limits of
+>   language influencing colour discrimination → `pubmed.ncbi.nlm.nih.gov/32276236/`
+>   (+ a postprint PDF at `hira.hope.ac.uk`)
+> - Martinovic et al. 2026, *PNAS* -- Cognition does not automatically influence perception →
+>   `pmc.ncbi.nlm.nih.gov/articles/PMC13273331/`
+> - Kapelle & Flecken 2025, *Language and Cognition* -- Perceiving colour through a language
+>   lens: a scoping review → `cambridge.org/core/journals/...`
+> - Bae, Olkkonen, Allred & Flombaum 2015, *JEP:General* -- Why some colors appear more
+>   memorable than others → `sas.upenn.edu/~mariaol/files/BaeEtAlJEP2015.pdf`
+> - Witzel 2015, *Journal of Vision* -- Categorical facilitation with equally discriminable
+>   colors → `arvojournals.org/.../i1534-7362-15-8-22.pdf`
+> - Wakui, Mylonas, Caparos & Davidoff 2025, *Color Research & Application* -- Categorical
+>   color perception in a cross-lingual comparison of visual search →
+>   `onlinelibrary.wiley.com/doi/`**`10.1002/col.22964`**
+
+*(The prose is verbatim; the nine source lines are the document's own, with each link shown as
+its host rather than in full. The three DOIs are bolded.)*
+
+**This is not a bad answer.** It is current, it is hedged in the right places, and it is the
+only one of the two that found the 2026 replication. Three things are worth checking against
+it, and all three are facts rather than tone:
+
+- **Three of the nine links carry a DOI.** The other six are a third-party mirror, a PubMed
+  listing with a repository postprint beside it, a PMC record, a publisher's article page and
+  two PDFs.
+- **The canonical paper is linked to a mirror**, not to the paper. Winawer et al. 2007 goes to
+  `fermatslibrary.com`, and by the session's own log the quotation drawn from it came off that
+  page.
+- **Six people are credited in the prose; three of them can be traced** to a work this document
+  makes resolvable. The three that cannot are Bae, Martinovic and **Winawer** -- the canonical
+  one, and unresolvable for the reason directly above: its only link is the mirror.
+
+None of that is visible from the prose, which reads as settled throughout. It is visible from
+`nullius audit`, which reads the document and nothing else.
+
+</details>
+
+<details>
+<summary>the whole of what the <b>right</b> column produced, for this question</summary>
 
 Verbatim, dashes normalised to this repository's convention. 355 words, and a
 `nullius report` beside it holding the rest.
