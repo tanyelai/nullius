@@ -8,12 +8,25 @@ unread paper, the unsearched literature and the unbounded critique into states a
 **cannot finish in** -- including the state of having written an answer and opened no unit at
 all.
 
-That last clause was bought rather than claimed. The gates hang off an open unit, so for four
-releases a session asked only to answer a question opened none and finished freely;
-[the fourth control run](evals/results/control-2026-09-13.md) measured exactly that and the
-front page had been promising otherwise. A draft written here with no unit behind it now
-refuses the stop, with two ways out: open a unit and track it, under every gate that then
-applies, or say in one command that it was a thinking file and why.
+**What that buys, measured on a literature three months old.** The same question, the same
+model, once with this and once without:
+
+| | without | with |
+|---|---|---|
+| sources | 10 links, **5 of them not papers** | **18 references** |
+| that resolve to a DOI | **0** | **18** |
+| flagged as not peer reviewed | none were | **9 of 18** |
+| the paper the dispute is about | cited through a vendor's blog | resolved to NeurIPS |
+| quoted passages checked verbatim | nothing to check against | **5 of 5** |
+
+[Both answers in full, and the run.](evals/results/control-2026-09-13b.md)
+
+The clause about opening no unit was bought rather than claimed. The gates hang off a unit, so
+for four releases a session asked only to answer a question opened none and finished freely;
+[the fourth control run](evals/results/control-2026-09-13.md) measured exactly that. A draft
+written here with no unit behind it now refuses the stop, with two ways out: open a unit and
+track it, under every gate that then applies, or say in one command that it was a thinking file
+and why.
 
 > [!NOTE]
 > **This is not finished and it is not meant to be.** It is installable, tested and in real
@@ -511,6 +524,8 @@ lands in the project's own `.nullius/config.json`, which is meant to be committe
 ./.nullius/bin/nullius claim "retrieval helps on knowledge-heavy tasks" \
     --warrant authors-claim --status single-result --strength reports \
     --source lewis2020
+
+./.nullius/bin/nullius scratch notes.md "thinking file, not the answer"
 ```
 
 ![Two independent caps on a claim. How far the source was read caps what the claim may

@@ -70,6 +70,15 @@ prompt.**
   research folder is also where you answer unrelated questions -- so what is refused is the one
   thing that is unmistakably the work. Both directions in `smoke.sh`, including that a unit-less
   session which wrote nothing still finishes.
+- **And the gate was re-run against the cell that found the hole.** Same prompt, word for word.
+  Under 0.8.6 the session opened no unit and the stop allowed it; under the gate it opened a
+  `survey`, declared what would close it, tracked the draft, closed on a locator and generated a
+  report -- and recorded, in the ledger rather than in the chat, that it had *"zero query
+  vocabularies logged against a suggested three ... I wrote from what I already knew rather than
+  from a logged search"*. OpenAlex was rate limiting from this session's own earlier use, so
+  `cite` could not resolve and the research path itself was not exercised. What was exercised is
+  the gate, and the session stripped the author names it could not resolve rather than leave
+  them credited.
 - **The front page had been promising this for four releases.** *"states a session cannot finish
   in"* was the first sentence of the repository and was not true as written. It is now, for the
   case it names, and the sentence says what it does not reach: research that produced no draft,
