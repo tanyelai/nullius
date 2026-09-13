@@ -66,18 +66,87 @@ people credited, three a reader can chase. Nothing about what the search missed.
 
 > Narrowly yes; in the way the question is usually meant, no.
 
-331 words, and its receipts under a rule. **14** DOIs, all 14 resolving. Then, unasked:
+355 words for the same brief. **14** sources, all 14 resolved and carrying a read depth. Then,
+unasked, a closing note:
 
-> The graph walk stopped at **46% known per hop**, so the literature was still opening up
-> when the budget ran out ... every source was read **to abstract depth only**.
+> the walk stopped at **46% known per hop**, so the literature was still opening up, and
+> paywalls held every source **to abstract depth** -- so each claim is what a study *reports*,
+> not mechanism.
 
 </td></tr>
 </table>
 
-Both sessions hit the same paywalls. One of them said so where a reader would see it. *46%
-known per hop* is a figure you can argue with; *the literature suggests* is not. The whole run,
+Both sessions ran into paywalls. One of them said so where a reader would see it. *46% known
+per hop* is a figure you can argue with; *the literature suggests* is not. The whole run,
 including the one thing the left column did better, is in
 [the fourth control arm](evals/results/control-2026-09-13.md).
+
+<details>
+<summary>the whole of what the right column produced, for this question</summary>
+
+Verbatim, dashes normalised to this repository's convention. 355 words, and a
+`nullius report` beside it holding the rest.
+
+> # Does the language you speak change what you can see?
+>
+> Narrowly yes; in the way the question is usually meant, no.
+>
+> Language reliably changes *performance on perceptual tasks*. Winawer et al. report that
+> Russian speakers, whose language obligatorily splits *goluboy* from *siniy*, discriminate
+> boundary-crossing blues faster than within-category blues, while English speakers on
+> identical stimuli do not [@winawer2007].
+>
+> Kay and Kempton set the shape of this literature: they found a Whorfian colour effect,
+> proposed that it ran through a naming strategy, then ran a second experiment to block that
+> strategy -- and it disappeared, as predicted [@kay1984]. Winawer's advantage likewise
+> vanished under a verbal, but not a spatial, dual task -- the signature of online verbal
+> comparison, not altered sensation. Pilling et al. complicate this, finding that categorical
+> perception survived verbal interference when its type was unpredictable [@pilling2003].
+>
+> The strongest bid for a genuinely perceptual locus was lateralisation -- effects confined to
+> the right visual field, hence to the language-dominant left hemisphere [@gilbert2005] --
+> backed by ERP work on preattentive change detection [@thierry2009; @mo2011]. That bid is in
+> trouble. A friendly replication found left-visual-field effects too [@drivonikou2007]; Brown
+> and colleagues found none at green-blue by two methods [@brown2011]; and Brederoo et al.,
+> across nine powered near-exact replications, found no evidence for the asymmetry at all
+> [@brederoo2019]. Zhong et al. found the pattern shifts with whichever categorisation was
+> primed first [@zhong2017].
+>
+> Pre-linguistic infants already discriminate categorically [@franklin2008; @ozturk2012], and
+> naming across languages tracks near-optimal partitions of perceptual space [@regier2007] --
+> the categories are not language's invention.
+>
+> Settled: language speeds and biases perceptual judgement. Unsettled: whether it reaches early
+> vision. Lupyan et al. argue the perceptual/decisional split is itself unprincipled
+> [@lupyan2020], much of why this stays open.
+>
+> ---
+>
+> *What this rests on:* 19 vocabularies over OpenAlex and Crossref plus a 6-hop walk; 639
+> records screened, 91 kept. Two limits: the walk stopped at 46% known per hop, so the
+> literature was still opening up, and paywalls held every source to abstract depth -- so each
+> claim is what a study *reports*, not mechanism. Nearly all of it concerns colour. Full
+> protocol, read depths and DOIs: nullius-report.md
+
+**Every bracketed key above resolves.** And behind the answer sit thirteen claims, each with
+what warrants it and how far its sources were read. Four of them, abridged where marked:
+
+| claim | warrant | status | asserts | sources |
+|---|---|---|---|---|
+| Whether the lateralised (right-visual-field) Whorfian colour effect is real is contested: reported by its originators, found only partially in a friendly replication, absent at the green-blue boundary ... and absent in a powered nine-study Bayesian replication programme | `measured` | `contested` | `reports` | gilbert2005, drivonikou2007, brown2011, brederoo2019 |
+| Pre-linguistic infants show faster discrimination across colour category boundaries than within them, so categorical colour discrimination does not require colour language | `replicated` | `emerging` | `reports` | franklin2008, ozturk2012 |
+| A Whorfian colour effect was detected and then made to disappear in a second experiment specifically designed to block the hypothesised naming strategy ... | `measured` | `single-result` | `reports` | kay1984 |
+| Cross-language colour naming is argued to reflect near-optimal partitions of an irregularly shaped perceptual colour space ... | `authors-claim` | `single-result` | `reports` | regier2007 |
+
+**Nothing reached `established`**, because the independence arithmetic did not support it. No
+row asserts `mechanism`: every source was read to abstract depth and a claim may not exceed its
+source's read depth. And ten of the thirteen may not be written as a bare assertion, which the
+report states where the session will see it.
+
+That is the half a collaborator cannot reconstruct from the prose, and it is the half the
+column on the left does not have.
+
+</details>
 
 ## Install
 

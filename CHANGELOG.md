@@ -30,6 +30,13 @@ and the CLI surface may change; when they do, the change is listed here with wha
   `onlinelibrary.wiley.com/doi/10.1002/...` read as nothing at all. Fixed, with the case in
   both directions in `smoke.sh`, and the identifier counts for the unharnessed arms in runs
   one to three should be read as floors.
+- **Score nothing until the arm's process has exited.** The harness arm was read and audited
+  while it was still working, at 611 words with fourteen DOIs inline. It then cut itself to
+  355, moved the identifiers into `nullius report` and left a 68-word provenance note in their
+  place, so every number from that first reading described a file that no longer existed -- and
+  the first draft of the write-up and the front page both carried them. Corrected against the
+  final artifacts, and the rule is now written down in the run, because nothing in
+  [control.md](evals/control.md) said it and no earlier run had scored an arm mid-flight.
 - **[A new scenario, and deliberately not an AI subject.](evals/scenarios/08-relativity.md)**
   There are now eight scenarios, and the first seven test the tool against one literature's
   habits: a canon fifteen years old, everything on arXiv, founding papers phrased in today's
