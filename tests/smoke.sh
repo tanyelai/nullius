@@ -1432,6 +1432,33 @@ for name, call in (("http_json",   lambda: nl.http_json("https://example.org/x")
 assert nl.arxiv_search("anything", 1) == [], "arxiv_search must return empty"
 SLOW
 
+# ---- a DOI is not an arXiv id ----------------------------------------------
+# ARXIV_RE is anchored at the end and matches any trailing NNNN.NNNNN, and it was
+# tried before DOI_RE. So 10.1001/jamanetworkopen.2024.8064 was looked up on arXiv
+# as 2024.8064 and refused, in every form the user could pass it (bare, doi:,
+# https://doi.org/). Both directions: the DOIs that fell into it, and the arXiv
+# forms that must still go to arXiv, including arXiv's own 10.48550 DOIs.
+python3 - "$NULLIUS" <<'IDENT' && ok || bad "a DOI ending in YYYY.NNNN is read as an arXiv id"
+import importlib.machinery, importlib.util, sys
+spec = importlib.util.spec_from_loader(
+    "nl", importlib.machinery.SourceFileLoader("nl", sys.argv[1]))
+nl = importlib.util.module_from_spec(spec); spec.loader.exec_module(nl)
+cases = {
+    "10.1001/jamanetworkopen.2024.8064": ("doi", "10.1001/jamanetworkopen.2024.8064"),
+    "https://doi.org/10.1287/isre.1040.0023": ("doi", "10.1287/isre.1040.0023"),
+    "doi:10.1098/rstb.2017.0268": ("doi", "10.1098/rstb.2017.0268"),
+    "10.1037/bul0000123": ("doi", "10.1037/bul0000123"),
+    "2207.11890": ("arxiv", "2207.11890"),
+    "arXiv:2501.18577v2": ("arxiv", "2501.18577"),
+    "https://arxiv.org/abs/2306.04746": ("arxiv", "2306.04746"),
+    "10.48550/arxiv.2306.04746": ("arxiv", "2306.04746"),
+}
+for raw, want in cases.items():
+    got = nl.normalise_identifier(raw)
+    if got != want:
+        sys.exit(f"{raw}: {got} != {want}")
+IDENT
+
 # ---- auditing a document no ledger ever saw --------------------------------
 # `check` audits a draft against a ledger. The arms in evals/control.md produce
 # drafts that never had one, and scoring one arm from its ledger and another
