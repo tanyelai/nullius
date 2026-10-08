@@ -3,7 +3,10 @@
 Versions follow [semantic versioning](https://semver.org). Until `1.0.0` the ledger format
 and the CLI surface may change; when they do, the change is listed here with what it breaks.
 
-## Unreleased
+## 0.8.8
+
+**Two gates that held the stop on work already in order: a journal DOI read as an arXiv id, and a
+draft that had been declared scratch but was recorded under a path nothing could clear.**
 
 - **A DOI ending in `YYYY.NNNN` was read as an arXiv id and could not be cited.**
   `normalise_identifier` tried the end-anchored `ARXIV_RE` before `DOI_RE`, so
