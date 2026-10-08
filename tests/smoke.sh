@@ -1399,6 +1399,44 @@ MERGE
 read -r l_pass l_fail < "$SW/.tally"
 pass=$((pass + l_pass)); fail=$((fail + l_fail))
 
+# ---- a draft is one file, however its path was spelled -----------------------
+# The Write hook recorded a draft relative to the project root, the shell hook
+# recorded whatever the command typed, and `scratch` and `artifact` clear the
+# root-relative spelling. A redirect to an absolute path, which is how a
+# subagent writes its run log, left a key nothing could clear, and the stop gate
+# refused for good a draft somebody had already declared scratch. Both
+# directions: every spelling is cleared by the decision about its own file, and
+# by no other.
+( mkdir -p "$SW/spelled/sub" && cd "$SW/spelled" || exit 1
+  pass=0; fail=0                    # the subshell inherits the running tally
+  python3 "$NULLIUS" init --field "linguistics" >/dev/null 2>&1
+  J="{\"cwd\":\"$PWD\"}"
+  printf '%s' "{\"cwd\":\"$PWD\",\"tool_input\":{\"command\":\"python3 run.py > $PWD/log.txt\"}}" \
+    | python3 "$NULLIUS" _hook pre-bash >/dev/null 2>&1
+  printf 'out\n' > log.txt
+  expect_hook stop 2 "a draft redirected to its absolute path refuses the stop" "$J"
+  python3 "$NULLIUS" scratch other.md "not this one" >/dev/null 2>&1
+  expect_hook stop 2 "a decision about another file does not clear it" "$J"
+  expect_exit 0 "scratch takes it by the name a person types" \
+    python3 "$NULLIUS" scratch log.txt "a run log, machine output"
+  expect_hook stop 0 "and then the stop is allowed" "$J"
+  # a relative redirect typed from a subdirectory names a file under it
+  printf '%s' "{\"cwd\":\"$PWD/sub\",\"tool_input\":{\"command\":\"cat > notes.md <<'EOF'\nwords\nEOF\"}}" \
+    | python3 "$NULLIUS" _hook pre-bash >/dev/null 2>&1
+  expect_hook stop 2 "a relative redirect from a subdirectory refuses the stop" "$J"
+  expect_exit 0 "scratch from the root names it by its project path" \
+    python3 "$NULLIUS" scratch sub/notes.md "a thinking file"
+  expect_hook stop 0 "and the stop is allowed again" "$J"
+  # a key an older version recorded raw
+  printf '{"%s": "2026-10-08T18:24:02Z"}\n' "$PWD/old.txt" > .nullius/unclaimed.json
+  expect_hook stop 2 "a key an older version recorded raw still refuses" "$J"
+  expect_exit 0 "scratch clears it by the file's project path" \
+    python3 "$NULLIUS" scratch old.txt "a run log from before the fix"
+  expect_hook stop 0 "so a project that met the old spelling is not stuck" "$J"
+  printf '%s\n' "$pass $fail" > "$SW/.tally" )
+read -r l_pass l_fail < "$SW/.tally"
+pass=$((pass + l_pass)); fail=$((fail + l_fail))
+
 # ---- a slow index is not a crash -------------------------------------------
 # control-2026-09-12 recorded this class against `audit`: TimeoutError is an
 # OSError and is NOT a URLError, so a socket timeout arrives unwrapped. It was

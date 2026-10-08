@@ -13,6 +13,15 @@ and the CLI surface may change; when they do, the change is listed here with wha
   gate then held the stop on a reference that exists. An identifier that is a DOI on its face
   is now read as one; arXiv ids and arXiv's own `10.48550` DOIs still go to arXiv. Tested in
   both directions in `tests/smoke.sh`.
+- **A draft redirected to its absolute path refused the stop for good.** The shell hook
+  recorded an unclaimed draft under whatever the command typed, while the Write hook,
+  `scratch` and `artifact` use the path relative to the project root. A redirect such as
+  `python3 run.py > /abs/project/log.txt`, which is how a subagent writes its run log, left a
+  key neither `scratch` nor `artifact` could clear, and the stop gate went on refusing a draft
+  somebody had already declared scratch. A relative redirect typed from a subdirectory had the
+  same fault. Every draft key is now the project-relative path, and a key an older version
+  recorded raw is cleared by the decision about its own file, so a project that met the old
+  spelling needs no hand edit. Tested in both directions in `tests/smoke.sh`.
 
 ## 0.8.7
 
