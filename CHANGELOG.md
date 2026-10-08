@@ -5,6 +5,14 @@ and the CLI surface may change; when they do, the change is listed here with wha
 
 ## Unreleased
 
+- **A DOI ending in `YYYY.NNNN` was read as an arXiv id and could not be cited.**
+  `normalise_identifier` tried the end-anchored `ARXIV_RE` before `DOI_RE`, so
+  `10.1001/jamanetworkopen.2024.8064` was looked up on arXiv as `2024.8064` and refused,
+  bare, as `doi:` and as `https://doi.org/`. Journal DOIs of that shape are common (JAMA
+  Network Open, JAMA Psychiatry, Phil Trans R Soc B, Information Systems Research), and the
+  gate then held the stop on a reference that exists. An identifier that is a DOI on its face
+  is now read as one; arXiv ids and arXiv's own `10.48550` DOIs still go to arXiv. Tested in
+  both directions in `tests/smoke.sh`.
 - **A draft redirected to its absolute path refused the stop for good.** The shell hook
   recorded an unclaimed draft under whatever the command typed, while the Write hook,
   `scratch` and `artifact` use the path relative to the project root. A redirect such as

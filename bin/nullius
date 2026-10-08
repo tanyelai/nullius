@@ -833,6 +833,14 @@ DOI_RE = re.compile(r"(10\.\d{4,9}/[^\s\"'<>]+)", re.I)
 def normalise_identifier(raw):
     """Return ('doi'|'arxiv'|'title', value)."""
     s = raw.strip().rstrip(".,;").replace("abs/", "")
+    # A DOI whose suffix ends in YYYY.NNNN (10.1001/jamanetworkopen.2024.8064) also
+    # matches the end-anchored ARXIV_RE. Anything that is a DOI on its face, other than
+    # arXiv's own 10.48550 DOIs, is a DOI.
+    if (re.match(r"(?:https?://(?:dx\.)?doi\.org/|doi:\s*)?10\.\d{4,9}/", s, re.I)
+            and not re.search(r"10\.48550/arxiv\.", s, re.I)):
+        m = DOI_RE.search(s)
+        if m:
+            return "doi", m.group(1).rstrip(".").lower()
     m = ARXIV_RE.search(s)
     if m:
         return "arxiv", m.group(1)
