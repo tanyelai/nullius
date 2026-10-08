@@ -3605,6 +3605,19 @@ def unclaimed_drafts(store):
     return store.read_json("unclaimed.json", {})
 
 
+def draft_key(store, target, cwd=None):
+    """The one spelling of a draft's path that every command agrees on: relative to
+    the project root. A Write hands over an absolute path; a shell redirect hands over
+    whatever was typed, absolute or relative to the shell's own directory; `scratch`
+    and `artifact` resolve what the user types. Recorded raw, a redirect to an
+    absolute path made a key neither of them could clear, and the stop gate went on
+    refusing a draft somebody had already decided about."""
+    p = Path(os.path.expanduser(str(target)))
+    if not p.is_absolute():
+        p = Path(cwd or store.root) / p
+    return os.path.relpath(p.resolve(), store.root)
+
+
 def note_unclaimed(store, rel):
     """Recorded at write time because the stop gate cannot see what was written."""
     if store.unit is not None:
@@ -3616,11 +3629,16 @@ def note_unclaimed(store, rel):
 
 def clear_unclaimed(store, rel, how=None):
     d = unclaimed_drafts(store)
-    if rel in d:
-        d.pop(rel)
+    # A key recorded before draft_key existed can be the absolute path a redirect
+    # typed. It names the same file, so the decision about the file clears it too;
+    # otherwise a project that met the old spelling stays refused for good.
+    gone = [k for k in d
+            if k == rel or (os.path.isabs(k) and draft_key(store, k) == rel)]
+    for k in gone:
+        d.pop(k)
+    if gone:
         store.write_json("unclaimed.json", d)
-        return True
-    return False
+    return bool(gone)
 
 
 def cmd_scratch(args):
@@ -4946,8 +4964,7 @@ def hook_pre_write(payload):
     text = ti.get("content") or ti.get("new_string") or ""
     if not text:
         return 0
-    rel = os.path.relpath(Path(target).resolve(), store.root) \
-        if Path(target).is_absolute() else target
+    rel = draft_key(store, target, payload.get("cwd"))
     note_unclaimed(store, rel)
     # A file the unit has not claimed is a scratch note, and a scratch note is
     # where research is actually done. An invented identifier is still refused
@@ -5049,7 +5066,7 @@ def hook_pre_bash(payload):
     facts, unseen = [], []
     for target, body in shell_writes(cmd, cfg):
         if is_draft(target, cfg):
-            note_unclaimed(store, target)
+            note_unclaimed(store, draft_key(store, target, payload.get("cwd")))
         if body is None:
             unseen.append(target)
         else:
