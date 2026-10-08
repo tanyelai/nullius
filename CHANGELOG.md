@@ -3,6 +3,17 @@
 Versions follow [semantic versioning](https://semver.org). Until `1.0.0` the ledger format
 and the CLI surface may change; when they do, the change is listed here with what it breaks.
 
+## Unreleased
+
+- **A DOI ending in `YYYY.NNNN` was read as an arXiv id and could not be cited.**
+  `normalise_identifier` tried the end-anchored `ARXIV_RE` before `DOI_RE`, so
+  `10.1001/jamanetworkopen.2024.8064` was looked up on arXiv as `2024.8064` and refused,
+  bare, as `doi:` and as `https://doi.org/`. Journal DOIs of that shape are common (JAMA
+  Network Open, JAMA Psychiatry, Phil Trans R Soc B, Information Systems Research), and the
+  gate then held the stop on a reference that exists. An identifier that is a DOI on its face
+  is now read as one; arXiv ids and arXiv's own `10.48550` DOIs still go to arXiv. Tested in
+  both directions in `tests/smoke.sh`.
+
 ## 0.8.7
 
 **Two control runs, a literature outside AI, and the finding that the harness engages on the
