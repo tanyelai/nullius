@@ -6,6 +6,7 @@ able to add this to Claude Code without installing anything first.
 """
 
 import argparse
+import fnmatch
 import json
 import os
 import re
@@ -205,6 +206,14 @@ DEFAULT_CONFIG = {
         r"(?<![\w@])@([A-Za-z][A-Za-z0-9_:.-]{2,})",
     ],
     "draft_extensions": [".tex", ".md", ".markdown", ".txt", ".rst"],
+    # Which of those files the stop gate asks a decision about: empty means every
+    # one under the root. A project that keeps logs, registries or notes beside its
+    # paper names its drafts here (fnmatch over the root-relative path).
+    "draft_globs": [],
+    # "full" surfaces the invariants and the command list at every session start and
+    # after every compaction; "brief" keeps them back while no unit is open (they
+    # return with one), so a project that mostly runs code does not pay for them.
+    "session_start": "full",
     "attribution_patterns": [
         r"\b([A-Z][\wÀ-ɏ'-]{2,})\s+et\s+al\.?",
         r"\b([A-Z][\wÀ-ɏ'-]{2,})\s+and\s+(?:([A-Z][\wÀ-ɏ'-]{2,})"
@@ -2302,6 +2311,11 @@ def cmd_config(args):
             say(json.dumps(merged, indent=2, ensure_ascii=False))
         return
     val = int(args.value) if args.value.isdigit() else args.value
+    if args.key == "draft_globs":
+        val = (json.loads(args.value) if args.value.lstrip().startswith("[")
+               else [g for g in args.value.split(",") if g])
+    if args.key == "session_start" and val not in ("full", "brief"):
+        die("session_start is `full` or `brief`.")
     if args.key == "mode" and val not in MODES:
         die(f"mode is one of: {', '.join(MODES)}. `certain` refuses on a fact; "
             f"`advice` computes the same facts and reports them. Anything else "
@@ -3626,6 +3640,26 @@ def draft_key(store, target, cwd=None):
     return os.path.relpath(p.resolve(), store.root)
 
 
+def outside_root(rel):
+    """A root-relative path that leaves the root: another project's file, or a note
+    kept outside any project."""
+    return rel == os.pardir or rel.startswith(os.pardir + os.sep)
+
+
+def draft_in_scope(store, rel):
+    """Whether the stop gate asks a decision about this root-relative path. Never
+    outside the root: a memory note or another project's file is not this project's
+    draft. Inside, every file with a draft extension, unless the project names its
+    drafts in `draft_globs`. Out of scope is not out of reach: the identifier guards
+    still read what is written there."""
+    if os.path.isabs(rel):
+        rel = draft_key(store, rel)
+    if outside_root(rel):
+        return False
+    globs = store.config.get("draft_globs") or []
+    return not globs or any(fnmatch.fnmatch(rel, g) for g in globs)
+
+
 def note_unclaimed(store, rel):
     """Recorded at write time because the stop gate cannot see what was written."""
     if store.unit is not None:
@@ -4821,6 +4855,10 @@ def hook_session_start(payload):
     plugin = Path(__file__).resolve().parent.parent
     unit = store.unit
     cfg = store.config
+    # brief: the invariants and the command list are stable across sessions and bind
+    # on a unit's drafts, so while no unit is open they are named, not recited; they
+    # come back the moment one opens (`nullius config session_start full`).
+    brief = cfg.get("session_start") == "brief" and not unit
     lines = []
     if cfg["mode"] != "certain":
         lines.append(f"MODE {cfg['mode']}: the gates compute and report. Nothing "
@@ -4865,7 +4903,8 @@ def hook_session_start(payload):
         lines.append("No unit is open, so nothing about the current work is "
                      "being checked. For anything past reading one paper: "
                      "`nullius start <slug> <kind> \"<question>\"`.")
-        loose = unclaimed_drafts(store)
+        loose = {k: v for k, v in unclaimed_drafts(store).items()
+                 if draft_in_scope(store, k)}
         if loose:
             lines.append(f"  and {len(loose)} draft(s) here are waiting on that "
                          f"decision, which the stop gate will refuse on: "
@@ -4899,10 +4938,10 @@ def hook_session_start(payload):
                  if r.get("screened") == "include"]
                 or [r for sr in searches for r in sr.get("results", [])
                     if r.get("screened") == "include"])
-        for r in kept[:SURFACE_CAP]:
+        for r in ([] if brief else kept[:SURFACE_CAP]):
             lines.append(f"  kept: {(r.get('title') or '')[:64]}"
                          + (f" -- {r.get('reason')}" if r.get("reason") else ""))
-        if len(kept) > SURFACE_CAP:
+        if not brief and len(kept) > SURFACE_CAP:
             lines.append(f"  (+{len(kept) - SURFACE_CAP} more kept, "
                          f"`nullius coverage`)")
     refs = store.refs
@@ -4950,6 +4989,13 @@ def hook_session_start(payload):
     # the command list are stable across sessions; this block is the only part
     # that is about today.
     parts = ["## nullius: this project right now\n\n" + "\n".join(lines)]
+    if brief:
+        parts.append(f"Rules and commands are not repeated while no unit is open "
+                     f"(session_start: brief): the invariants are in "
+                     f"{plugin / 'invariants'}, the commands in `nullius --help`; "
+                     f"both return when a unit opens.")
+        sys.stdout.write("\n\n".join(parts) + "\n")
+        return 0
     inv = plugin / "invariants"
     if inv.is_dir():
         for f in sorted(inv.glob("*.md")):
@@ -4973,7 +5019,10 @@ def hook_pre_write(payload):
     if not text:
         return 0
     rel = draft_key(store, target, payload.get("cwd"))
-    note_unclaimed(store, rel)
+    if outside_root(rel):
+        return 0
+    if draft_in_scope(store, rel):
+        note_unclaimed(store, rel)
     # A file the unit has not claimed is a scratch note, and a scratch note is
     # where research is actually done. An invented identifier is still refused
     # there -- it is a fact and it is the worst thing this tool can let through.
@@ -5073,10 +5122,15 @@ def hook_pre_bash(payload):
         return 0
     facts, unseen = [], []
     for target, body in shell_writes(cmd, cfg):
-        if is_draft(target, cfg):
-            note_unclaimed(store, draft_key(store, target, payload.get("cwd")))
+        rel = draft_key(store, target, payload.get("cwd"))
+        if outside_root(rel):
+            continue
+        scoped = draft_in_scope(store, rel)
+        if scoped:
+            note_unclaimed(store, rel)
         if body is None:
-            unseen.append(target)
+            if scoped:
+                unseen.append(target)
         else:
             facts += check_draft_text(store, body, target)
     if facts and cfg["mode"] == "certain":
@@ -5103,7 +5157,8 @@ def hook_stop(payload):
         return 0
     store = Store(root, payload.get('cwd'))
     if store.unit is None:
-        loose = unclaimed_drafts(store)
+        loose = {k: v for k, v in unclaimed_drafts(store).items()
+                 if draft_in_scope(store, k)}
         if not loose:
             return 0
         names = sorted(loose)

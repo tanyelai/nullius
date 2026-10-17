@@ -3,6 +3,28 @@
 Versions follow [semantic versioning](https://semver.org). Until `1.0.0` the ledger format
 and the CLI surface may change; when they do, the change is listed here with what it breaks.
 
+## 0.8.9
+
+**Two gates that cost a project which runs code a turn they did not need to: the session start
+recited the stable rules every time, and every Markdown file was a draft.**
+
+- **`session_start: brief` holds the stable rules back while no unit is open.** The session
+  start printed the project's state, then every file in `invariants/` and the command list, at
+  each session start and again after each compaction: 15.5 KB in a project measured on
+  17 Oct 2026, of which the state was about 3 KB. The rules bind on a unit's drafts, so with
+  `nullius config session_start brief` they are named, not recited, while no unit is open, and
+  come back the moment one opens; kept search rows are counted, not listed. The default stays
+  `full`. Tested in both directions in `tests/smoke.sh`.
+- **A project can name its drafts, and a file outside the root is never one.** Any file with a
+  draft extension anywhere was recorded as an unclaimed draft, so a research log, a
+  measurement registry or a memory note kept outside the project each refused the stop until
+  declared. A file outside the project root is now none of the gates' business, and
+  `nullius config draft_globs "paper/*"` (fnmatch over the root-relative path; a JSON list or
+  comma-separated) limits the stop gate's question to the files named. Out of scope is not out
+  of reach: the identifier guards still refuse an invented citation in any file with a draft
+  extension. The default, an empty list, keeps every such file a draft. Tested in both
+  directions in `tests/smoke.sh`.
+
 ## 0.8.8
 
 **Two gates that held the stop on work already in order: a journal DOI read as an arXiv id, and a
