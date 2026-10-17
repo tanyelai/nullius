@@ -1437,6 +1437,44 @@ pass=$((pass + l_pass)); fail=$((fail + l_fail))
 read -r l_pass l_fail < "$SW/.tally"
 pass=$((pass + l_pass)); fail=$((fail + l_fail))
 
+# ---- the drafts a project names, and nothing outside it -----------------------
+# A project that runs code keeps logs, registries and notes beside its paper, and
+# each one refused the stop until someone declared it: on 17 Oct 2026 a research
+# log, a measurement registry and a memory note kept outside the project each cost
+# a refused turn. A file outside the root is no draft of this project; inside, a
+# project can name its drafts, and the identifier guards still read the rest. The
+# session start can hold back the stable rules while no unit is open. Both
+# directions on each.
+( mkdir -p "$SW/scoped/paper" "$SW/elsewhere" && cd "$SW/scoped" || exit 1
+  pass=0; fail=0                    # the subshell inherits the running tally
+  python3 "$NULLIUS" init --field "linguistics" >/dev/null 2>&1
+  J="{\"cwd\":\"$PWD\"}"
+  printf '%s' "{\"cwd\":\"$PWD\",\"tool_input\":{\"file_path\":\"$SW/elsewhere/memo.md\",\"content\":\"words\"}}" \
+    | python3 "$NULLIUS" _hook pre-write >/dev/null 2>&1
+  expect_hook stop 0 "a note outside the project root does not refuse the stop" "$J"
+  expect_exit 0 "draft_globs takes a list" python3 "$NULLIUS" config draft_globs "paper/*"
+  printf '%s' "{\"cwd\":\"$PWD\",\"tool_input\":{\"command\":\"cat > log.md <<'EOF'\nwords\nEOF\"}}" \
+    | python3 "$NULLIUS" _hook pre-bash >/dev/null 2>&1
+  expect_hook stop 0 "a log outside the named drafts does not refuse the stop" "$J"
+  printf '%s' "{\"cwd\":\"$PWD\",\"tool_input\":{\"file_path\":\"paper/intro.md\",\"content\":\"words\"}}" \
+    | python3 "$NULLIUS" _hook pre-write >/dev/null 2>&1
+  expect_hook stop 2 "a draft the globs name still refuses the stop" "$J"
+  python3 "$NULLIUS" scratch paper/intro.md "a test draft" >/dev/null 2>&1
+  expect_hook pre-write 2 "an invented citation is refused outside the named drafts too" \
+    "{\"cwd\":\"$PWD\",\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"$PWD/log.md\",\"content\":\"see \\\\cite{ghost1999}\"}}"
+  full="$(printf %s "$J" | python3 "$NULLIUS" _hook session-start)"
+  expect_exit 1 "session_start takes full or brief only" python3 "$NULLIUS" config session_start terse
+  python3 "$NULLIUS" config session_start brief >/dev/null 2>&1
+  brief="$(printf %s "$J" | python3 "$NULLIUS" _hook session-start)"
+  printf '%s' "$brief" | grep -q "session_start: brief" && ok || bad "a brief start does not say what it held back"
+  [ $(( ${#brief} * 2 )) -lt ${#full} ] && ok || bad "a brief start (${#brief}) is not under half the full one (${#full})"
+  python3 "$NULLIUS" start b1 read "one paper" >/dev/null 2>&1
+  open="$(printf %s "$J" | python3 "$NULLIUS" _hook session-start)"
+  printf '%s' "$open" | grep -q "session_start: brief" && bad "a unit is open and the rules are still held back" || ok
+  printf '%s\n' "$pass $fail" > "$SW/.tally" )
+read -r l_pass l_fail < "$SW/.tally"
+pass=$((pass + l_pass)); fail=$((fail + l_fail))
+
 # ---- a slow index is not a crash -------------------------------------------
 # control-2026-09-12 recorded this class against `audit`: TimeoutError is an
 # OSError and is NOT a URLError, so a socket timeout arrives unwrapped. It was
